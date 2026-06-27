@@ -7,22 +7,21 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh}
-.app{max-width:480px;margin:0 auto;padding:0 0 80px}
-.header{padding:20px 16px 12px;border-bottom:1px solid #222}
+.app{max-width:600px;margin:0 auto;padding:0 24px 80px}
+.header{padding:20px 0 12px;border-bottom:1px solid #222}
 .header h1{font-size:20px;font-weight:700;letter-spacing:0.5px;color:#fff}
 .header p{font-size:12px;color:#666;margin-top:2px}
-.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#111;border-top:1px solid #222;z-index:100}
+.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#111;border-top:1px solid #222;z-index:100}
 .tab{flex:1;padding:12px 8px 16px;font-size:11px;border:none;background:transparent;color:#666;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:color 0.15s}
 .tab.active{color:#fff}
 .tab-icon{font-size:20px}
-.section{padding:12px 16px;display:none}
+.section{padding:12px 0;display:none}
 .section.active{display:block}
 .search-box{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:12px}
 .search-box::placeholder{color:#555}
 .tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:4px}
 .tag-chip{padding:5px 12px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
 .tag-chip.active{background:#fff;color:#000;border-color:#fff}
-.tag-chip.delete-mode{border-color:#ff4444;color:#ff4444}
 .move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
 .move-card:hover{border-color:#444}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -37,21 +36,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .mini-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:#222;color:#666;border:1px solid #333}
 .detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:200;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .detail-screen.open{transform:translateX(0)}
-.detail-header{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:10}
+.detail-header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:10}
 .back-btn{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer}
 .detail-name{font-size:18px;font-weight:700;color:#fff}
-.detail-body{padding:16px}
+.detail-body{padding:16px 24px;max-width:600px;margin:0 auto}
 .detail-section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:16px}
 .detail-desc-box{background:#1a1a1a;border-radius:12px;padding:14px;font-size:14px;color:#ccc;line-height:1.7}
 .drop-zone{border:2px dashed #333;border-radius:14px;padding:30px;text-align:center;color:#555;font-size:13px;cursor:pointer;transition:all 0.2s;margin-bottom:10px}
 .drop-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
 .drop-zone input[type=file]{display:none}
-.video-preview{width:100%;border-radius:12px;margin-bottom:10px;max-height:200px;object-fit:cover}
+.video-wrapper{position:relative;width:100%;padding-top:56.25%;margin-bottom:10px;border-radius:12px;overflow:hidden;background:#111}
+.video-wrapper video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000}
+.delete-video-btn{width:100%;padding:9px;background:transparent;color:#ff4444;border:1px solid #ff4444;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:8px;cursor:pointer}
 .progress-bar{width:100%;height:4px;background:#222;border-radius:2px;margin-bottom:10px;overflow:hidden;display:none}
 .progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
 .save-video-btn{width:100%;padding:10px;background:#fff;color:#000;border:none;border-radius:12px;font-size:13px;font-weight:600;margin-top:4px;cursor:pointer}
 .add-to-flow-btn{width:100%;padding:12px;background:#1a1a1a;border:1px solid #444;border-radius:12px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer}
-.flow-builder{padding:16px}
+.flow-builder{padding:16px 0}
 .flow-name-input{width:100%;padding:12px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:14px}
 .flow-name-input::placeholder{color:#555}
 .flow-area{min-height:100px;border:1px dashed #333;border-radius:14px;padding:12px;margin-bottom:14px}
@@ -67,7 +68,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pick-card:hover{border-color:#555}
 .pick-card-name{font-size:14px;color:#fff}
 .pick-plus{font-size:20px;color:#555}
-.saved-flow-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px}
+.saved-flow-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
+.saved-flow-card:hover{border-color:#444}
 .saved-flow-name{font-size:15px;font-weight:600;color:#fff;margin-bottom:8px}
 .saved-flow-seq{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
 .seq-pill{font-size:11px;padding:3px 10px;background:#222;border:1px solid #333;border-radius:20px;color:#aaa}
@@ -75,7 +77,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .delete-flow-btn{font-size:11px;color:#555;background:none;border:none;cursor:pointer;padding:0}
 .add-move-screen{position:fixed;inset:0;background:#0f0f0f;z-index:300;overflow-y:auto;transform:translateY(100%);transition:transform 0.25s ease}
 .add-move-screen.open{transform:translateY(0)}
-.fab{position:fixed;bottom:80px;right:20px;width:52px;height:52px;border-radius:50%;background:#fff;color:#000;font-size:26px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.add-move-body{padding:16px 24px;max-width:600px;margin:0 auto}
+.fab{position:fixed;bottom:80px;right:calc(50% - 280px);width:52px;height:52px;border-radius:50%;background:#fff;color:#000;font-size:26px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+@media(max-width:648px){.fab{right:20px}}
 .form-group{margin-bottom:14px}
 .form-label{font-size:12px;color:#888;margin-bottom:6px;display:block}
 .form-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px}
@@ -95,8 +99,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab-manage input{flex:1;padding:8px 12px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px}
 .tab-manage input::placeholder{color:#555}
 .tab-manage button{padding:8px 14px;background:#fff;color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
-.count-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-top:6px}
+.count-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px}
 .count-input::placeholder{color:#555}
+.add-drop-zone{border:2px dashed #333;border-radius:14px;padding:24px;text-align:center;color:#555;font-size:13px;cursor:pointer;transition:all 0.2s}
+.add-drop-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
+.add-drop-zone input[type=file]{display:none}
+.add-video-preview{width:100%;border-radius:12px;margin-top:10px;max-height:180px;object-fit:contain;background:#000;display:none}
+.upload-progress{width:100%;height:4px;background:#222;border-radius:2px;margin-top:8px;overflow:hidden;display:none}
+.upload-progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
 </style>
 </head>
 <body>
@@ -153,7 +163,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <button class="back-btn" onclick="closeAddMove()">← 戻る</button>
     <span class="detail-name">新しい技を追加</span>
   </div>
-  <div style="padding:16px">
+  <div class="add-move-body">
     <div class="form-group">
       <label class="form-label">技名</label>
       <input class="form-input" type="text" id="new-name" placeholder="例：ゴブレット">
@@ -178,6 +188,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group">
       <label class="form-label">タグ（カンマ区切り）</label>
       <input class="form-input" type="text" id="new-tags" placeholder="例：初級,フットワーク,CC系">
+    </div>
+    <div class="form-group">
+      <label class="form-label">動画（任意）</label>
+      <div class="add-drop-zone" id="add-drop-zone" onclick="document.getElementById('add-file-input').click()">
+        <input type="file" id="add-file-input" accept="video/*,.mp4,.mov,.avi,.webm,.mkv" onchange="handleAddVideoSelect(event)">
+        📹 タップして動画を選択（任意）<br>
+        <span style="font-size:11px;margin-top:4px;display:block">mp4, mov, avi, webm など対応</span>
+      </div>
+      <div class="upload-progress" id="add-upload-progress"><div class="upload-progress-fill" id="add-upload-fill" style="width:0%"></div></div>
+      <video class="add-video-preview" id="add-video-preview" muted playsinline controls></video>
     </div>
     <button class="submit-btn" onclick="submitMove()">追加する</button>
   </div>
@@ -209,6 +229,7 @@ const typeClass={foot:"type-foot",freeze:"type-freeze",power:"type-power",combo:
 
 let moves=[],flows=[],flowMoves=[],customTags=[];
 let activeTag="全て",searchQ="",selectedType="foot";
+let pendingVideoUrl="";
 
 async function loadMoves(){
   document.getElementById("moves-list").innerHTML='<div class="loading">読み込み中...</div>';
@@ -298,14 +319,14 @@ function renderSaved(){
       <div class="saved-flow-seq">${(f.moves||[]).map((m,i)=>`${i>0?'<span class="seq-arrow">→</span>':''}<span class="seq-pill">${m.name}</span>`).join("")}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:11px;color:#555">${(f.moves||[]).length}技構成</span>
-        <button class="delete-flow-btn" onclick="window.deleteFlow('${f.id}')">削除</button>
+        <button class="delete-flow-btn" onclick="event.stopPropagation();window.deleteFlow('${f.id}')">削除</button>
       </div>
     </div>`).join("");
 }
 
 function renderCustomTagList(){
   const el=document.getElementById("custom-tag-list");
-  if(customTags.length===0){el.innerHTML='<div style="color:#555;font-size:13px;padding:20px 0 0">カスタムタグはまだありません</div>';return;}
+  if(customTags.length===0){el.innerHTML='<div style="color:#555;font-size:13px;padding:20px 0">カスタムタグはまだありません</div>';return;}
   el.innerHTML=customTags.map(t=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;margin-bottom:8px">
       <span style="font-size:14px;color:#fff">${t.name}</span>
@@ -326,10 +347,16 @@ window.showDetail=function(id){
     <div class="detail-section-title">動きの説明</div>
     <div class="detail-desc-box">${m.desc||"説明なし"}</div>
     <div class="detail-section-title">動画</div>
-    ${m.videoUrl?`<video class="video-preview" src="${m.videoUrl}" controls playsinline></video>`:""}
+    ${m.videoUrl?`
+      <div class="video-wrapper">
+        <video src="${m.videoUrl}" controls playsinline muted></video>
+      </div>
+      <button class="delete-video-btn" onclick="window.deleteVideo('${id}')">🗑 動画を削除</button>
+    `:""}
     <div class="drop-zone" id="drop-zone-${id}" onclick="document.getElementById('file-input-${id}').click()">
       <input type="file" id="file-input-${id}" accept="video/*,.mp4,.mov,.avi,.webm,.mkv" onchange="window.handleVideoUpload(event,'${id}')">
-      📹 タップして動画を選択<br><span style="font-size:11px;margin-top:4px;display:block">mp4, mov, avi, webm など対応</span>
+      📹 ${m.videoUrl?"動画を差し替え":"タップして動画を選択"}<br>
+      <span style="font-size:11px;margin-top:4px;display:block">PCはドラッグ＆ドロップも可</span>
     </div>
     <div class="progress-bar" id="progress-bar-${id}"><div class="progress-fill" id="progress-fill-${id}" style="width:0%"></div></div>
     <div class="detail-section-title">タグ</div>
@@ -343,6 +370,16 @@ window.showDetail=function(id){
   document.getElementById("detail-screen").classList.add("open");
 }
 
+window.deleteVideo=async function(id){
+  if(!confirm("この動画を削除しますか？\nこの操作は元に戻せません。"))return;
+  await updateDoc(doc(db,"moves",id),{videoUrl:""});
+  moves=moves.map(m=>m.id===id?{...m,videoUrl:""}:m);
+  showToast("動画を削除しました");
+  window.showDetail(id);
+}
+
+window.closeDetail=()=>document.getElementById("detail-screen").classList.remove("open");
+
 window.handleVideoUpload=function(e,id){
   const f=e.target.files[0];
   if(f)window.uploadToCloudinary(f,id);
@@ -351,13 +388,13 @@ window.handleVideoUpload=function(e,id){
 window.uploadToCloudinary=async function(file,moveId){
   const bar=document.getElementById(`progress-bar-${moveId}`);
   const fill=document.getElementById(`progress-fill-${moveId}`);
-  bar.style.display="block";
+  if(bar)bar.style.display="block";
   const fd=new FormData();
   fd.append("file",file);
   fd.append("upload_preset",UPLOAD_PRESET);
   fd.append("resource_type","video");
   const xhr=new XMLHttpRequest();
-  xhr.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=(e.loaded/e.total*100)+"%";};
+  xhr.upload.onprogress=e=>{if(e.lengthComputable&&fill)fill.style.width=(e.loaded/e.total*100)+"%";};
   xhr.onload=async function(){
     if(xhr.status===200){
       const res=JSON.parse(xhr.responseText);
@@ -366,16 +403,37 @@ window.uploadToCloudinary=async function(file,moveId){
       showToast("動画をアップロードしました！");
       window.showDetail(moveId);
     } else {
-      showToast("アップロード失敗。プリセットを確認してください");
-      bar.style.display="none";
+      showToast("アップロード失敗。設定を確認してください");
+      if(bar)bar.style.display="none";
     }
   };
-  xhr.onerror=()=>{showToast("通信エラーが発生しました");bar.style.display="none";};
+  xhr.onerror=()=>{showToast("通信エラーが発生しました");if(bar)bar.style.display="none";};
   xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
   xhr.send(fd);
 }
 
-window.closeDetail=()=>document.getElementById("detail-screen").classList.remove("open");
+window.handleAddVideoSelect=function(e){
+  const f=e.target.files[0];
+  if(!f)return;
+  const preview=document.getElementById("add-video-preview");
+  preview.src=URL.createObjectURL(f);
+  preview.style.display="block";
+  window._pendingVideoFile=f;
+}
+
+const addDz=document.getElementById("add-drop-zone");
+addDz.addEventListener("dragover",e=>{e.preventDefault();addDz.classList.add("dragover");});
+addDz.addEventListener("dragleave",()=>addDz.classList.remove("dragover"));
+addDz.addEventListener("drop",e=>{
+  e.preventDefault();addDz.classList.remove("dragover");
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith("video/")){
+    const preview=document.getElementById("add-video-preview");
+    preview.src=URL.createObjectURL(f);
+    preview.style.display="block";
+    window._pendingVideoFile=f;
+  }
+});
 
 window.addToFlow=function(id){
   const m=moves.find(x=>x.id===id);
@@ -406,15 +464,21 @@ window.saveFlow=async function(){
 }
 
 window.deleteFlow=async function(id){
-  if(!confirm("このフローを削除しますか？"))return;
+  if(!confirm("このフローを削除しますか？\nこの操作は元に戻せません。"))return;
   await deleteDoc(doc(db,"flows",id));
   flows=flows.filter(f=>f.id!==id);
   renderSaved();
   showToast("削除しました");
 }
 
-window.openAddMove=()=>document.getElementById("add-move-screen").classList.add("open");
+window.openAddMove=()=>{
+  window._pendingVideoFile=null;
+  document.getElementById("add-video-preview").style.display="none";
+  document.getElementById("add-video-preview").src="";
+  document.getElementById("add-move-screen").classList.add("open");
+}
 window.closeAddMove=()=>document.getElementById("add-move-screen").classList.remove("open");
+
 window.selectType=function(el){
   document.querySelectorAll(".type-opt").forEach(e=>e.classList.remove("active"));
   el.classList.add("active");
@@ -427,11 +491,40 @@ window.submitMove=async function(){
   const desc=document.getElementById("new-desc").value.trim();
   const count=document.getElementById("new-count").value.trim();
   const tags=document.getElementById("new-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
-  await addDoc(collection(db,"moves"),{name,type:selectedType,desc,count:count||null,tags,videoUrl:"",createdAt:Date.now()});
+  let videoUrl="";
+  if(window._pendingVideoFile){
+    showToast("動画をアップロード中...");
+    videoUrl=await uploadVideoForNew(window._pendingVideoFile);
+  }
+  await addDoc(collection(db,"moves"),{name,type:selectedType,desc,count:count||null,tags,videoUrl,createdAt:Date.now()});
   ["new-name","new-desc","new-count","new-tags"].forEach(id=>document.getElementById(id).value="");
+  window._pendingVideoFile=null;
+  document.getElementById("add-video-preview").style.display="none";
   window.closeAddMove();
   showToast("技を追加しました！");
   await loadMoves();
+}
+
+function uploadVideoForNew(file){
+  return new Promise((resolve,reject)=>{
+    const bar=document.getElementById("add-upload-progress");
+    const fill=document.getElementById("add-upload-fill");
+    bar.style.display="block";
+    const fd=new FormData();
+    fd.append("file",file);
+    fd.append("upload_preset",UPLOAD_PRESET);
+    fd.append("resource_type","video");
+    const xhr=new XMLHttpRequest();
+    xhr.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=(e.loaded/e.total*100)+"%";};
+    xhr.onload=function(){
+      bar.style.display="none";
+      if(xhr.status===200){const res=JSON.parse(xhr.responseText);resolve(res.secure_url);}
+      else{showToast("動画アップロード失敗");resolve("");}
+    };
+    xhr.onerror=()=>{bar.style.display="none";resolve("");};
+    xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+    xhr.send(fd);
+  });
 }
 
 window.addCustomTag=async function(){
@@ -458,7 +551,7 @@ function showToast(msg){
   const t=document.getElementById("toast");
   t.textContent=msg;
   t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),2000);
+  setTimeout(()=>t.classList.remove("show"),2500);
 }
 
 window.switchTab=function(name,el){

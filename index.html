@@ -19,10 +19,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section.active{display:block}
 .search-box{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:12px}
 .search-box::placeholder{color:#555}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:4px}
 .tag-chip{padding:5px 12px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
 .tag-chip.active{background:#fff;color:#000;border-color:#fff}
-.move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s;active:scale(0.98)}
+.tag-chip.delete-mode{border-color:#ff4444;color:#ff4444}
+.move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
 .move-card:hover{border-color:#444}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .card-name{font-size:15px;font-weight:600;color:#fff}
@@ -42,12 +43,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .detail-body{padding:16px}
 .detail-section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:16px}
 .detail-desc-box{background:#1a1a1a;border-radius:12px;padding:14px;font-size:14px;color:#ccc;line-height:1.7}
-.video-box{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;height:90px;display:flex;align-items:center;justify-content:center;color:#555;font-size:13px;gap:8px;cursor:pointer}
-.video-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:13px;margin-top:8px}
-.video-input::placeholder{color:#555}
-.save-video-btn{width:100%;padding:10px;background:#fff;color:#000;border:none;border-radius:12px;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer}
-.add-to-flow-btn{width:100%;padding:12px;background:#1a1a1a;border:1px solid #444;border-radius:12px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer;transition:background 0.15s}
-.add-to-flow-btn:hover{background:#2a2a2a}
+.drop-zone{border:2px dashed #333;border-radius:14px;padding:30px;text-align:center;color:#555;font-size:13px;cursor:pointer;transition:all 0.2s;margin-bottom:10px}
+.drop-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
+.drop-zone input[type=file]{display:none}
+.video-preview{width:100%;border-radius:12px;margin-bottom:10px;max-height:200px;object-fit:cover}
+.progress-bar{width:100%;height:4px;background:#222;border-radius:2px;margin-bottom:10px;overflow:hidden;display:none}
+.progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
+.save-video-btn{width:100%;padding:10px;background:#fff;color:#000;border:none;border-radius:12px;font-size:13px;font-weight:600;margin-top:4px;cursor:pointer}
+.add-to-flow-btn{width:100%;padding:12px;background:#1a1a1a;border:1px solid #444;border-radius:12px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer}
 .flow-builder{padding:16px}
 .flow-name-input{width:100%;padding:12px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:14px}
 .flow-name-input::placeholder{color:#555}
@@ -57,6 +60,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .flow-pill{background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 14px;font-size:13px;color:#fff;display:flex;align-items:center;gap:8px;flex:1}
 .flow-pill-remove{color:#555;cursor:pointer;font-size:16px;margin-left:auto}
 .flow-arrow{color:#444;font-size:18px}
+.count-badge{font-size:10px;padding:2px 7px;background:#333;border-radius:20px;color:#aaa}
 .save-flow-btn{width:100%;padding:12px;background:#fff;color:#000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px}
 .pick-title{font-size:13px;font-weight:600;color:#888;margin-bottom:10px}
 .pick-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s}
@@ -87,50 +91,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .loading{text-align:center;padding:40px;color:#555;font-size:13px}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
 .toast.show{opacity:1}
+.tab-manage{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.tab-manage input{flex:1;padding:8px 12px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px}
+.tab-manage input::placeholder{color:#555}
+.tab-manage button{padding:8px 14px;background:#fff;color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+.count-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-top:6px}
+.count-input::placeholder{color:#555}
 </style>
 </head>
 <body>
-
 <div class="app">
   <div class="header">
     <h1>BreakinSetBuilder</h1>
     <p>技を管理してフローを組み立てる</p>
   </div>
-
   <div id="sec-moves" class="section active">
     <input class="search-box" type="text" placeholder="技を検索..." oninput="filterMoves(this.value)" id="search-input">
     <div class="tag-row" id="tag-row"></div>
     <div id="moves-list"></div>
   </div>
-
   <div id="sec-flow" class="section">
     <div class="flow-builder">
       <input class="flow-name-input" type="text" placeholder="フロー名（例：バトル用コンボA）" id="flow-name">
-      <div class="flow-area" id="flow-area">
-        <div class="flow-empty">下から技を選んで追加</div>
-      </div>
+      <div class="flow-area" id="flow-area"><div class="flow-empty">下から技を選んで追加</div></div>
       <button class="save-flow-btn" onclick="saveFlow()">フローを保存</button>
       <div class="pick-title">技を選ぶ</div>
       <div id="pick-list"></div>
     </div>
   </div>
-
   <div id="sec-saved" class="section">
     <div style="padding:12px 0" id="saved-list"></div>
   </div>
-
+  <div id="sec-tags" class="section">
+    <div class="tab-manage">
+      <input type="text" placeholder="新しいタグ名..." id="new-tag-input">
+      <button onclick="addCustomTag()">追加</button>
+    </div>
+    <div id="custom-tag-list"></div>
+  </div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('moves',this)">
-    <span class="tab-icon">🃏</span>技カード
-  </button>
-  <button class="tab" onclick="switchTab('flow',this)">
-    <span class="tab-icon">⚡</span>フロー
-  </button>
-  <button class="tab" onclick="switchTab('saved',this)">
-    <span class="tab-icon">📋</span>保存済み
-  </button>
+  <button class="tab active" onclick="switchTab('moves',this)"><span class="tab-icon">🃏</span>技カード</button>
+  <button class="tab" onclick="switchTab('flow',this)"><span class="tab-icon">⚡</span>フロー</button>
+  <button class="tab" onclick="switchTab('saved',this)"><span class="tab-icon">📋</span>保存済み</button>
+  <button class="tab" onclick="switchTab('tags',this)"><span class="tab-icon">🏷️</span>タグ管理</button>
 </div>
 
 <button class="fab" onclick="openAddMove()" id="fab">+</button>
@@ -167,12 +172,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <textarea class="form-textarea" id="new-desc" placeholder="動きの流れを書いておこう"></textarea>
     </div>
     <div class="form-group">
-      <label class="form-label">タグ（カンマ区切り）</label>
-      <input class="form-input" type="text" id="new-tags" placeholder="例：初級,フットワーク,CC系">
+      <label class="form-label">カウント数</label>
+      <input class="count-input" type="number" id="new-count" placeholder="例：8">
     </div>
     <div class="form-group">
-      <label class="form-label">動画URL（YouTubeなど）</label>
-      <input class="form-input" type="text" id="new-video" placeholder="https://...">
+      <label class="form-label">タグ（カンマ区切り）</label>
+      <input class="form-input" type="text" id="new-tags" placeholder="例：初級,フットワーク,CC系">
     </div>
     <button class="submit-btn" onclick="submitMove()">追加する</button>
   </div>
@@ -184,37 +189,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBao1NCQQRw596Y0ueG4q9gpNjMA_ApLBE",
-  authDomain: "breakinsetbuilder.firebaseapp.com",
-  projectId: "breakinsetbuilder",
-  storageBucket: "breakinsetbuilder.firebasestorage.app",
-  messagingSenderId: "544530127587",
-  appId: "1:544530127587:web:2c44993150211c892d03d6"
+const CLOUD_NAME="dnbbwfwoi";
+const UPLOAD_PRESET="breakin_unsigned";
+
+const firebaseConfig={
+  apiKey:"AIzaSyBao1NCQQRw596Y0ueG4q9gpNjMA_ApLBE",
+  authDomain:"breakinsetbuilder.firebaseapp.com",
+  projectId:"breakinsetbuilder",
+  storageBucket:"breakinsetbuilder.firebasestorage.app",
+  messagingSenderId:"544530127587",
+  appId:"1:544530127587:web:2c44993150211c892d03d6"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
 
 const typeLabel={foot:"フットワーク",freeze:"フリーズ",power:"パワー",combo:"コンボ"};
 const typeClass={foot:"type-foot",freeze:"type-freeze",power:"type-power",combo:"type-combo"};
 
-let moves=[];
-let flows=[];
-let flowMoves=[];
-let activeTag="全て";
-let searchQ="";
-let selectedType="foot";
-let currentMoveId=null;
+let moves=[],flows=[],flowMoves=[],customTags=[];
+let activeTag="全て",searchQ="",selectedType="foot";
 
 async function loadMoves(){
   document.getElementById("moves-list").innerHTML='<div class="loading">読み込み中...</div>';
   const q=query(collection(db,"moves"),orderBy("createdAt","desc"));
   const snap=await getDocs(q);
   moves=snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderTagRow();
-  renderMoves();
-  renderPickList();
+  renderTagRow();renderMoves();renderPickList();
 }
 
 async function loadFlows(){
@@ -224,9 +225,16 @@ async function loadFlows(){
   renderSaved();
 }
 
+async function loadCustomTags(){
+  const snap=await getDocs(collection(db,"customTags"));
+  customTags=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderCustomTagList();
+}
+
 function allTags(){
   const s=new Set(["全て"]);
   moves.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));
+  customTags.forEach(t=>s.add(t.name));
   return [...s];
 }
 
@@ -253,7 +261,8 @@ function renderMoves(){
         <span class="card-name">${m.name}</span>
         <span class="type-badge ${typeClass[m.type]||'type-foot'}">${typeLabel[m.type]||m.type}</span>
       </div>
-      <div class="card-desc">${(m.desc||"").length>70?(m.desc).slice(0,70)+"…":m.desc||""}</div>
+      ${m.count?`<div style="font-size:11px;color:#666;margin-bottom:6px">カウント：${m.count}</div>`:""}
+      <div class="card-desc">${(m.desc||"").length>70?m.desc.slice(0,70)+"…":m.desc||""}</div>
       <div class="card-tags">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
     </div>`).join("");
 }
@@ -261,7 +270,7 @@ function renderMoves(){
 function renderPickList(){
   document.getElementById("pick-list").innerHTML=moves.map(m=>`
     <div class="pick-card" onclick="window.addToFlow('${m.id}')">
-      <span class="pick-card-name">${m.name}</span>
+      <span class="pick-card-name">${m.name}${m.count?` <span class="count-badge">${m.count}カウント</span>`:""}</span>
       <span class="pick-plus">＋</span>
     </div>`).join("");
 }
@@ -274,6 +283,7 @@ function renderFlowArea(){
       ${i>0?'<span class="flow-arrow">↓</span>':"<span style='width:18px'></span>"}
       <div class="flow-pill">
         <span>${m.name}</span>
+        ${m.count?`<span class="count-badge">${m.count}ct</span>`:""}
         <span class="flow-pill-remove" onclick="window.removeFromFlow(${i})">×</span>
       </div>
     </div>`).join("");
@@ -293,37 +303,79 @@ function renderSaved(){
     </div>`).join("");
 }
 
-window.setTag=function(t){activeTag=t;renderTagRow();renderMoves();}
-window.filterMoves=function(q){searchQ=q;renderMoves();}
+function renderCustomTagList(){
+  const el=document.getElementById("custom-tag-list");
+  if(customTags.length===0){el.innerHTML='<div style="color:#555;font-size:13px;padding:20px 0 0">カスタムタグはまだありません</div>';return;}
+  el.innerHTML=customTags.map(t=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;margin-bottom:8px">
+      <span style="font-size:14px;color:#fff">${t.name}</span>
+      <button onclick="window.deleteCustomTag('${t.id}')" style="background:none;border:none;color:#555;cursor:pointer;font-size:12px">削除</button>
+    </div>`).join("");
+}
+
+window.setTag=t=>{activeTag=t;renderTagRow();renderMoves();}
+window.filterMoves=q=>{searchQ=q;renderMoves();}
 
 window.showDetail=function(id){
   const m=moves.find(x=>x.id===id);
   if(!m)return;
-  currentMoveId=id;
   document.getElementById("detail-name").textContent=m.name;
   document.getElementById("detail-body").innerHTML=`
     <span class="type-badge ${typeClass[m.type]||'type-foot'}" style="display:inline-block;margin-bottom:12px">${typeLabel[m.type]||m.type}</span>
+    ${m.count?`<div style="font-size:13px;color:#888;margin-bottom:12px">カウント数：<span style="color:#fff;font-weight:600">${m.count}</span></div>`:""}
     <div class="detail-section-title">動きの説明</div>
     <div class="detail-desc-box">${m.desc||"説明なし"}</div>
     <div class="detail-section-title">動画</div>
-    ${m.video?`<iframe width="100%" height="200" src="${m.video.replace('watch?v=','embed/')}" frameborder="0" allowfullscreen style="border-radius:12px"></iframe>`:'<div class="video-box">🎬 動画URLを追加</div>'}
-    <input class="video-input" type="text" placeholder="YouTube URLを貼り付け" id="video-url-input" value="${m.video||''}">
-    <button class="save-video-btn" onclick="window.saveVideo('${id}')">動画を保存</button>
+    ${m.videoUrl?`<video class="video-preview" src="${m.videoUrl}" controls playsinline></video>`:""}
+    <div class="drop-zone" id="drop-zone-${id}" onclick="document.getElementById('file-input-${id}').click()">
+      <input type="file" id="file-input-${id}" accept="video/*,.mp4,.mov,.avi,.webm,.mkv" onchange="window.handleVideoUpload(event,'${id}')">
+      📹 タップして動画を選択<br><span style="font-size:11px;margin-top:4px;display:block">mp4, mov, avi, webm など対応</span>
+    </div>
+    <div class="progress-bar" id="progress-bar-${id}"><div class="progress-fill" id="progress-fill-${id}" style="width:0%"></div></div>
     <div class="detail-section-title">タグ</div>
     <div class="card-tags" style="margin-bottom:8px">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
     <button class="add-to-flow-btn" onclick="window.addToFlowFromDetail('${id}')">⚡ フローに追加</button>
   `;
+  const dz=document.getElementById(`drop-zone-${id}`);
+  dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("dragover");});
+  dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
+  dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("dragover");const f=e.dataTransfer.files[0];if(f)window.uploadToCloudinary(f,id);});
   document.getElementById("detail-screen").classList.add("open");
 }
 
-window.closeDetail=function(){document.getElementById("detail-screen").classList.remove("open");}
-
-window.saveVideo=async function(id){
-  const url=document.getElementById("video-url-input").value;
-  await updateDoc(doc(db,"moves",id),{video:url});
-  moves=moves.map(m=>m.id===id?{...m,video:url}:m);
-  showToast("動画を保存しました");
+window.handleVideoUpload=function(e,id){
+  const f=e.target.files[0];
+  if(f)window.uploadToCloudinary(f,id);
 }
+
+window.uploadToCloudinary=async function(file,moveId){
+  const bar=document.getElementById(`progress-bar-${moveId}`);
+  const fill=document.getElementById(`progress-fill-${moveId}`);
+  bar.style.display="block";
+  const fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset",UPLOAD_PRESET);
+  fd.append("resource_type","video");
+  const xhr=new XMLHttpRequest();
+  xhr.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=(e.loaded/e.total*100)+"%";};
+  xhr.onload=async function(){
+    if(xhr.status===200){
+      const res=JSON.parse(xhr.responseText);
+      await updateDoc(doc(db,"moves",moveId),{videoUrl:res.secure_url});
+      moves=moves.map(m=>m.id===moveId?{...m,videoUrl:res.secure_url}:m);
+      showToast("動画をアップロードしました！");
+      window.showDetail(moveId);
+    } else {
+      showToast("アップロード失敗。プリセットを確認してください");
+      bar.style.display="none";
+    }
+  };
+  xhr.onerror=()=>{showToast("通信エラーが発生しました");bar.style.display="none";};
+  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+  xhr.send(fd);
+}
+
+window.closeDetail=()=>document.getElementById("detail-screen").classList.remove("open");
 
 window.addToFlow=function(id){
   const m=moves.find(x=>x.id===id);
@@ -335,16 +387,16 @@ window.addToFlow=function(id){
 
 window.addToFlowFromDetail=function(id){
   window.addToFlow(id);
-  closeDetail();
+  window.closeDetail();
   switchTab("flow",document.querySelectorAll(".tab")[1]);
 }
 
-window.removeFromFlow=function(i){flowMoves.splice(i,1);renderFlowArea();}
+window.removeFromFlow=i=>{flowMoves.splice(i,1);renderFlowArea();}
 
 window.saveFlow=async function(){
   const name=document.getElementById("flow-name").value||"フロー"+(flows.length+1);
   if(flowMoves.length===0){showToast("技を追加してください");return;}
-  await addDoc(collection(db,"flows"),{name,moves:flowMoves.map(m=>({id:m.id,name:m.name})),createdAt:Date.now()});
+  await addDoc(collection(db,"flows"),{name,moves:flowMoves.map(m=>({id:m.id,name:m.name,count:m.count||null})),createdAt:Date.now()});
   flowMoves=[];
   document.getElementById("flow-name").value="";
   renderFlowArea();
@@ -361,9 +413,8 @@ window.deleteFlow=async function(id){
   showToast("削除しました");
 }
 
-window.openAddMove=function(){document.getElementById("add-move-screen").classList.add("open");}
-window.closeAddMove=function(){document.getElementById("add-move-screen").classList.remove("open");}
-
+window.openAddMove=()=>document.getElementById("add-move-screen").classList.add("open");
+window.closeAddMove=()=>document.getElementById("add-move-screen").classList.remove("open");
 window.selectType=function(el){
   document.querySelectorAll(".type-opt").forEach(e=>e.classList.remove("active"));
   el.classList.add("active");
@@ -374,17 +425,33 @@ window.submitMove=async function(){
   const name=document.getElementById("new-name").value.trim();
   if(!name){showToast("技名を入力してください");return;}
   const desc=document.getElementById("new-desc").value.trim();
-  const tagsRaw=document.getElementById("new-tags").value;
-  const tags=tagsRaw.split(",").map(t=>t.trim()).filter(Boolean);
-  const video=document.getElementById("new-video").value.trim();
-  await addDoc(collection(db,"moves"),{name,type:selectedType,desc,tags,video,createdAt:Date.now()});
-  document.getElementById("new-name").value="";
-  document.getElementById("new-desc").value="";
-  document.getElementById("new-tags").value="";
-  document.getElementById("new-video").value="";
-  closeAddMove();
+  const count=document.getElementById("new-count").value.trim();
+  const tags=document.getElementById("new-tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  await addDoc(collection(db,"moves"),{name,type:selectedType,desc,count:count||null,tags,videoUrl:"",createdAt:Date.now()});
+  ["new-name","new-desc","new-count","new-tags"].forEach(id=>document.getElementById(id).value="");
+  window.closeAddMove();
   showToast("技を追加しました！");
   await loadMoves();
+}
+
+window.addCustomTag=async function(){
+  const input=document.getElementById("new-tag-input");
+  const name=input.value.trim();
+  if(!name){showToast("タグ名を入力してください");return;}
+  await addDoc(collection(db,"customTags"),{name,createdAt:Date.now()});
+  input.value="";
+  showToast(`「${name}」を追加しました`);
+  await loadCustomTags();
+  renderTagRow();
+}
+
+window.deleteCustomTag=async function(id){
+  if(!confirm("このタグを削除しますか？"))return;
+  await deleteDoc(doc(db,"customTags",id));
+  customTags=customTags.filter(t=>t.id!==id);
+  renderCustomTagList();
+  renderTagRow();
+  showToast("タグを削除しました");
 }
 
 function showToast(msg){
@@ -402,8 +469,7 @@ window.switchTab=function(name,el){
   document.getElementById("fab").style.display=name==="moves"?"flex":"none";
 }
 
-loadMoves();
-loadFlows();
+loadMoves();loadFlows();loadCustomTags();
 </script>
 </body>
 </html>

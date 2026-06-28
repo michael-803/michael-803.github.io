@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>BreakinSetBuilder</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh}
-.app{max-width:600px;margin:0 auto;padding:0 24px 80px}
-.header{padding:20px 0 12px;border-bottom:1px solid #222}
+.app{max-width:600px;margin:0 auto;padding:0 20px 80px}
+.header{padding:20px 0 12px;border-bottom:1px solid #222;text-align:center}
 .header h1{font-size:20px;font-weight:700;color:#fff}
 .header p{font-size:12px;color:#666;margin-top:2px}
 .tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#111;border-top:1px solid #222;z-index:100}
@@ -19,36 +19,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section.active{display:block}
 .search-box{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:12px}
 .search-box::placeholder{color:#555}
-.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;justify-content:center}
 .tag-chip{padding:5px 12px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
 .tag-chip.active{background:#fff;color:#000;border-color:#fff}
-.move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
-.move-card:hover{border-color:#444}
-.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.card-name{font-size:15px;font-weight:600;color:#fff}
-.type-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.moves-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:16px;cursor:pointer;transition:border-color 0.2s,transform 0.15s}
+.move-card:hover{border-color:#444;transform:translateY(-1px)}
+.move-card.expanded{border-color:#555}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.card-name{font-size:16px;font-weight:600;color:#fff}
+.type-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;flex-shrink:0}
 .type-foot{background:#0d3320;color:#4ade80}
 .type-freeze{background:#0d1f3c;color:#60a5fa}
 .type-power{background:#3c1a0d;color:#fb923c}
 .type-combo{background:#2a0d3c;color:#c084fc}
-.card-desc{font-size:12px;color:#888;line-height:1.5;margin-bottom:8px}
-.card-tags{display:flex;gap:5px;flex-wrap:wrap}
+.card-count{font-size:11px;color:#666;margin-bottom:6px}
+.card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:0}
 .mini-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:#222;color:#666;border:1px solid #333}
-.card-dropdown{display:none;margin-top:10px;padding-top:10px;border-top:1px solid #2a2a2a}
-.card-dropdown.open{display:block}
-.card-dropdown-desc{font-size:13px;color:#ccc;line-height:1.6;margin-bottom:10px;background:#111;border-radius:10px;padding:10px}
-.card-dropdown-btns{display:flex;gap:8px}
-.card-dropdown-btn{flex:1;padding:8px;font-size:12px;border-radius:10px;border:1px solid #444;background:transparent;color:#aaa;cursor:pointer}
-.card-dropdown-btn.accent{border-color:#fff;color:#fff}
+.card-expand-icon{font-size:12px;color:#555;margin-top:8px;text-align:center;transition:transform 0.2s}
+.card-expand-icon.open{transform:rotate(180deg)}
+.card-detail{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #2a2a2a}
+.card-detail.open{display:block}
+.card-detail-desc{font-size:13px;color:#bbb;line-height:1.6;margin-bottom:12px;background:#111;border-radius:10px;padding:12px}
+.card-detail-video{width:100%;border-radius:10px;margin-bottom:10px;display:block}
+.card-detail-btns{display:flex;gap:8px}
+.card-detail-btn{flex:1;padding:9px;font-size:12px;border-radius:10px;border:1px solid #444;background:transparent;color:#aaa;cursor:pointer;transition:all 0.15s}
+.card-detail-btn:hover{border-color:#fff;color:#fff}
+.card-detail-btn.accent{border-color:#888;color:#fff;background:#222}
 .detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:200;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .detail-screen.open{transform:translateX(0)}
 .edit-screen{position:fixed;inset:0;background:#0f0f0f;z-index:250;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .edit-screen.open{transform:translateX(0)}
-.detail-header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:10}
-.back-btn{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer}
-.edit-btn{background:#1a1a1a;border:1px solid #555;border-radius:10px;padding:8px 14px;color:#aaa;font-size:13px;cursor:pointer;margin-left:auto}
-.detail-name{font-size:18px;font-weight:700;color:#fff}
-.detail-body{padding:16px 24px;max-width:600px;margin:0 auto}
+.detail-header{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:10}
+.back-btn{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap}
+.edit-btn{background:#1a1a1a;border:1px solid #555;border-radius:10px;padding:8px 14px;color:#aaa;font-size:13px;cursor:pointer;margin-left:auto;white-space:nowrap}
+.detail-name{font-size:16px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.detail-body{padding:16px 20px;max-width:600px;margin:0 auto}
 .detail-section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:16px}
 .detail-desc-box{background:#1a1a1a;border-radius:12px;padding:14px;font-size:14px;color:#ccc;line-height:1.7}
 .drop-zone{border:2px dashed #333;border-radius:14px;padding:20px;text-align:center;color:#555;font-size:13px;transition:all 0.2s;margin-bottom:6px}
@@ -66,7 +72,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .set-builder{padding:16px 0}
 .set-name-input{width:100%;padding:12px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:10px}
 .set-name-input::placeholder{color:#555}
-.set-area{min-height:80px;border:1px dashed #333;border-radius:14px;padding:12px;margin-bottom:14px}
+.set-area{min-height:80px;border:1px dashed #333;border-radius:14px;padding:12px;margin-bottom:10px}
 .set-empty{text-align:center;color:#555;font-size:13px;padding:20px 0}
 .set-node{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .set-pill{background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 14px;font-size:13px;color:#fff;display:flex;align-items:center;gap:8px;flex:1}
@@ -90,9 +96,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .play-set-btn{font-size:12px;color:#fff;background:#222;border:1px solid #444;border-radius:8px;cursor:pointer;padding:5px 12px}
 .add-move-screen{position:fixed;inset:0;background:#0f0f0f;z-index:300;overflow-y:auto;transform:translateY(100%);transition:transform 0.25s ease}
 .add-move-screen.open{transform:translateY(0)}
-.add-move-body{padding:16px 24px;max-width:600px;margin:0 auto}
-.fab{position:fixed;bottom:80px;right:calc(50% - 280px);width:52px;height:52px;border-radius:50%;background:#fff;color:#000;font-size:26px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
-@media(max-width:648px){.fab{right:20px}}
+.add-move-body{padding:16px 20px;max-width:600px;margin:0 auto}
+.fab{position:fixed;bottom:80px;right:calc(50% - 290px);width:52px;height:52px;border-radius:50%;background:#fff;color:#000;font-size:26px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+@media(max-width:640px){.fab{right:16px}}
 .form-group{margin-bottom:14px}
 .form-label{font-size:12px;color:#888;margin-bottom:6px;display:block}
 .form-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px}
@@ -116,7 +122,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .add-video-preview{width:100%;border-radius:12px;margin-top:10px;max-height:180px;object-fit:contain;background:#000;display:none}
 .upload-progress{width:100%;height:4px;background:#222;border-radius:2px;margin-top:8px;overflow:hidden;display:none}
 .upload-progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
-/* タグ編集UI */
 .tag-editor{margin-bottom:14px}
 .tag-editor-current{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;min-height:28px}
 .tag-editor-tag{font-size:12px;padding:3px 10px;border-radius:20px;background:#222;border:1px solid #333;color:#ccc;display:flex;align-items:center;gap:5px}
@@ -130,41 +135,51 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tag-input-row input::placeholder{color:#555}
 .tag-input-row button{padding:8px 14px;background:#fff;color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
 /* ビート管理 */
-.beat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px}
-.beat-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.beat-card-name{font-size:14px;font-weight:600;color:#fff}
+.beat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:16px;margin-bottom:10px}
+.beat-card.selected{border-color:#fff}
+.beat-card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.beat-card-name{font-size:15px;font-weight:600;color:#fff;margin-bottom:4px}
 .beat-card-desc{font-size:12px;color:#666}
-.beat-active-badge{font-size:10px;padding:2px 8px;background:#1a3320;border:1px solid #4ade80;border-radius:20px;color:#4ade80}
-.beat-select-btn{font-size:12px;padding:5px 12px;background:#222;border:1px solid #444;border-radius:8px;color:#aaa;cursor:pointer}
+.beat-card-bpm{font-size:12px;color:#888;margin-top:2px}
+.beat-active-badge{font-size:10px;padding:2px 8px;background:#1a3320;border:1px solid #4ade80;border-radius:20px;color:#4ade80;white-space:nowrap}
+.beat-btns{display:flex;gap:8px;margin-top:10px}
+.beat-select-btn{flex:1;font-size:12px;padding:8px;background:#222;border:1px solid #444;border-radius:10px;color:#aaa;cursor:pointer;transition:all 0.15s}
 .beat-select-btn.active{background:#fff;color:#000;border-color:#fff}
+.beat-preview-btn{flex:1;font-size:12px;padding:8px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#aaa;cursor:pointer;transition:all 0.15s}
+.beat-preview-btn:hover{border-color:#fff;color:#fff}
+.beat-preview-btn.playing{border-color:#4ade80;color:#4ade80}
 /* プレイヤー */
-.player-screen{position:fixed;inset:0;background:#000;z-index:400;display:none;flex-direction:column}
+.player-screen{position:fixed;inset:0;background:#0a0a0a;z-index:400;display:none;flex-direction:column}
 .player-screen.open{display:flex}
-.player-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #1a1a1a}
-.player-title{font-size:14px;font-weight:700;color:#fff;flex:1}
-.player-beat-select{background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;font-size:12px;padding:5px 8px;margin-right:8px}
-.player-close{background:none;border:1px solid #333;border-radius:8px;padding:6px 12px;color:#aaa;font-size:12px;cursor:pointer}
-.carousel-area{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;overflow:hidden;position:relative}
-.carousel-track{display:flex;align-items:center;gap:12px;transition:transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94);will-change:transform}
-.carousel-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:20px;min-width:220px;max-width:220px;text-align:center;transition:all 0.4s;opacity:0.35;transform:scale(0.8);cursor:pointer;flex-shrink:0}
-.carousel-card.active{opacity:1;transform:scale(1.1);border-color:#fff;background:#1e1e1e}
-.carousel-card-name{font-size:20px;font-weight:700;color:#fff;margin-bottom:8px}
-.carousel-card-count{font-size:13px;color:#888;margin-bottom:6px}
-.carousel-card-num{font-size:11px;color:#444}
-.player-controls{padding:12px 16px 20px}
-.progress-section{margin-bottom:12px}
-.progress-time-row{display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:6px}
-.progress-track{width:100%;height:6px;background:#1a1a1a;border-radius:3px;cursor:pointer;position:relative}
+.player-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1a1a1a;gap:10px}
+.player-title{font-size:14px;font-weight:700;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-beat-select{background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#fff;font-size:11px;padding:5px 6px;max-width:110px}
+.player-close{background:none;border:1px solid #333;border-radius:8px;padding:6px 10px;color:#aaa;font-size:12px;cursor:pointer;white-space:nowrap}
+.carousel-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:0}
+.carousel-viewport{width:100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative}
+.carousel-track{display:flex;align-items:center;gap:14px;position:absolute;transition:transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94);will-change:transform}
+.carousel-card{border-radius:20px;padding:24px 20px;text-align:center;transition:all 0.4s cubic-bezier(0.25,0.46,0.45,0.94);cursor:pointer;flex-shrink:0;border:1px solid #2a2a2a;background:#1a1a1a}
+.carousel-card.active{border-color:#fff;background:#1e1e1e}
+.carousel-card-name{font-weight:700;color:#fff;margin-bottom:10px;line-height:1.2}
+.carousel-card-count{color:#888;margin-bottom:6px}
+.carousel-card-num{color:#444}
+.player-controls{padding:12px 16px 20px;flex-shrink:0}
+.progress-section{margin-bottom:10px}
+.progress-time-row{display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:5px}
+.progress-track{width:100%;height:6px;background:#1a1a1a;border-radius:3px;cursor:pointer;position:relative;overflow:visible}
 .progress-markers{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
-.progress-marker{position:absolute;top:0;width:1px;height:100%;background:#333}
-.progress-played{height:100%;background:#fff;border-radius:3px;transition:width 0.1s linear;position:relative;z-index:1}
-.ctrl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.bpm-display{font-size:12px;color:#666}
+.progress-marker-move{position:absolute;top:-2px;width:2px;height:calc(100%+4px);background:#333;border-radius:1px}
+.progress-marker-eight{position:absolute;top:-4px;width:1px;height:calc(100%+8px);background:#444;border-radius:1px}
+.progress-marker-four-eight{position:absolute;top:-6px;width:2px;height:calc(100%+12px);background:#666;border-radius:1px}
+.progress-played{height:100%;background:#fff;border-radius:3px;position:relative;z-index:1;transition:width 0.08s linear}
+.ctrl-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.bpm-display{font-size:12px;color:#555}
 .bpm-display span{color:#fff;font-weight:600}
-.speed-btns{display:flex;gap:6px}
-.speed-btn{padding:5px 10px;background:#1a1a1a;border:1px solid #333;border-radius:20px;color:#666;font-size:11px;cursor:pointer;transition:all 0.15s}
+.speed-btns{display:flex;gap:5px}
+.speed-btn{padding:5px 9px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;color:#555;font-size:11px;cursor:pointer;transition:all 0.15s}
 .speed-btn.active{background:#fff;color:#000;border-color:#fff}
-.play-pause-btn{width:100%;padding:13px;background:#fff;color:#000;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer}
+.play-pause-btn{width:100%;padding:13px;background:#fff;color:#000;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:transform 0.1s}
+.play-pause-btn:active{transform:scale(0.98)}
 .set-detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:350;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s ease}
 .set-detail-screen.open{transform:translateY(0)}
 </style>
@@ -178,7 +193,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="sec-moves" class="section active">
     <input class="search-box" type="text" placeholder="技を検索..." oninput="filterMoves(this.value)" id="search-input">
     <div class="tag-row" id="tag-row"></div>
-    <div id="moves-list"></div>
+    <div class="moves-grid" id="moves-list"></div>
   </div>
   <div id="sec-set" class="section">
     <div class="set-builder">
@@ -231,10 +246,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <span class="detail-name">新しい技を追加</span>
   </div>
   <div class="add-move-body">
-    <div class="form-group">
-      <label class="form-label">技名</label>
-      <input class="form-input" type="text" id="new-name" placeholder="例：ゴブレット">
-    </div>
+    <div class="form-group"><label class="form-label">技名</label><input class="form-input" type="text" id="new-name" placeholder="例：ゴブレット"></div>
     <div class="form-group">
       <label class="form-label">種類</label>
       <div class="type-select" id="type-select">
@@ -244,24 +256,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <span class="type-opt" data-type="combo" onclick="selectType(this)">コンボ</span>
       </div>
     </div>
-    <div class="form-group">
-      <label class="form-label">説明・動き方のメモ</label>
-      <textarea class="form-textarea" id="new-desc" placeholder="動きの流れを書いておこう"></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">カウント数</label>
-      <input class="count-input" type="number" id="new-count" placeholder="例：8">
-    </div>
-    <div class="form-group">
-      <label class="form-label">タグ</label>
-      <div id="new-tag-editor"></div>
-    </div>
+    <div class="form-group"><label class="form-label">説明・動き方のメモ</label><textarea class="form-textarea" id="new-desc" placeholder="動きの流れを書いておこう"></textarea></div>
+    <div class="form-group"><label class="form-label">カウント数</label><input class="count-input" type="number" id="new-count" placeholder="例：8"></div>
+    <div class="form-group"><label class="form-label">タグ</label><div id="new-tag-editor"></div></div>
     <div class="form-group">
       <label class="form-label">動画（任意）</label>
-      <div class="add-drop-zone" id="add-drop-zone">
-        <input type="file" id="add-file-input" accept="video/*" onchange="handleAddVideoSelect(event)">
-        📹 ここにドラッグ＆ドロップ
-      </div>
+      <div class="add-drop-zone" id="add-drop-zone"><input type="file" id="add-file-input" accept="video/*" onchange="handleAddVideoSelect(event)">📹 ドラッグ＆ドロップ</div>
       <button class="upload-btn" onclick="document.getElementById('add-file-input').click()">📁 ファイルを選択</button>
       <div class="upload-progress" id="add-upload-progress"><div class="upload-progress-fill" id="add-upload-fill" style="width:0%"></div></div>
       <video class="add-video-preview" id="add-video-preview" muted playsinline controls></video>
@@ -282,15 +282,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="player-header">
     <span class="player-title" id="player-title"></span>
     <select class="player-beat-select" id="player-beat-select" onchange="changeBeat(this.value)"></select>
-    <button class="player-close" onclick="closePlayer()">✕</button>
+    <button class="player-close" onclick="closePlayer()">✕ 閉じる</button>
   </div>
-  <div class="carousel-area" id="carousel-area">
-    <div class="carousel-track" id="carousel-track"></div>
+  <div class="carousel-area">
+    <div class="carousel-viewport" id="carousel-viewport">
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
   </div>
   <div class="player-controls">
     <div class="progress-section">
       <div class="progress-time-row">
         <span id="time-current">0:00</span>
+        <span id="time-eight-current">0エイト目</span>
         <span id="time-total">0:00</span>
       </div>
       <div class="progress-track" id="progress-track" onclick="seekTo(event)">
@@ -319,33 +322,32 @@ import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, q
 
 const CLOUD_NAME="dnbbwfwoi";
 const UPLOAD_PRESET="breakin_unsigned";
-const firebaseConfig={
-  apiKey:"AIzaSyBao1NCQQRw596Y0ueG4q9gpNjMA_ApLBE",
-  authDomain:"breakinsetbuilder.firebaseapp.com",
-  projectId:"breakinsetbuilder",
-  storageBucket:"breakinsetbuilder.firebasestorage.app",
-  messagingSenderId:"544530127587",
-  appId:"1:544530127587:web:2c44993150211c892d03d6"
-};
+const firebaseConfig={apiKey:"AIzaSyBao1NCQQRw596Y0ueG4q9gpNjMA_ApLBE",authDomain:"breakinsetbuilder.firebaseapp.com",projectId:"breakinsetbuilder",storageBucket:"breakinsetbuilder.firebasestorage.app",messagingSenderId:"544530127587",appId:"1:544530127587:web:2c44993150211c892d03d6"};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const typeLabel={foot:"フットワーク",freeze:"フリーズ",power:"パワー",combo:"コンボ"};
 const typeClass={foot:"type-foot",freeze:"type-freeze",power:"type-power",combo:"type-combo"};
-
 let moves=[],sets=[],setMoves=[],customTags=[];
 let activeTag="全て",searchQ="",selectedType="foot",editType="foot";
-let newMoveTags=[],editMoveTags=[],newSetTags=[],editSetTags=[];
-let openCardId=null;
+let newMoveTags=[],editMoveTags=[],newSetTags=[];
+let expandedCardId=null;
 
 // ===== BEATS =====
 const BEATS={
-  hiphop:{name:"HipHop Classic",bpm:95,desc:"オーソドックスなHIPHOPビート"},
-  boom:{name:"Boom Bap",bpm:88,desc:"重めのブームバップ"},
-  trap:{name:"Trap",bpm:140,desc:"トラップ系ハイテンポ"},
-  oldschool:{name:"Old School",bpm:105,desc:"オールドスクールファンク"},
+  hiphop:{name:"HipHop Classic",bpm:95,desc:"オーソドックスなHIPHOP"},
+  boombap:{name:"Boom Bap",bpm:88,desc:"重厚なブームバップ"},
+  trap:{name:"Trap",bpm:70,desc:"ダークなトラップ（半テンポ）"},
+  oldschool:{name:"Old School",bpm:100,desc:"ファンキーオールドスクール"},
+  upbeat:{name:"Up Tempo",bpm:110,desc:"アップテンポHIPHOP"},
+  chill:{name:"Chill Hop",bpm:80,desc:"チルいローテンポ"},
+  funk:{name:"Funk Break",bpm:105,desc:"ファンクブレイク"},
+  battle:{name:"Battle Beat",bpm:98,desc:"バトル向けアグレッシブ"},
 };
-let currentBeatKey="hiphop";
 let selectedBeatKey="hiphop";
+let currentBeatKey="hiphop";
+let previewBeatKey=null;
+let previewInterval=null;
+let previewBeat=0;
 
 // ===== AUDIO =====
 let audioCtx=null;
@@ -363,80 +365,96 @@ function getCtx(){
   return audioCtx;
 }
 
-function playHipHopBeat(beat,bpm){
+function playBeat(beatPos,bpm,beatKey){
   const ctx=getCtx();
   const now=ctx.currentTime;
-  const spb=60/bpm;
-  // kick pattern: 1,3 of each bar (every 2 beats in 8-count = beats 0,4)
-  const kickBeats=[0,4];
-  // snare: 2,4 of bar = beats 2,6
-  const snareBeats=[2,6];
-  // hihat: every beat
-  const pos=beat%8;
-  const is4EightAccent=(beat%32===0);
-  const is1EightAccent=(beat%8===0);
+  const pos=beatPos%8;
+  const isBar1=(beatPos%32===0&&beatPos>0);
+  const is4Eight=(beatPos%32===0&&beatPos>0);
+  const is1Eight=(beatPos%8===0);
+  const b=BEATS[beatKey]||BEATS.hiphop;
 
-  // Kick
-  if(kickBeats.includes(pos)||is4EightAccent){
-    const osc=ctx.createOscillator();
-    const g=ctx.createGain();
-    osc.connect(g);g.connect(ctx.destination);
-    osc.frequency.setValueAtTime(is4EightAccent?80:60,now);
-    osc.frequency.exponentialRampToValueAtTime(30,now+0.15);
-    g.gain.setValueAtTime(is4EightAccent?1.0:0.7,now);
-    g.gain.exponentialRampToValueAtTime(0.001,now+0.25);
-    osc.start(now);osc.stop(now+0.25);
-  }
-  // Snare
-  if(snareBeats.includes(pos)){
-    const buf=ctx.createBuffer(1,ctx.sampleRate*0.15,ctx.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5);
-    const src=ctx.createBufferSource();
-    const g=ctx.createGain();
-    const filt=ctx.createBiquadFilter();
-    filt.type="bandpass";filt.frequency.value=2000;
-    src.buffer=buf;src.connect(filt);filt.connect(g);g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.5,now);
-    g.gain.exponentialRampToValueAtTime(0.001,now+0.15);
-    src.start(now);
-  }
-  // Hi-hat
-  {
-    const buf=ctx.createBuffer(1,ctx.sampleRate*0.05,ctx.sampleRate);
-    const d=buf.getChannelData(0);
-    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
-    const src=ctx.createBufferSource();
-    const g=ctx.createGain();
-    const filt=ctx.createBiquadFilter();
-    filt.type="highpass";filt.frequency.value=8000;
-    src.buffer=buf;src.connect(filt);filt.connect(g);g.connect(ctx.destination);
-    const isOpen=pos===6;
-    g.gain.setValueAtTime(isOpen?0.3:0.15,now);
-    g.gain.exponentialRampToValueAtTime(0.001,now+(isOpen?0.12:0.04));
-    src.start(now);
-  }
-  // 4エイトアクセント: 追加サウンド
-  if(is4EightAccent&&beat>0){
-    const osc=ctx.createOscillator();
-    const g=ctx.createGain();
-    osc.connect(g);g.connect(ctx.destination);
-    osc.type="sawtooth";
-    osc.frequency.setValueAtTime(220,now);
-    osc.frequency.exponentialRampToValueAtTime(110,now+0.3);
-    g.gain.setValueAtTime(0.3,now);
+  // === KICK ===
+  const kickPat={
+    hiphop:[0,4],boombap:[0,4],trap:[0,4,6],oldschool:[0,3,4],
+    upbeat:[0,4],chill:[0,4],funk:[0,2,4,6],battle:[0,2,4,5]
+  };
+  const kicks=kickPat[beatKey]||[0,4];
+  if(kicks.includes(pos)||is4Eight){
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    const freq=is4Eight?90:beatKey==="boombap"?50:60;
+    o.frequency.setValueAtTime(freq,now);
+    o.frequency.exponentialRampToValueAtTime(28,now+0.2);
+    const vol=is4Eight?1.0:beatKey==="boombap"?0.8:0.65;
+    g.gain.setValueAtTime(vol,now);
     g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
-    osc.start(now);osc.stop(now+0.3);
+    o.start(now);o.stop(now+0.3);
   }
-  // 1エイトマーク: 軽いアクセント
-  else if(is1EightAccent&&beat>0){
-    const osc=ctx.createOscillator();
-    const g=ctx.createGain();
-    osc.connect(g);g.connect(ctx.destination);
-    osc.frequency.value=180;
-    g.gain.setValueAtTime(0.15,now);
-    g.gain.exponentialRampToValueAtTime(0.001,now+0.08);
-    osc.start(now);osc.stop(now+0.08);
+
+  // === SNARE ===
+  const snarePat={
+    hiphop:[2,6],boombap:[2,6],trap:[4],oldschool:[2,6],
+    upbeat:[2,6],chill:[2,6],funk:[2,4,6],battle:[2,3,6,7]
+  };
+  const snares=snarePat[beatKey]||[2,6];
+  if(snares.includes(pos)){
+    const buf=ctx.createBuffer(1,ctx.sampleRate*0.18,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.2);
+    const s=ctx.createBufferSource();const g=ctx.createGain();
+    const f=ctx.createBiquadFilter();f.type="bandpass";f.frequency.value=beatKey==="boombap"?1800:2200;f.Q.value=0.8;
+    s.buffer=buf;s.connect(f);f.connect(g);g.connect(ctx.destination);
+    g.gain.setValueAtTime(beatKey==="boombap"?0.7:0.5,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.18);
+    s.start(now);
+  }
+
+  // === HI-HAT ===
+  const isOpenHat=pos===6||(beatKey==="funk"&&pos===3);
+  const hatVol={hiphop:0.15,boombap:0.12,trap:0.2,oldschool:0.18,upbeat:0.2,chill:0.1,funk:0.2,battle:0.18};
+  const skipHat=beatKey==="trap"&&pos%2!==0;
+  if(!skipHat){
+    const buf=ctx.createBuffer(1,ctx.sampleRate*(isOpenHat?0.15:0.04),ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2.5);
+    const s=ctx.createBufferSource();const g=ctx.createGain();
+    const f=ctx.createBiquadFilter();f.type="highpass";f.frequency.value=9000;
+    s.buffer=buf;s.connect(f);f.connect(g);g.connect(ctx.destination);
+    g.gain.setValueAtTime(hatVol[beatKey]||0.15,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+(isOpenHat?0.15:0.04));
+    s.start(now);
+  }
+
+  // === BASS LINE ===
+  const bassNotes={hiphop:[55,55,49,55],boombap:[41,41,37,41],trap:[36,36,36,36],oldschool:[55,58,55,53],upbeat:[58,58,55,58],chill:[49,49,46,49],funk:[55,60,55,58],battle:[55,55,52,55]};
+  const bassNote=bassNotes[beatKey]||[55,55,55,55];
+  if(pos===0||pos===4){
+    const noteIdx=pos===0?0:2;
+    const freq=440*Math.pow(2,(bassNote[noteIdx]-69)/12);
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    const f=ctx.createBiquadFilter();f.type="lowpass";f.frequency.value=200;
+    o.type="sawtooth";o.connect(f);f.connect(g);g.connect(ctx.destination);
+    o.frequency.value=freq;
+    g.gain.setValueAtTime(0.25,now);
+    g.gain.exponentialRampToValueAtTime(0.001,now+0.4);
+    o.start(now);o.stop(now+0.4);
+  }
+
+  // === 4エイトアクセント ===
+  if(is4Eight){
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type="sawtooth";o.frequency.setValueAtTime(220,now);
+    o.frequency.exponentialRampToValueAtTime(110,now+0.25);
+    g.gain.setValueAtTime(0.35,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.25);
+    o.start(now);o.stop(now+0.25);
+  } else if(is1Eight){
+    const o=ctx.createOscillator();const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=165;
+    g.gain.setValueAtTime(0.12,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.06);
+    o.start(now);o.stop(now+0.06);
   }
 }
 
@@ -446,16 +464,14 @@ function startPlayer(setData){
   currentSetMoves=setData.moves||[];
   if(currentSetMoves.length===0)return;
   document.getElementById("player-title").textContent=setData.name;
-  // populate beat select
   const sel=document.getElementById("player-beat-select");
-  sel.innerHTML=Object.entries(BEATS).map(([k,v])=>`<option value="${k}"${k===currentBeatKey?" selected":""}>${v.name}</option>`).join("");
+  sel.innerHTML=Object.entries(BEATS).map(([k,v])=>`<option value="${k}"${k===selectedBeatKey?" selected":""}>${v.name}</option>`).join("");
   currentBeatKey=selectedBeatKey;
-  speedMult=1;
-  beatCount=0;currentMoveIdx=0;isPlaying=false;
+  speedMult=1;beatCount=0;currentMoveIdx=0;isPlaying=false;
   beatsPerMove=currentSetMoves.map(m=>parseInt(m.count)||8);
   totalBeats=beatsPerMove.reduce((a,b)=>a+b,0);
   document.getElementById("bpm-display").textContent=getBPM();
-  document.querySelectorAll(".speed-btn").forEach((b,i)=>b.classList.toggle("active",i===1));
+  document.querySelectorAll(".speed-btn").forEach((b,i)=>b.classList.toggle("active",i===0));
   renderCarousel(0);
   renderProgressMarkers();
   updateTimeDisplay();
@@ -465,53 +481,61 @@ function startPlayer(setData){
 }
 
 function renderProgressMarkers(){
-  const el=document.getElementById("progress-markers");
   const marks=[];
+  for(let i=1;i<totalBeats;i++){
+    if(i%32===0)marks.push(`<div class="progress-marker-four-eight" style="left:${(i/totalBeats)*100}%"></div>`);
+    else if(i%8===0)marks.push(`<div class="progress-marker-eight" style="left:${(i/totalBeats)*100}%"></div>`);
+  }
   let cum=0;
-  for(let i=0;i<beatsPerMove.length-1;i++){
-    cum+=beatsPerMove[i];
-    marks.push(`<div class="progress-marker" style="left:${(cum/totalBeats)*100}%"></div>`);
-  }
-  // 8カウントごと
-  for(let i=8;i<totalBeats;i+=8){
-    marks.push(`<div class="progress-marker" style="left:${(i/totalBeats)*100}%;background:#444;height:150%;top:-25%"></div>`);
-  }
-  el.innerHTML=marks.join("");
+  for(let i=0;i<beatsPerMove.length-1;i++){cum+=beatsPerMove[i];marks.push(`<div class="progress-marker-move" style="left:${(cum/totalBeats)*100}%"></div>`);}
+  document.getElementById("progress-markers").innerHTML=marks.join("");
 }
 
 function updateTimeDisplay(){
   const bpmActual=getBPM();
-  const secPerBeat=60/bpmActual;
-  const totalSec=totalBeats*secPerBeat;
-  const curSec=beatCount*secPerBeat;
-  document.getElementById("time-current").textContent=formatTime(curSec);
-  document.getElementById("time-total").textContent=formatTime(totalSec);
+  const spb=60/bpmActual;
+  const cur=beatCount*spb;
+  const tot=totalBeats*spb;
+  document.getElementById("time-current").textContent=fmt(cur);
+  document.getElementById("time-total").textContent=fmt(tot);
+  document.getElementById("time-eight-current").textContent=`${Math.floor(beatCount/8)+1}エイト目`;
 }
 
-function formatTime(sec){
-  const m=Math.floor(sec/60);
-  const s=Math.floor(sec%60);
-  return `${m}:${s.toString().padStart(2,"0")}`;
-}
+function fmt(s){return `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;}
 
 function renderCarousel(activeIdx){
+  const vp=document.getElementById("carousel-viewport");
+  const vpW=vp.offsetWidth||window.innerWidth;
+  const vpH=vp.offsetHeight||300;
+  const activeW=Math.min(vpW*0.65,280);
+  const activeH=Math.min(vpH*0.7,200);
+  const inactiveW=activeW*0.72;
+  const inactiveH=activeH*0.72;
+  const gap=14;
   const track=document.getElementById("carousel-track");
-  track.innerHTML=currentSetMoves.map((m,i)=>`
-    <div class="carousel-card${i===activeIdx?" active":""}" onclick="window.openMoveFromPlayer('${m.id}')">
-      <div class="carousel-card-name">${m.name}</div>
-      <div class="carousel-card-count">${m.count?m.count+"カウント":""}</div>
-      <div class="carousel-card-num">${i+1} / ${currentSetMoves.length}</div>
-    </div>`).join("");
-  const area=document.getElementById("carousel-area");
-  const areaW=area.offsetWidth;
-  const cardW=232;
-  const gap=12;
-  const offset=areaW/2-cardW/2-activeIdx*(cardW+gap);
+  track.innerHTML=currentSetMoves.map((m,i)=>{
+    const isActive=i===activeIdx;
+    const w=isActive?activeW:inactiveW;
+    const h=isActive?activeH:inactiveH;
+    return `<div class="carousel-card${isActive?" active":""}" style="width:${w}px;min-width:${w}px;height:${h}px;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:${isActive?1:0.35};transform:scale(${isActive?1:0.85})" onclick="window.openMoveFromPlayer('${m.id}')">
+      <div class="carousel-card-name" style="font-size:${isActive?22:16}px">${m.name}</div>
+      <div class="carousel-card-count" style="font-size:${isActive?14:11}px">${m.count?m.count+"カウント":""}</div>
+      <div class="carousel-card-num" style="font-size:${isActive?12:10}px">${i+1} / ${currentSetMoves.length}</div>
+    </div>`;
+  }).join("");
+  // center active card
+  let offset=vpW/2;
+  for(let i=0;i<activeIdx;i++){
+    const w=i===activeIdx-1?(inactiveW):(inactiveW);
+    offset-=w+gap;
+  }
+  const aw=activeIdx===0?activeW:inactiveW;
+  offset-=activeW/2;
   track.style.transform=`translateX(${offset}px)`;
 }
 
 function tickBeat(){
-  playHipHopBeat(beatCount,BEATS[currentBeatKey].bpm);
+  playBeat(beatCount,BEATS[currentBeatKey].bpm,currentBeatKey);
   let cum=0;
   for(let i=0;i<beatsPerMove.length;i++){
     cum+=beatsPerMove[i];
@@ -525,16 +549,8 @@ function tickBeat(){
 }
 
 window.togglePlay=function(){
-  if(isPlaying){
-    clearInterval(beatInterval);isPlaying=false;
-    document.getElementById("play-pause-btn").textContent="▶ 再生";
-  } else {
-    getCtx().resume();
-    const ms=60000/getBPM();
-    beatInterval=setInterval(tickBeat,ms);
-    isPlaying=true;
-    document.getElementById("play-pause-btn").textContent="⏸ 一時停止";
-  }
+  if(isPlaying){clearInterval(beatInterval);isPlaying=false;document.getElementById("play-pause-btn").textContent="▶ 再生";}
+  else{getCtx().resume();const ms=60000/getBPM();beatInterval=setInterval(tickBeat,ms);isPlaying=true;document.getElementById("play-pause-btn").textContent="⏸ 一時停止";}
 }
 
 window.setSpeed=function(mult,el){
@@ -543,18 +559,22 @@ window.setSpeed=function(mult,el){
   el.classList.add("active");
   document.getElementById("bpm-display").textContent=getBPM();
   updateTimeDisplay();
-  if(isPlaying){clearInterval(beatInterval);const ms=60000/getBPM();beatInterval=setInterval(tickBeat,ms);}
+  if(isPlaying){clearInterval(beatInterval);beatInterval=setInterval(tickBeat,60000/getBPM());}
 }
 
 window.seekTo=function(e){
   const rect=document.getElementById("progress-track").getBoundingClientRect();
-  const pct=(e.clientX-rect.left)/rect.width;
+  const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
   beatCount=Math.floor(pct*totalBeats);
   document.getElementById("progress-played").style.width=(pct*100)+"%";
   updateTimeDisplay();
 }
 
-window.changeBeat=function(key){currentBeatKey=key;document.getElementById("bpm-display").textContent=getBPM();updateTimeDisplay();}
+window.changeBeat=function(key){
+  currentBeatKey=key;
+  document.getElementById("bpm-display").textContent=getBPM();
+  updateTimeDisplay();
+}
 
 window.closePlayer=function(){
   clearInterval(beatInterval);isPlaying=false;
@@ -563,6 +583,25 @@ window.closePlayer=function(){
 }
 
 window.openMoveFromPlayer=function(id){window.showDetail(id);}
+
+// ビートプレビュー
+window.toggleBeatPreview=function(key,btn){
+  if(previewBeatKey===key){
+    clearInterval(previewInterval);previewBeatKey=null;previewBeat=0;
+    document.querySelectorAll(".beat-preview-btn").forEach(b=>{b.textContent="試聴";b.classList.remove("playing");});
+    return;
+  }
+  if(previewInterval)clearInterval(previewInterval);
+  document.querySelectorAll(".beat-preview-btn").forEach(b=>{b.textContent="試聴";b.classList.remove("playing");});
+  previewBeatKey=key;previewBeat=0;
+  btn.textContent="⏹ 停止";btn.classList.add("playing");
+  getCtx().resume();
+  previewInterval=setInterval(()=>{
+    playBeat(previewBeat,BEATS[key].bpm,key);
+    previewBeat++;
+    if(previewBeat>=32){previewBeat=0;}
+  },60000/BEATS[key].bpm);
+}
 
 // ===== TAG EDITOR =====
 function getAllTags(){
@@ -575,62 +614,33 @@ function getAllTags(){
 
 function renderTagEditor(containerId,currentTags,onUpdate){
   const all=getAllTags().filter(t=>!currentTags.includes(t));
-  const el=document.getElementById(containerId);
-  if(!el)return;
-  el.innerHTML=`
-    <div class="tag-editor">
-      <div class="tag-editor-current" id="${containerId}-current">
-        ${currentTags.map(t=>`<span class="tag-editor-tag">${t}<span class="tag-x" onclick="removeTagFrom('${containerId}','${t}')">×</span></span>`).join("")}
-      </div>
-      ${all.length>0?`<div class="tag-candidates">${all.map(t=>`<span class="tag-candidate" onclick="addTagTo('${containerId}','${t}')">${t}</span>`).join("")}</div>`:""}
-      <div class="tag-input-row">
-        <input type="text" id="${containerId}-input" placeholder="新しいタグを入力...">
-        <button onclick="addTagFrom('${containerId}')">追加</button>
-      </div>
-    </div>`;
-  window[`_tagData_${containerId}`]={tags:currentTags,onUpdate};
+  const el=document.getElementById(containerId);if(!el)return;
+  el.innerHTML=`<div class="tag-editor">
+    <div class="tag-editor-current">${currentTags.map(t=>`<span class="tag-editor-tag">${t}<span class="tag-x" onclick="removeTagFrom('${containerId}','${t}')">×</span></span>`).join("")}</div>
+    ${all.length>0?`<div class="tag-candidates">${all.map(t=>`<span class="tag-candidate" onclick="addTagTo('${containerId}','${t}')">${t}</span>`).join("")}</div>`:""}
+    <div class="tag-input-row"><input type="text" id="${containerId}-input" placeholder="新しいタグ..."><button onclick="addTagFrom('${containerId}')">追加</button></div>
+  </div>`;
+  window[`_td_${containerId}`]={tags:currentTags,onUpdate};
 }
 
-window.addTagTo=function(cid,tag){
-  const d=window[`_tagData_${cid}`];
-  if(!d||d.tags.includes(tag))return;
-  d.tags.push(tag);
-  d.onUpdate(d.tags);
-  renderTagEditor(cid,d.tags,d.onUpdate);
-}
-
-window.removeTagFrom=function(cid,tag){
-  const d=window[`_tagData_${cid}`];
-  if(!d)return;
-  d.tags=d.tags.filter(t=>t!==tag);
-  d.onUpdate(d.tags);
-  renderTagEditor(cid,d.tags,d.onUpdate);
-}
-
-window.addTagFrom=function(cid){
-  const input=document.getElementById(`${cid}-input`);
-  const tag=input.value.trim();
-  if(!tag)return;
-  window.addTagTo(cid,tag);
-  input.value="";
-}
+window.addTagTo=function(cid,tag){const d=window[`_td_${cid}`];if(!d||d.tags.includes(tag))return;d.tags.push(tag);d.onUpdate(d.tags);renderTagEditor(cid,d.tags,d.onUpdate);}
+window.removeTagFrom=function(cid,tag){const d=window[`_td_${cid}`];if(!d)return;d.tags=d.tags.filter(t=>t!==tag);d.onUpdate(d.tags);renderTagEditor(cid,d.tags,d.onUpdate);}
+window.addTagFrom=function(cid){const i=document.getElementById(`${cid}-input`);const t=i.value.trim();if(!t)return;window.addTagTo(cid,t);i.value="";}
 
 // ===== FIREBASE =====
 async function loadMoves(){
-  document.getElementById("moves-list").innerHTML='<div class="loading">読み込み中...</div>';
+  document.getElementById("moves-list").innerHTML='<div class="loading" style="grid-column:1/-1">読み込み中...</div>';
   const q=query(collection(db,"moves"),orderBy("createdAt","desc"));
   const snap=await getDocs(q);
   moves=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderTagRow();renderMoves();renderPickList();
 }
-
 async function loadSets(){
   const q=query(collection(db,"sets"),orderBy("createdAt","desc"));
   const snap=await getDocs(q);
   sets=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderSaved();
 }
-
 async function loadCustomTags(){
   const snap=await getDocs(collection(db,"customTags"));
   customTags=snap.docs.map(d=>({id:d.id,...d.data()}));
@@ -639,7 +649,6 @@ async function loadCustomTags(){
 function allFilterTags(){
   const s=new Set(["全て"]);
   moves.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));
-  customTags.forEach(t=>s.add(t.name));
   return [...s];
 }
 
@@ -650,7 +659,7 @@ function renderTagRow(){
 function filteredMoves(){
   return moves.filter(m=>{
     const q=searchQ.toLowerCase();
-    const matchQ=!q||m.name.toLowerCase().includes(q)||(m.desc||"").includes(q)||(m.tags||[]).some(t=>t.includes(q));
+    const matchQ=!q||m.name.toLowerCase().includes(q)||(m.desc||"").toLowerCase().includes(q)||(m.tags||[]).some(t=>t.toLowerCase().includes(q));
     const matchT=activeTag==="全て"||(m.tags||[]).includes(activeTag);
     return matchQ&&matchT;
   });
@@ -659,34 +668,30 @@ function filteredMoves(){
 function renderMoves(){
   const list=filteredMoves();
   const el=document.getElementById("moves-list");
-  if(list.length===0){el.innerHTML='<div class="empty-state"><div style="font-size:40px">🕺</div><p>技がまだありません</p></div>';return;}
+  if(list.length===0){el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div style="font-size:40px">🕺</div><p>技がまだありません<br>＋ボタンで追加しよう</p></div>';return;}
   el.innerHTML=list.map(m=>`
-    <div class="move-card" id="card-${m.id}" onclick="window.toggleCard('${m.id}')">
+    <div class="move-card${expandedCardId===m.id?" expanded":""}" id="card-${m.id}" onclick="window.toggleCard('${m.id}')">
       <div class="card-head">
         <span class="card-name">${m.name}</span>
         <span class="type-badge ${typeClass[m.type]||'type-foot'}">${typeLabel[m.type]||m.type}</span>
       </div>
-      ${m.count?`<div style="font-size:11px;color:#666;margin-bottom:6px">カウント：${m.count}</div>`:""}
+      ${m.count?`<div class="card-count">カウント：${m.count}</div>`:""}
       <div class="card-tags">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
-      <div class="card-dropdown" id="dropdown-${m.id}">
-        <div class="card-dropdown-desc">${m.desc||"説明なし"}</div>
-        <div class="card-dropdown-btns">
-          <button class="card-dropdown-btn" onclick="event.stopPropagation();window.addToSet('${m.id}')">⚡ セットに追加</button>
-          <button class="card-dropdown-btn accent" onclick="event.stopPropagation();window.showDetail('${m.id}')">詳細・動画 →</button>
+      <div class="card-expand-icon${expandedCardId===m.id?" open":""}">▼</div>
+      <div class="card-detail${expandedCardId===m.id?" open":""}">
+        ${m.videoUrl?`<video class="card-detail-video" src="${m.videoUrl}" controls playsinline muted></video>`:""}
+        <div class="card-detail-desc">${m.desc||"説明なし"}</div>
+        <div class="card-detail-btns">
+          <button class="card-detail-btn" onclick="event.stopPropagation();window.addToSet('${m.id}')">⚡ セットに追加</button>
+          <button class="card-detail-btn accent" onclick="event.stopPropagation();window.showDetail('${m.id}')">詳細・編集 →</button>
         </div>
       </div>
     </div>`).join("");
 }
 
 window.toggleCard=function(id){
-  const dd=document.getElementById(`dropdown-${id}`);
-  if(!dd)return;
-  if(openCardId&&openCardId!==id){
-    const prev=document.getElementById(`dropdown-${openCardId}`);
-    if(prev)prev.classList.remove("open");
-  }
-  dd.classList.toggle("open");
-  openCardId=dd.classList.contains("open")?id:null;
+  expandedCardId=expandedCardId===id?null:id;
+  renderMoves();
 }
 
 function renderPickList(){
@@ -697,29 +702,21 @@ function renderPickList(){
     </div>`).join("");
 }
 
-function calcEights(){
-  const total=setMoves.reduce((a,m)=>a+(parseInt(m.count)||8),0);
-  return {beats:total,eights:Math.round(total/8*10)/10};
+function calcEights(movesArr){
+  const total=(movesArr||[]).reduce((a,m)=>a+(parseInt(m.count)||8),0);
+  return{beats:total,eights:Math.round(total/8*10)/10};
 }
 
 function renderSetArea(){
   const el=document.getElementById("set-area");
   const badge=document.getElementById("set-eight-count");
-  if(setMoves.length===0){
-    el.innerHTML='<div class="set-empty">下から技を選んで追加</div>';
-    badge.style.display="none";return;
-  }
-  const {beats,eights}=calcEights();
-  badge.style.display="inline-block";
-  badge.textContent=`合計 ${eights} エイト（${beats}カウント）`;
+  if(setMoves.length===0){el.innerHTML='<div class="set-empty">下から技を選んで追加</div>';badge.style.display="none";return;}
+  const{beats,eights}=calcEights(setMoves);
+  badge.style.display="inline-block";badge.textContent=`合計 ${eights} エイト（${beats}カウント）`;
   el.innerHTML=setMoves.map((m,i)=>`
     <div class="set-node">
       ${i>0?'<span class="set-arrow">↓</span>':"<span style='width:18px'></span>"}
-      <div class="set-pill">
-        <span>${m.name}</span>
-        ${m.count?`<span class="count-badge">${m.count}ct</span>`:""}
-        <span class="set-pill-remove" onclick="window.removeFromSet(${i})">×</span>
-      </div>
+      <div class="set-pill"><span>${m.name}</span>${m.count?`<span class="count-badge">${m.count}ct</span>`:""}<span class="set-pill-remove" onclick="window.removeFromSet(${i})">×</span></div>
     </div>`).join("");
 }
 
@@ -727,10 +724,8 @@ function renderSaved(){
   const el=document.getElementById("saved-list");
   if(sets.length===0){el.innerHTML='<div class="empty-state"><div style="font-size:40px">📋</div><p>保存済みセットがありません</p></div>';return;}
   el.innerHTML=sets.map(f=>{
-    const total=(f.moves||[]).reduce((a,m)=>a+(parseInt(m.count)||8),0);
-    const eights=Math.round(total/8*10)/10;
-    return `
-    <div class="saved-set-card" onclick="window.openSetDetail('${f.id}')">
+    const{beats,eights}=calcEights(f.moves);
+    return`<div class="saved-set-card" onclick="window.openSetDetail('${f.id}')">
       <div class="saved-set-name">${f.name}</div>
       ${(f.tags||[]).length>0?`<div class="card-tags" style="margin-bottom:8px">${f.tags.map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>`:""}
       <div class="saved-set-seq">${(f.moves||[]).map((m,i)=>`${i>0?'<span class="seq-arrow">→</span>':''}<span class="seq-pill">${m.name}</span>`).join("")}</div>
@@ -741,37 +736,33 @@ function renderSaved(){
           <button class="delete-set-btn" onclick="event.stopPropagation();window.deleteSet('${f.id}')">削除</button>
         </div>
       </div>
-    </div>`;
-  }).join("");
+    </div>`;}).join("");
 }
 
 function renderBeatList(){
-  const el=document.getElementById("beat-list");
-  el.innerHTML=Object.entries(BEATS).map(([k,v])=>`
-    <div class="beat-card">
+  document.getElementById("beat-list").innerHTML=Object.entries(BEATS).map(([k,v])=>`
+    <div class="beat-card${k===selectedBeatKey?" selected":""}">
       <div class="beat-card-head">
-        <div>
-          <div class="beat-card-name">${v.name}</div>
-          <div class="beat-card-desc">${v.desc} / ${v.bpm}BPM</div>
-        </div>
-        ${k===selectedBeatKey?'<span class="beat-active-badge">選択中</span>':''}
+        <div><div class="beat-card-name">${v.name}</div><div class="beat-card-desc">${v.desc}</div><div class="beat-card-bpm">${v.bpm} BPM</div></div>
+        ${k===selectedBeatKey?'<span class="beat-active-badge">選択中</span>':""}
       </div>
-      <button class="beat-select-btn${k===selectedBeatKey?" active":""}" onclick="window.selectBeat('${k}')">${k===selectedBeatKey?"✓ 選択中":"選択"}</button>
+      <div class="beat-btns">
+        <button class="beat-select-btn${k===selectedBeatKey?" active":""}" onclick="window.selectBeat('${k}')">✓ 選択</button>
+        <button class="beat-preview-btn" id="preview-btn-${k}" onclick="window.toggleBeatPreview('${k}',this)">試聴</button>
+      </div>
     </div>`).join("");
 }
 
 window.selectBeat=function(key){
   selectedBeatKey=key;currentBeatKey=key;
-  renderBeatList();
-  showToast(`${BEATS[key].name}を選択しました`);
+  renderBeatList();showToast(`${BEATS[key].name}を選択`);
 }
 
 window.setTag=t=>{activeTag=t;renderTagRow();renderMoves();}
 window.filterMoves=q=>{searchQ=q;renderMoves();}
 
 window.showDetail=function(id){
-  const m=moves.find(x=>x.id===id);
-  if(!m)return;
+  const m=moves.find(x=>x.id===id);if(!m)return;
   document.getElementById("detail-name").textContent=m.name;
   document.getElementById("detail-edit-btn").onclick=()=>window.openEdit(id);
   document.getElementById("detail-body").innerHTML=`
@@ -781,17 +772,13 @@ window.showDetail=function(id){
     <div class="detail-desc-box">${m.desc||"説明なし"}</div>
     <div class="detail-section-title">動画</div>
     ${m.videoUrl?`<div class="video-wrapper"><video src="${m.videoUrl}" controls playsinline muted></video></div><button class="delete-video-btn" onclick="window.deleteVideo('${id}')">🗑 動画を削除</button>`:""}
-    <div class="drop-zone" id="drop-zone-${id}">
-      <input type="file" id="file-input-${id}" accept="video/*" onchange="window.handleVideoUpload(event,'${id}')">
-      📹 ドラッグ＆ドロップ
-    </div>
+    <div class="drop-zone" id="drop-zone-${id}"><input type="file" id="file-input-${id}" accept="video/*" onchange="window.handleVideoUpload(event,'${id}')">📹 ドラッグ＆ドロップ</div>
     <button class="upload-btn" onclick="document.getElementById('file-input-${id}').click()">📁 ファイルを選択してアップロード</button>
     <div class="progress-bar-upload" id="progress-bar-${id}"><div class="progress-fill-upload" id="progress-fill-${id}" style="width:0%"></div></div>
     <div class="detail-section-title">タグ</div>
     <div class="card-tags" style="margin-bottom:8px">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
     <button class="add-to-set-btn" onclick="window.addToSetFromDetail('${id}')">⚡ セットに追加</button>
-    <button class="delete-move-btn" onclick="window.deleteMove('${id}')">🗑 この技を削除</button>
-  `;
+    <button class="delete-move-btn" onclick="window.deleteMove('${id}')">🗑 この技を削除</button>`;
   const dz=document.getElementById(`drop-zone-${id}`);
   dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("dragover");});
   dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
@@ -800,67 +787,51 @@ window.showDetail=function(id){
 }
 
 window.openSetDetail=function(id){
-  const s=sets.find(x=>x.id===id);
-  if(!s)return;
-  const total=(s.moves||[]).reduce((a,m)=>a+(parseInt(m.count)||8),0);
-  const eights=Math.round(total/8*10)/10;
+  const s=sets.find(x=>x.id===id);if(!s)return;
+  const{beats,eights}=calcEights(s.moves);
   document.getElementById("set-detail-name").textContent=s.name;
   document.getElementById("set-detail-body").innerHTML=`
-    <div style="margin-bottom:16px">
-      <button style="width:100%;padding:14px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer" onclick="window.playSet('${id}')">▶ セットを再生</button>
-    </div>
+    <div style="margin-bottom:16px"><button style="width:100%;padding:14px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer" onclick="window.playSet('${id}')">▶ セットを再生</button></div>
     ${(s.tags||[]).length>0?`<div class="card-tags" style="margin-bottom:12px">${s.tags.map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>`:""}
     <div class="detail-section-title">構成（${s.moves.length}技・${eights}エイト）</div>
-    ${s.moves.map((m,i)=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="window.showDetail('${m.id}')">
-        <span style="font-size:12px;color:#555;min-width:20px">${i+1}</span>
-        <span style="font-size:14px;color:#fff;flex:1">${m.name}</span>
-        ${m.count?`<span class="count-badge">${m.count}ct</span>`:""}
-        <span style="font-size:12px;color:#555">→</span>
-      </div>`).join("")}
-    <button class="delete-move-btn" style="margin-top:16px" onclick="if(confirm('このセットを削除しますか？')){window.deleteSet('${id}');window.closeSetDetail();}">🗑 このセットを削除</button>
-  `;
+    ${s.moves.map((m,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="window.showDetail('${m.id}')">
+      <span style="font-size:12px;color:#555;min-width:20px">${i+1}</span>
+      <span style="font-size:14px;color:#fff;flex:1">${m.name}</span>
+      ${m.count?`<span class="count-badge">${m.count}ct</span>`:""}
+      <span style="font-size:12px;color:#555">→</span>
+    </div>`).join("")}
+    <button class="delete-move-btn" style="margin-top:16px" onclick="if(confirm('このセットを削除しますか？')){window.deleteSet('${id}');window.closeSetDetail();}">🗑 このセットを削除</button>`;
   document.getElementById("set-detail-screen").classList.add("open");
 }
 
 window.closeSetDetail=()=>document.getElementById("set-detail-screen").classList.remove("open");
 
 window.playSet=function(id){
-  const s=sets.find(x=>x.id===id);
-  if(!s)return;
+  const s=sets.find(x=>x.id===id);if(!s)return;
   document.getElementById("set-detail-screen").classList.remove("open");
   startPlayer(s);
 }
 
 window.openEdit=function(id){
-  const m=moves.find(x=>x.id===id);
-  if(!m)return;
-  editType=m.type||"foot";
-  editMoveTags=[...(m.tags||[])];
+  const m=moves.find(x=>x.id===id);if(!m)return;
+  editType=m.type||"foot";editMoveTags=[...(m.tags||[])];
   document.getElementById("edit-body").innerHTML=`
     <div class="form-group"><label class="form-label">技名</label><input class="form-input" type="text" id="edit-name" value="${m.name||''}"></div>
-    <div class="form-group">
-      <label class="form-label">種類</label>
-      <div class="type-select" id="edit-type-select">
-        <span class="type-opt${editType==='foot'?' active':''}" data-type="foot" onclick="selectEditType(this)">フットワーク</span>
-        <span class="type-opt${editType==='freeze'?' active':''}" data-type="freeze" onclick="selectEditType(this)">フリーズ</span>
-        <span class="type-opt${editType==='power'?' active':''}" data-type="power" onclick="selectEditType(this)">パワー</span>
-        <span class="type-opt${editType==='combo'?' active':''}" data-type="combo" onclick="selectEditType(this)">コンボ</span>
-      </div>
-    </div>
+    <div class="form-group"><label class="form-label">種類</label><div class="type-select" id="edit-type-select">
+      <span class="type-opt${editType==='foot'?' active':''}" data-type="foot" onclick="selectEditType(this)">フットワーク</span>
+      <span class="type-opt${editType==='freeze'?' active':''}" data-type="freeze" onclick="selectEditType(this)">フリーズ</span>
+      <span class="type-opt${editType==='power'?' active':''}" data-type="power" onclick="selectEditType(this)">パワー</span>
+      <span class="type-opt${editType==='combo'?' active':''}" data-type="combo" onclick="selectEditType(this)">コンボ</span>
+    </div></div>
     <div class="form-group"><label class="form-label">説明</label><textarea class="form-textarea" id="edit-desc">${m.desc||''}</textarea></div>
     <div class="form-group"><label class="form-label">カウント数</label><input class="count-input" type="number" id="edit-count" value="${m.count||''}"></div>
     <div class="form-group"><label class="form-label">タグ</label><div id="edit-tag-editor"></div></div>
-    <button class="submit-btn" onclick="window.submitEdit('${id}')">保存する</button>
-  `;
+    <button class="submit-btn" onclick="window.submitEdit('${id}')">保存する</button>`;
   renderTagEditor("edit-tag-editor",editMoveTags,tags=>{editMoveTags=tags;});
   document.getElementById("edit-screen").classList.add("open");
 }
 
-window.selectEditType=function(el){
-  document.querySelectorAll("#edit-type-select .type-opt").forEach(e=>e.classList.remove("active"));
-  el.classList.add("active");editType=el.dataset.type;
-}
+window.selectEditType=function(el){document.querySelectorAll("#edit-type-select .type-opt").forEach(e=>e.classList.remove("active"));el.classList.add("active");editType=el.dataset.type;}
 
 window.submitEdit=async function(id){
   const name=document.getElementById("edit-name").value.trim();
@@ -877,8 +848,7 @@ window.closeEdit=()=>document.getElementById("edit-screen").classList.remove("op
 window.deleteMove=async function(id){
   if(!confirm("この技を削除しますか？"))return;
   await deleteDoc(doc(db,"moves",id));
-  moves=moves.filter(m=>m.id!==id);
-  renderMoves();renderPickList();renderTagRow();closeDetail();showToast("削除しました");
+  moves=moves.filter(m=>m.id!==id);renderMoves();renderPickList();renderTagRow();closeDetail();showToast("削除しました");
 }
 
 window.deleteVideo=async function(id){
@@ -888,7 +858,7 @@ window.deleteVideo=async function(id){
   showToast("動画を削除しました");window.showDetail(id);
 }
 
-window.closeDetail=()=>document.getElementById("detail-screen").classList.remove("open");
+window.closeDetail=function(){document.getElementById("detail-screen").classList.remove("open");}
 
 window.handleVideoUpload=function(e,id){const f=e.target.files[0];if(f)window.uploadToCloudinary(f,id);}
 
@@ -896,28 +866,20 @@ window.uploadToCloudinary=async function(file,moveId){
   const bar=document.getElementById(`progress-bar-${moveId}`);
   const fill=document.getElementById(`progress-fill-${moveId}`);
   if(bar)bar.style.display="block";
-  const fd=new FormData();
-  fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);
+  const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);
   const xhr=new XMLHttpRequest();
   xhr.upload.onprogress=e=>{if(e.lengthComputable&&fill)fill.style.width=(e.loaded/e.total*100)+"%";};
   xhr.onload=async function(){
-    if(xhr.status===200){
-      const res=JSON.parse(xhr.responseText);
-      await updateDoc(doc(db,"moves",moveId),{videoUrl:res.secure_url});
-      moves=moves.map(m=>m.id===moveId?{...m,videoUrl:res.secure_url}:m);
-      showToast("動画をアップロードしました！");window.showDetail(moveId);
-    } else {showToast("アップロード失敗");if(bar)bar.style.display="none";}
+    if(xhr.status===200){const res=JSON.parse(xhr.responseText);await updateDoc(doc(db,"moves",moveId),{videoUrl:res.secure_url});moves=moves.map(m=>m.id===moveId?{...m,videoUrl:res.secure_url}:m);showToast("アップロード完了！");window.showDetail(moveId);}
+    else{showToast("アップロード失敗");if(bar)bar.style.display="none";}
   };
   xhr.onerror=()=>{showToast("通信エラー");if(bar)bar.style.display="none";};
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
-  xhr.send(fd);
+  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);xhr.send(fd);
 }
 
 window.handleAddVideoSelect=function(e){
   const f=e.target.files[0];if(!f)return;
-  const preview=document.getElementById("add-video-preview");
-  preview.src=URL.createObjectURL(f);preview.style.display="block";
-  window._pendingVideoFile=f;
+  const p=document.getElementById("add-video-preview");p.src=URL.createObjectURL(f);p.style.display="block";window._pendingVideoFile=f;
 }
 
 const addDz=document.getElementById("add-drop-zone");
@@ -925,50 +887,32 @@ addDz.addEventListener("dragover",e=>{e.preventDefault();addDz.classList.add("dr
 addDz.addEventListener("dragleave",()=>addDz.classList.remove("dragover"));
 addDz.addEventListener("drop",e=>{
   e.preventDefault();e.stopPropagation();addDz.classList.remove("dragover");
-  const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
-  if(f&&f.type.startsWith("video/")){
-    const preview=document.getElementById("add-video-preview");
-    preview.src=URL.createObjectURL(f);preview.style.display="block";
-    window._pendingVideoFile=f;
-  }
+  const f=e.dataTransfer?.files?.[0];
+  if(f&&f.type.startsWith("video/")){const p=document.getElementById("add-video-preview");p.src=URL.createObjectURL(f);p.style.display="block";window._pendingVideoFile=f;}
 });
 
-window.addToSet=function(id){
-  const m=moves.find(x=>x.id===id);if(!m)return;
-  setMoves.push(m);renderSetArea();showToast(`${m.name}を追加`);
-}
-
-window.addToSetFromDetail=function(id){
-  window.addToSet(id);window.closeDetail();
-  switchTab("set",document.querySelectorAll(".tab")[1]);
-}
-
+window.addToSet=function(id){const m=moves.find(x=>x.id===id);if(!m)return;setMoves.push(m);renderSetArea();showToast(`${m.name}を追加`);}
+window.addToSetFromDetail=function(id){window.addToSet(id);window.closeDetail();switchTab("set",document.querySelectorAll(".tab")[1]);}
 window.removeFromSet=i=>{setMoves.splice(i,1);renderSetArea();}
 
 window.saveSet=async function(){
   const name=document.getElementById("set-name").value||"セット"+(sets.length+1);
   if(setMoves.length===0){showToast("技を追加してください");return;}
-  const d=window[`_tagData_set-tag-editor-create`];
+  const d=window[`_td_set-tag-editor-create`];
   const tags=d?d.tags:[];
   await addDoc(collection(db,"sets"),{name,moves:setMoves.map(m=>({id:m.id,name:m.name,count:m.count||null})),tags,createdAt:Date.now()});
-  setMoves=[];newSetTags=[];
-  document.getElementById("set-name").value="";
-  renderSetArea();
+  setMoves=[];newSetTags=[];document.getElementById("set-name").value="";renderSetArea();
   renderTagEditor("set-tag-editor-create",[],tags=>{newSetTags=tags;});
-  showToast("セットを保存しました！");
-  await loadSets();
-  switchTab("saved",document.querySelectorAll(".tab")[2]);
+  showToast("セットを保存しました！");await loadSets();switchTab("saved",document.querySelectorAll(".tab")[2]);
 }
 
 window.deleteSet=async function(id){
   if(!confirm("このセットを削除しますか？"))return;
-  await deleteDoc(doc(db,"sets",id));
-  sets=sets.filter(f=>f.id!==id);renderSaved();showToast("削除しました");
+  await deleteDoc(doc(db,"sets",id));sets=sets.filter(f=>f.id!==id);renderSaved();showToast("削除しました");
 }
 
 window.openAddMove=()=>{
-  window._pendingVideoFile=null;
-  newMoveTags=[];
+  window._pendingVideoFile=null;newMoveTags=[];
   document.getElementById("add-video-preview").style.display="none";
   document.getElementById("add-video-preview").src="";
   document.getElementById("add-move-screen").classList.add("open");
@@ -976,10 +920,7 @@ window.openAddMove=()=>{
 }
 window.closeAddMove=()=>document.getElementById("add-move-screen").classList.remove("open");
 
-window.selectType=function(el){
-  document.querySelectorAll("#type-select .type-opt").forEach(e=>e.classList.remove("active"));
-  el.classList.add("active");selectedType=el.dataset.type;
-}
+window.selectType=function(el){document.querySelectorAll("#type-select .type-opt").forEach(e=>e.classList.remove("active"));el.classList.add("active");selectedType=el.dataset.type;}
 
 window.submitMove=async function(){
   const name=document.getElementById("new-name").value.trim();
@@ -997,9 +938,7 @@ window.submitMove=async function(){
 
 function uploadVideoForNew(file){
   return new Promise(resolve=>{
-    const bar=document.getElementById("add-upload-progress");
-    const fill=document.getElementById("add-upload-fill");
-    bar.style.display="block";
+    const bar=document.getElementById("add-upload-progress");const fill=document.getElementById("add-upload-fill");bar.style.display="block";
     const fd=new FormData();fd.append("file",file);fd.append("upload_preset",UPLOAD_PRESET);
     const xhr=new XMLHttpRequest();
     xhr.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=(e.loaded/e.total*100)+"%";};
@@ -1009,23 +948,16 @@ function uploadVideoForNew(file){
   });
 }
 
-function showToast(msg){
-  const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");
-  setTimeout(()=>t.classList.remove("show"),2500);
-}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 
 window.switchTab=function(name,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  el.classList.add("active");
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));el.classList.add("active");
   document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
   document.getElementById("sec-"+name).classList.add("active");
   document.getElementById("fab").style.display=name==="moves"?"flex":"none";
-  if(name==="beats")renderBeatList();
+  if(name==="beats"){if(previewInterval){clearInterval(previewInterval);previewBeatKey=null;}renderBeatList();}
 }
 
-function closeDetail(){document.getElementById("detail-screen").classList.remove("open");}
-
-// 初期化
 renderTagEditor("set-tag-editor-create",[],tags=>{newSetTags=tags;});
 loadMoves();loadSets();loadCustomTags();
 </script>

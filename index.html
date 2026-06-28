@@ -4,196 +4,234 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>BreakinSetBuilder</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230f0f0f'/><circle cx='16' cy='10' r='3' fill='%23fff'/><line x1='16' y1='13' x2='16' y2='22' stroke='%23fff' stroke-width='2'/><line x1='16' y1='17' x2='11' y2='14' stroke='%23fff' stroke-width='2'/><line x1='16' y1='17' x2='21' y2='14' stroke='%23fff' stroke-width='2'/><line x1='16' y1='22' x2='12' y2='27' stroke='%23fff' stroke-width='2'/><line x1='16' y1='22' x2='20' y2='27' stroke='%23fff' stroke-width='2'/></svg>">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh}
 .app{max-width:600px;margin:0 auto;padding:0 20px 80px}
-.header{padding:20px 0 12px;border-bottom:1px solid #222;text-align:center}
-.header h1{font-size:20px;font-weight:700;color:#fff}
-.header p{font-size:12px;color:#666;margin-top:2px}
-.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#111;border-top:1px solid #222;z-index:100}
-.tab{flex:1;padding:10px 4px 14px;font-size:10px;border:none;background:transparent;color:#666;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color 0.15s}
+.header{padding:20px 0 12px;border-bottom:1px solid #222;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px}
+.header-icon{width:28px;height:28px;flex-shrink:0}
+.header h1{font-size:20px;font-weight:700;color:#fff;letter-spacing:0.5px}
+.header p{font-size:11px;color:#555;margin-top:2px;text-align:center}
+.tabs{display:flex;position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:#0a0a0a;border-top:1px solid #1e1e1e;z-index:100}
+.tab{flex:1;padding:10px 4px 14px;font-size:9px;border:none;background:transparent;color:#555;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:color 0.15s;letter-spacing:0.3px}
 .tab.active{color:#fff}
-.tab-icon{font-size:18px}
+.tab svg{width:20px;height:20px;flex-shrink:0}
 .section{padding:12px 0;display:none}
 .section.active{display:block}
-.search-box{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:12px}
-.search-box::placeholder{color:#555}
+.search-box{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;margin-bottom:12px}
+.search-box::placeholder{color:#444}
 .tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;justify-content:center}
-.tag-chip{padding:5px 12px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.tag-chip{padding:5px 12px;border-radius:20px;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;font-size:12px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
 .tag-chip.active{background:#fff;color:#000;border-color:#fff}
 .moves-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.move-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:16px;cursor:pointer;transition:border-color 0.2s}
-.move-card:hover{border-color:#444}
-.move-card.expanded{border-color:#666}
+.move-card{background:#141414;border:1px solid #222;border-radius:14px;padding:16px;cursor:pointer;transition:border-color 0.2s}
+.move-card:hover{border-color:#3a3a3a}
+.move-card.expanded{border-color:#555}
 .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .card-name{font-size:16px;font-weight:600;color:#fff}
-.type-badge{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;flex-shrink:0;margin-left:8px}
-.type-foot{background:#0d3320;color:#4ade80}
-.type-freeze{background:#0d1f3c;color:#60a5fa}
-.type-power{background:#3c1a0d;color:#fb923c}
-.type-combo{background:#2a0d3c;color:#c084fc}
-.card-count{font-size:11px;color:#666;margin-bottom:6px}
+.type-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;flex-shrink:0;margin-left:8px;letter-spacing:0.3px}
+.type-foot{background:#0a2e1a;color:#3dba6a;border:1px solid #1a5a30}
+.type-freeze{background:#0a1a3a;color:#5a9aff;border:1px solid #1a3a7a}
+.type-power{background:#3a1a0a;color:#ff8c3a;border:1px solid #7a3a1a}
+.type-combo{background:#2a0a3a;color:#c070ff;border:1px solid #5a1a7a}
+.card-count{font-size:11px;color:#555;margin-bottom:6px}
 .card-tags{display:flex;gap:5px;flex-wrap:wrap}
-.mini-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:#222;color:#666;border:1px solid #333}
-.card-chevron{font-size:11px;color:#444;margin-top:8px;text-align:center;transition:transform 0.25s}
+.mini-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:#1e1e1e;color:#555;border:1px solid #2a2a2a}
+.card-chevron{font-size:10px;color:#333;margin-top:10px;text-align:center;transition:transform 0.25s;user-select:none}
 .card-chevron.open{transform:rotate(180deg)}
-.card-detail{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #222}
+.card-detail{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #1e1e1e}
 .card-detail.open{display:block}
-.card-detail-desc{font-size:13px;color:#bbb;line-height:1.6;margin-bottom:10px;background:#111;border-radius:10px;padding:12px}
+.card-detail-desc{font-size:13px;color:#aaa;line-height:1.6;margin-bottom:10px;background:#0a0a0a;border-radius:10px;padding:12px}
 .card-detail-video{width:100%;border-radius:10px;margin-bottom:10px;display:block;max-height:200px;object-fit:contain;background:#000}
-.card-detail-btns{display:flex;gap:8px}
-.card-detail-btn{flex:1;padding:9px;font-size:12px;border-radius:10px;border:1px solid #333;background:transparent;color:#888;cursor:pointer;transition:all 0.15s}
+.card-detail-btns{display:flex;gap:8px;margin-bottom:10px}
+.card-detail-btn{flex:1;padding:9px;font-size:12px;border-radius:10px;border:1px solid #2a2a2a;background:transparent;color:#777;cursor:pointer;transition:all 0.15s}
 .card-detail-btn:hover{border-color:#fff;color:#fff}
-.card-detail-btn.accent{border-color:#555;color:#ddd;background:#1e1e1e}
+.card-detail-btn.accent{border-color:#444;color:#ccc;background:#1a1a1a}
+.card-detail-close{width:100%;padding:8px;font-size:11px;border-radius:10px;border:1px solid #222;background:transparent;color:#444;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.card-detail-close:hover{border-color:#555;color:#888}
 .detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:200;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .detail-screen.open{transform:translateX(0)}
 .edit-screen{position:fixed;inset:0;background:#0f0f0f;z-index:250;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .edit-screen.open{transform:translateX(0)}
-.detail-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #222;position:sticky;top:0;background:#0f0f0f;z-index:10}
-.back-btn{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:7px 12px;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap}
-.edit-btn{background:#1a1a1a;border:1px solid #444;border-radius:10px;padding:7px 12px;color:#aaa;font-size:13px;cursor:pointer;margin-left:auto;white-space:nowrap}
+.detail-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #1e1e1e;position:sticky;top:0;background:#0f0f0f;z-index:10}
+.back-btn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:7px 12px;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.edit-btn{background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:7px 12px;color:#888;font-size:13px;cursor:pointer;margin-left:auto;white-space:nowrap}
 .detail-name{font-size:15px;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .detail-body{padding:16px 20px;max-width:600px;margin:0 auto}
-.detail-section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;margin-top:16px}
-.detail-desc-box{background:#1a1a1a;border-radius:12px;padding:14px;font-size:14px;color:#ccc;line-height:1.7}
-.drop-zone{border:2px dashed #2a2a2a;border-radius:14px;padding:20px;text-align:center;color:#555;font-size:13px;transition:all 0.2s;margin-bottom:6px}
+.detail-section-title{font-size:10px;font-weight:700;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:16px}
+.detail-desc-box{background:#141414;border-radius:12px;padding:14px;font-size:14px;color:#bbb;line-height:1.7;border:1px solid #1e1e1e}
+.drop-zone{border:2px dashed #222;border-radius:14px;padding:20px;text-align:center;color:#444;font-size:13px;transition:all 0.2s;margin-bottom:6px}
 .drop-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
 .drop-zone input[type=file]{display:none}
-.upload-btn{width:100%;padding:10px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#888;font-size:13px;cursor:pointer;margin-bottom:6px;transition:all 0.15s}
+.upload-btn{width:100%;padding:10px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#777;font-size:13px;cursor:pointer;margin-bottom:6px;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
 .upload-btn:hover{border-color:#fff;color:#fff}
 .video-wrapper{position:relative;width:100%;padding-top:56.25%;margin-bottom:10px;border-radius:12px;overflow:hidden;background:#111}
 .video-wrapper video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;background:#000}
-.delete-video-btn{width:100%;padding:9px;background:transparent;color:#ff4444;border:1px solid #ff4444;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:8px;cursor:pointer}
-.progress-bar-upload{width:100%;height:4px;background:#222;border-radius:2px;margin-bottom:10px;overflow:hidden;display:none}
+.delete-video-btn{width:100%;padding:9px;background:transparent;color:#cc3333;border:1px solid #cc3333;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:8px;cursor:pointer}
+.progress-bar-upload{width:100%;height:3px;background:#1e1e1e;border-radius:2px;margin-bottom:10px;overflow:hidden;display:none}
 .progress-fill-upload{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
-.add-to-set-btn{width:100%;padding:12px;background:#1a1a1a;border:1px solid #444;border-radius:12px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer}
-.delete-move-btn{width:100%;padding:10px;background:transparent;color:#ff4444;border:1px solid #ff4444;border-radius:12px;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer}
+.add-to-set-btn{width:100%;padding:12px;background:#141414;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer;transition:all 0.15s}
+.add-to-set-btn:hover{border-color:#fff}
+.delete-move-btn{width:100%;padding:10px;background:transparent;color:#cc3333;border:1px solid #cc3333;border-radius:12px;font-size:13px;font-weight:600;margin-top:8px;cursor:pointer}
 .set-builder{padding:16px 0}
-.set-name-input{width:100%;padding:12px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;margin-bottom:10px}
-.set-name-input::placeholder{color:#555}
-.set-area{min-height:80px;border:1px dashed #2a2a2a;border-radius:14px;padding:12px;margin-bottom:10px}
-.set-empty{text-align:center;color:#555;font-size:13px;padding:20px 0}
+.set-name-input{width:100%;padding:12px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;margin-bottom:10px}
+.set-name-input::placeholder{color:#444}
+.set-area{min-height:80px;border:1px dashed #222;border-radius:14px;padding:12px;margin-bottom:10px}
+.set-empty{text-align:center;color:#444;font-size:13px;padding:20px 0}
 .set-node{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.set-pill{background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:6px 14px;font-size:13px;color:#fff;display:flex;align-items:center;gap:8px;flex:1}
-.set-pill-remove{color:#555;cursor:pointer;font-size:16px;margin-left:auto}
-.set-arrow{color:#333;font-size:18px}
-.count-badge{font-size:10px;padding:2px 7px;background:#2a2a2a;border-radius:20px;color:#888}
-.eight-badge{font-size:11px;padding:3px 10px;background:#1a1a1a;border:1px solid #333;border-radius:20px;color:#888;margin-bottom:12px;display:inline-block}
-.save-set-btn{width:100%;padding:12px;background:#fff;color:#000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px}
-.pick-title{font-size:13px;font-weight:600;color:#666;margin-bottom:10px}
-.pick-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s}
-.pick-card:hover{border-color:#555}
-.pick-card-name{font-size:14px;color:#fff}
-.pick-plus{font-size:20px;color:#444}
-.saved-set-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
-.saved-set-card:hover{border-color:#444}
+.set-pill{background:#141414;border:1px solid #2a2a2a;border-radius:20px;padding:6px 14px;font-size:13px;color:#ddd;display:flex;align-items:center;gap:8px;flex:1}
+.set-pill-remove{color:#444;cursor:pointer;font-size:16px;margin-left:auto;transition:color 0.15s}
+.set-pill-remove:hover{color:#cc3333}
+.set-arrow{color:#2a2a2a;font-size:16px;text-align:center;width:18px}
+.count-badge{font-size:10px;padding:2px 7px;background:#222;border-radius:20px;color:#777}
+.eight-badge{font-size:11px;padding:3px 10px;background:#141414;border:1px solid #2a2a2a;border-radius:20px;color:#777;margin-bottom:12px;display:inline-block}
+.save-set-btn{width:100%;padding:12px;background:#fff;color:#000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px;transition:opacity 0.15s}
+.save-set-btn:hover{opacity:0.9}
+.pick-title{font-size:11px;font-weight:700;color:#444;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.pick-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:10px 14px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:border-color 0.15s}
+.pick-card:hover{border-color:#444}
+.pick-card-name{font-size:14px;color:#ddd}
+.pick-plus{font-size:18px;color:#333}
+.saved-set-card{background:#141414;border:1px solid #1e1e1e;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
+.saved-set-card:hover{border-color:#333}
 .saved-set-name{font-size:15px;font-weight:600;color:#fff;margin-bottom:6px}
 .saved-set-seq{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-.seq-pill{font-size:11px;padding:3px 10px;background:#222;border:1px solid #2a2a2a;border-radius:20px;color:#888}
-.seq-arrow{color:#333;font-size:12px}
-.delete-set-btn{font-size:11px;color:#555;background:none;border:none;cursor:pointer;padding:0}
-.play-set-btn{font-size:12px;color:#fff;background:#1e1e1e;border:1px solid #444;border-radius:8px;cursor:pointer;padding:5px 12px}
+.seq-pill{font-size:11px;padding:3px 10px;background:#1a1a1a;border:1px solid #222;border-radius:20px;color:#777}
+.seq-arrow{color:#2a2a2a;font-size:11px}
+.delete-set-btn{font-size:11px;color:#444;background:none;border:none;cursor:pointer;padding:0;transition:color 0.15s}
+.delete-set-btn:hover{color:#cc3333}
+.play-set-btn{font-size:12px;color:#ddd;background:#1a1a1a;border:1px solid #333;border-radius:8px;cursor:pointer;padding:5px 12px;transition:all 0.15s;display:flex;align-items:center;gap:5px}
+.play-set-btn:hover{border-color:#fff}
 .add-move-screen{position:fixed;inset:0;background:#0f0f0f;z-index:300;overflow-y:auto;transform:translateY(100%);transition:transform 0.25s ease}
 .add-move-screen.open{transform:translateY(0)}
 .add-move-body{padding:16px 20px;max-width:600px;margin:0 auto}
-.fab{position:fixed;bottom:80px;right:calc(50% - 290px);width:52px;height:52px;border-radius:50%;background:#fff;color:#000;font-size:26px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.fab{position:fixed;bottom:80px;right:calc(50% - 290px);width:50px;height:50px;border-radius:50%;background:#fff;color:#000;font-size:24px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,0.6)}
 @media(max-width:640px){.fab{right:16px}}
 .form-group{margin-bottom:14px}
-.form-label{font-size:12px;color:#888;margin-bottom:6px;display:block}
-.form-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px}
-.form-input::placeholder{color:#555}
-.form-textarea{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px;min-height:100px;resize:vertical;line-height:1.6}
-.form-textarea::placeholder{color:#555}
+.form-label{font-size:11px;font-weight:600;color:#666;margin-bottom:6px;display:block;letter-spacing:0.5px;text-transform:uppercase}
+.form-input{width:100%;padding:10px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px}
+.form-input::placeholder{color:#444}
+.form-textarea{width:100%;padding:10px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;min-height:100px;resize:vertical;line-height:1.6}
+.form-textarea::placeholder{color:#444}
 .type-select{display:flex;gap:8px;flex-wrap:wrap}
-.type-opt{padding:7px 14px;border-radius:20px;border:1px solid #333;background:#1a1a1a;color:#888;font-size:13px;cursor:pointer;transition:all 0.15s}
-.type-opt.active{border-color:#fff;color:#fff}
+.type-opt{padding:7px 14px;border-radius:20px;border:1px solid #2a2a2a;background:#141414;color:#666;font-size:13px;cursor:pointer;transition:all 0.15s}
+.type-opt.active{border-color:#fff;color:#fff;background:#1e1e1e}
 .submit-btn{width:100%;padding:14px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
-.empty-state{text-align:center;padding:60px 20px;color:#555}
-.empty-state p{font-size:14px;margin-top:8px}
-.loading{text-align:center;padding:40px;color:#555;font-size:13px}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none}
+.empty-state{text-align:center;padding:60px 20px;color:#444}
+.empty-state p{font-size:14px;margin-top:8px;color:#555}
+.loading{text-align:center;padding:40px;color:#444;font-size:13px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-.count-input{width:100%;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:12px;color:#fff;font-size:14px}
-.count-input::placeholder{color:#555}
-.add-drop-zone{border:2px dashed #2a2a2a;border-radius:14px;padding:20px;text-align:center;color:#555;font-size:13px;transition:all 0.2s;margin-bottom:6px}
+.count-input{width:100%;padding:10px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px}
+.count-input::placeholder{color:#444}
+.add-drop-zone{border:2px dashed #222;border-radius:14px;padding:20px;text-align:center;color:#444;font-size:13px;transition:all 0.2s;margin-bottom:6px}
 .add-drop-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
 .add-drop-zone input[type=file]{display:none}
-.add-video-preview{width:100%;border-radius:12px;margin-top:10px;max-height:180px;object-fit:contain;background:#000;display:none}
-.upload-progress{width:100%;height:4px;background:#222;border-radius:2px;margin-top:8px;overflow:hidden;display:none}
+.add-media-preview{width:100%;border-radius:12px;margin-top:10px;max-height:180px;object-fit:contain;background:#000;display:none}
+.upload-progress{width:100%;height:3px;background:#1e1e1e;border-radius:2px;margin-top:8px;overflow:hidden;display:none}
 .upload-progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
 .tag-editor{margin-bottom:4px}
 .tag-editor-current{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;min-height:24px}
-.tag-editor-tag{font-size:12px;padding:3px 10px;border-radius:20px;background:#222;border:1px solid #333;color:#ccc;display:flex;align-items:center;gap:5px}
-.tag-editor-tag .tag-x{color:#555;cursor:pointer;font-size:13px;line-height:1}
-.tag-editor-tag .tag-x:hover{color:#ff4444}
+.tag-editor-tag{font-size:12px;padding:3px 10px;border-radius:20px;background:#1a1a1a;border:1px solid #2a2a2a;color:#bbb;display:flex;align-items:center;gap:5px}
+.tag-editor-tag .tag-x{color:#444;cursor:pointer;font-size:13px;line-height:1;transition:color 0.15s}
+.tag-editor-tag .tag-x:hover{color:#cc3333}
 .tag-candidates{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.tag-candidate{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #2a2a2a;background:#1a1a1a;color:#777;cursor:pointer;transition:all 0.15s}
+.tag-candidate{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid #222;background:#141414;color:#666;cursor:pointer;transition:all 0.15s}
 .tag-candidate:hover{border-color:#fff;color:#fff}
 .tag-input-row{display:flex;gap:8px}
-.tag-input-row input{flex:1;padding:8px 12px;background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px}
-.tag-input-row input::placeholder{color:#555}
+.tag-input-row input{flex:1;padding:8px 12px;background:#141414;border:1px solid #2a2a2a;border-radius:10px;color:#fff;font-size:13px}
+.tag-input-row input::placeholder{color:#444}
 .tag-input-row button{padding:8px 14px;background:#fff;color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
-/* ビート管理 */
-.beat-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:16px;margin-bottom:10px;transition:border-color 0.15s;cursor:pointer}
-.beat-card:hover{border-color:#444}
+/* ビート（音楽）管理 */
+.beat-section-title{font-size:11px;font-weight:700;color:#444;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1e1e1e}
+.beat-upload-zone{border:2px dashed #222;border-radius:14px;padding:24px;text-align:center;color:#444;font-size:13px;transition:all 0.2s;margin-bottom:8px;cursor:pointer}
+.beat-upload-zone:hover{border-color:#444;color:#888}
+.beat-upload-zone.dragover{border-color:#fff;color:#fff;background:#1a1a1a}
+.beat-upload-zone input{display:none}
+.beat-upload-btn{width:100%;padding:10px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#777;font-size:13px;cursor:pointer;margin-bottom:16px;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.beat-upload-btn:hover{border-color:#fff;color:#fff}
+.beat-upload-progress{width:100%;height:3px;background:#1e1e1e;border-radius:2px;margin-bottom:16px;overflow:hidden;display:none}
+.beat-upload-progress-fill{height:100%;background:#fff;border-radius:2px;transition:width 0.3s}
+.beat-card{background:#141414;border:1px solid #1e1e1e;border-radius:14px;padding:14px;margin-bottom:10px;transition:border-color 0.15s}
+.beat-card:hover{border-color:#2a2a2a}
 .beat-card.selected{border-color:#fff}
-.beat-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
-.beat-card-name{font-size:15px;font-weight:600;color:#fff;margin-bottom:3px}
-.beat-card-meta{font-size:11px;color:#555}
-.beat-active-badge{font-size:10px;padding:2px 8px;background:#0d2a18;border:1px solid #4ade80;border-radius:20px;color:#4ade80;white-space:nowrap}
-.beat-card-desc{font-size:12px;color:#555;margin-bottom:12px;line-height:1.5}
-.beat-preview-btn{width:100%;padding:10px;font-size:13px;border-radius:10px;border:1px solid #333;background:#111;color:#888;cursor:pointer;transition:all 0.2s;font-weight:500}
-.beat-preview-btn:hover{border-color:#fff;color:#fff}
-.beat-preview-btn.playing{border-color:#4ade80;color:#4ade80;background:#0d2a18}
+.beat-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.beat-card-icon{width:40px;height:40px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.beat-card-info{flex:1;min-width:0}
+.beat-card-name-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.beat-card-name{font-size:14px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.beat-card-name-input{font-size:14px;font-weight:600;color:#fff;background:transparent;border:none;border-bottom:1px solid #444;outline:none;width:100%;padding:0 0 2px}
+.beat-selected-badge{font-size:9px;padding:2px 7px;background:#0a2a14;border:1px solid #1a5a28;border-radius:20px;color:#3dba6a;white-space:nowrap;flex-shrink:0}
+.beat-card-meta{font-size:11px;color:#444}
+.beat-card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.beat-card-actions{display:flex;gap:8px}
+.beat-action-btn{flex:1;padding:7px;font-size:11px;border-radius:9px;border:1px solid #2a2a2a;background:#111;color:#666;cursor:pointer;transition:all 0.15s;text-align:center}
+.beat-action-btn:hover{border-color:#fff;color:#fff}
+.beat-action-btn.select-active{border-color:#3dba6a;color:#3dba6a;background:#0a2a14}
+.beat-action-btn.danger{border-color:#cc3333;color:#cc3333}
+.beat-action-btn.danger:hover{background:#2a0a0a}
+audio{width:100%;margin-bottom:8px;filter:invert(1) hue-rotate(180deg);opacity:0.7}
 /* プレイヤー */
 .player-screen{position:fixed;inset:0;background:#080808;z-index:400;display:none;flex-direction:column}
 .player-screen.open{display:flex}
-.player-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #1a1a1a;gap:8px;flex-shrink:0}
+.player-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #141414;gap:8px;flex-shrink:0}
 .player-title{font-size:13px;font-weight:700;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.player-beat-select{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:11px;padding:4px 6px;max-width:110px;cursor:pointer}
-.player-mute-btn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:5px 9px;color:#888;font-size:11px;cursor:pointer;white-space:nowrap;transition:all 0.15s}
-.player-mute-btn.muted{border-color:#ff4444;color:#ff4444;background:#2a0d0d}
-.player-close{background:none;border:1px solid #222;border-radius:8px;padding:5px 9px;color:#555;font-size:11px;cursor:pointer;white-space:nowrap}
+.player-beat-select{background:#141414;border:1px solid #222;border-radius:8px;color:#fff;font-size:11px;padding:4px 6px;max-width:120px;cursor:pointer}
+.player-mute-btn{background:#141414;border:1px solid #222;border-radius:8px;padding:5px 8px;color:#777;font-size:11px;cursor:pointer;white-space:nowrap;transition:all 0.15s;display:flex;align-items:center;gap:4px}
+.player-mute-btn.muted{border-color:#cc3333;color:#cc3333;background:#1a0a0a}
+.player-close{background:none;border:1px solid #1e1e1e;border-radius:8px;padding:5px 8px;color:#444;font-size:11px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px}
 .carousel-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;min-height:0}
-.carousel-track{display:flex;align-items:center;gap:14px;position:absolute;top:50%;transform:translateY(-50%);transition:left 0.4s cubic-bezier(0.25,0.46,0.45,0.94);will-change:left}
-.carousel-card{border-radius:18px;text-align:center;cursor:pointer;flex-shrink:0;border:1px solid #2a2a2a;background:#141414;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:all 0.35s cubic-bezier(0.25,0.46,0.45,0.94);padding:16px}
-.carousel-card.active{border-color:#fff;background:#1c1c1c}
+.carousel-track{display:flex;align-items:center;gap:14px;position:absolute;top:50%;transform:translateY(-50%);transition:left 0.4s cubic-bezier(0.25,0.46,0.45,0.94)}
+.carousel-card{border-radius:18px;text-align:center;cursor:pointer;flex-shrink:0;border:1px solid #1e1e1e;background:#0f0f0f;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;transition:all 0.35s cubic-bezier(0.25,0.46,0.45,0.94);padding:16px;overflow-y:auto}
+.carousel-card.active{border-color:#fff;background:#141414}
 .carousel-card-name{font-weight:700;color:#fff;line-height:1.2;margin-bottom:6px}
-.carousel-card-count{color:#777;margin-bottom:4px}
-.carousel-card-num{color:#333}
-.player-card-detail{display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid #2a2a2a}
+.carousel-card-count{color:#666;margin-bottom:4px}
+.carousel-card-num{color:#2a2a2a}
+.player-card-detail{display:none;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid #1e1e1e}
 .player-card-detail.open{display:block}
-.player-card-desc{font-size:11px;color:#888;line-height:1.5;background:#0a0a0a;border-radius:8px;padding:8px;margin-bottom:6px}
-.player-card-video{width:100%;border-radius:8px;max-height:120px;object-fit:contain;background:#000;display:block}
+.player-card-desc{font-size:11px;color:#777;line-height:1.5;background:#080808;border-radius:8px;padding:8px;margin-bottom:6px;text-align:left}
+.player-card-video{width:100%;border-radius:8px;max-height:120px;object-fit:contain;background:#000;display:block;margin-bottom:8px}
+.player-card-close{width:100%;padding:7px;font-size:11px;border-radius:8px;border:1px solid #1e1e1e;background:transparent;color:#333;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;transition:all 0.15s}
+.player-card-close:hover{border-color:#444;color:#666}
 .player-controls{padding:8px 14px 16px;flex-shrink:0}
 .progress-section{margin-bottom:8px}
-.progress-time-row{display:flex;justify-content:space-between;font-size:10px;color:#444;margin-bottom:4px}
-.progress-track{width:100%;height:5px;background:#1a1a1a;border-radius:3px;cursor:pointer;position:relative}
-.progress-markers{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;border-radius:3px;overflow:hidden}
-.pm-eight{position:absolute;top:0;width:1px;height:100%;background:#222}
-.pm-four{position:absolute;top:-2px;width:2px;height:calc(100%+4px);background:#333;border-radius:1px}
-.pm-move{position:absolute;top:-3px;width:2px;height:calc(100%+6px);background:#444;border-radius:1px}
-.progress-played{height:100%;background:#fff;border-radius:3px;position:relative;z-index:1;transition:width 0.08s linear}
-/* BPMコントロール */
-.bpm-control{display:flex;align-items:center;gap:8px;background:#111;border:1px solid #222;border-radius:12px;padding:8px 12px;margin-bottom:8px}
-.bpm-control-label{font-size:11px;color:#555;white-space:nowrap}
-.bpm-value{font-size:18px;font-weight:700;color:#fff;min-width:36px;text-align:center}
-.bpm-btn{width:34px;height:34px;border-radius:50%;border:1px solid #333;background:#1a1a1a;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;line-height:1}
-.bpm-btn:hover{border-color:#fff;background:#2a2a2a}
-.bpm-btn:active{transform:scale(0.92)}
-.bpm-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:#2a2a2a;border-radius:2px;outline:none;cursor:pointer}
-.bpm-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer}
-.bpm-slider::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;cursor:pointer;border:none}
-.play-pause-btn{width:100%;padding:12px;background:#fff;color:#000;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:transform 0.1s}
-.play-pause-btn:active{transform:scale(0.98)}
+.progress-time-row{display:flex;justify-content:space-between;font-size:10px;color:#333;margin-bottom:5px}
+.progress-track{width:100%;height:4px;background:#141414;border-radius:2px;cursor:pointer;position:relative}
+.progress-markers{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}
+.pm-eight{position:absolute;top:0;width:1px;height:100%;background:#1e1e1e}
+.pm-four{position:absolute;top:-2px;width:2px;height:calc(100%+4px);background:#2a2a2a;border-radius:1px}
+.pm-move{position:absolute;top:-3px;width:2px;height:calc(100%+6px);background:#3a3a3a;border-radius:1px}
+.progress-played{height:100%;background:#fff;border-radius:2px;position:relative;z-index:1;transition:width 0.08s linear}
+.bpm-control{display:flex;align-items:center;gap:6px;background:#0f0f0f;border:1px solid #1e1e1e;border-radius:12px;padding:8px 10px;margin-bottom:8px}
+.bpm-label{font-size:10px;color:#444;white-space:nowrap;font-weight:600;letter-spacing:0.5px}
+.bpm-value{font-size:17px;font-weight:700;color:#fff;min-width:34px;text-align:center}
+.bpm-btn{width:30px;height:30px;border-radius:50%;border:1px solid #2a2a2a;background:#141414;color:#aaa;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0}
+.bpm-btn:hover{border-color:#fff;background:#1e1e1e}
+.bpm-btn:active{transform:scale(0.9)}
+.bpm-btn-sm{width:26px;height:26px;font-size:11px;font-weight:600}
+.bpm-slider{flex:1;-webkit-appearance:none;appearance:none;height:2px;background:#2a2a2a;border-radius:1px;outline:none;cursor:pointer}
+.bpm-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;cursor:pointer}
+.bpm-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:#fff;cursor:pointer;border:none}
+.play-pause-btn{width:100%;padding:12px;background:#fff;color:#000;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .set-detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:350;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s ease}
 .set-detail-screen.open{transform:translateY(0)}
+/* SVGアイコン共通 */
+.icon{display:inline-flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="header"><h1>BreakinSetBuilder</h1><p>技を管理してセットを組み立てる</p></div>
+  <div class="header">
+    <svg class="header-icon" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="6" r="3" fill="#fff"/>
+      <path d="M14 9v8M14 13l-5-3M14 13l5-3M14 17l-4 5M14 17l4 5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>BreakinSetBuilder</h1>
+      <p>技を管理してセットを組み立てる</p>
+    </div>
+  </div>
   <div id="sec-moves" class="section active">
     <input class="search-box" type="text" placeholder="技を検索..." oninput="filterMoves(this.value)" id="search-input">
     <div class="tag-row" id="tag-row"></div>
@@ -211,29 +249,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </div>
   </div>
   <div id="sec-saved" class="section"><div style="padding:12px 0" id="saved-list"></div></div>
-  <div id="sec-beats" class="section"><div id="beat-list"></div></div>
+  <div id="sec-beats" class="section">
+    <div class="beat-section-title">音楽ライブラリ</div>
+    <div class="beat-upload-zone" id="beat-upload-zone">
+      <input type="file" id="beat-file-input" accept="audio/*,.mp3,.wav,.aac,.flac,.m4a,.ogg">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:8px;opacity:0.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <div>音楽ファイルをドロップ</div>
+      <div style="font-size:11px;margin-top:4px;color:#333">MP3 / WAV / AAC / FLAC / M4A 対応</div>
+    </div>
+    <button class="beat-upload-btn" onclick="document.getElementById('beat-file-input').click()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      ファイルを選択してアップロード
+    </button>
+    <div class="beat-upload-progress" id="beat-upload-progress"><div class="beat-upload-progress-fill" id="beat-upload-progress-fill" style="width:0%"></div></div>
+    <div id="beat-list"></div>
+  </div>
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="switchTab('moves',this)"><span class="tab-icon">🃏</span>技カード</button>
-  <button class="tab" onclick="switchTab('set',this)"><span class="tab-icon">⚡</span>セット作成</button>
-  <button class="tab" onclick="switchTab('saved',this)"><span class="tab-icon">📋</span>保存済み</button>
-  <button class="tab" onclick="switchTab('beats',this)"><span class="tab-icon">🎵</span>ビート</button>
+  <button class="tab active" onclick="switchTab('moves',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="14" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="13" y2="13"/></svg>
+    技カード
+  </button>
+  <button class="tab" onclick="switchTab('set',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
+    セット作成
+  </button>
+  <button class="tab" onclick="switchTab('saved',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+    保存済み
+  </button>
+  <button class="tab" onclick="switchTab('beats',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    音楽
+  </button>
 </div>
-<button class="fab" onclick="openAddMove()" id="fab">+</button>
+
+<button class="fab" onclick="openAddMove()" id="fab">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
 
 <div class="detail-screen" id="detail-screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="closeDetail()">← 戻る</button>
+    <button class="back-btn" onclick="closeDetail()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      戻る
+    </button>
     <span class="detail-name" id="detail-name"></span>
-    <button class="edit-btn" id="detail-edit-btn">✏️ 編集</button>
+    <button class="edit-btn" id="detail-edit-btn">編集</button>
   </div>
   <div class="detail-body" id="detail-body"></div>
 </div>
 
 <div class="edit-screen" id="edit-screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="closeEdit()">← 戻る</button>
+    <button class="back-btn" onclick="closeEdit()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      戻る
+    </button>
     <span class="detail-name">技を編集</span>
   </div>
   <div class="add-move-body" id="edit-body"></div>
@@ -241,7 +314,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="add-move-screen" id="add-move-screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="closeAddMove()">← 戻る</button>
+    <button class="back-btn" onclick="closeAddMove()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      戻る
+    </button>
     <span class="detail-name">新しい技を追加</span>
   </div>
   <div class="add-move-body">
@@ -259,10 +335,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="form-group"><label class="form-label">タグ</label><div id="new-tag-editor"></div></div>
     <div class="form-group">
       <label class="form-label">動画（任意）</label>
-      <div class="add-drop-zone" id="add-drop-zone"><input type="file" id="add-file-input" accept="video/*" onchange="handleAddVideoSelect(event)">📹 ドラッグ＆ドロップ</div>
-      <button class="upload-btn" onclick="document.getElementById('add-file-input').click()">📁 ファイルを選択</button>
+      <div class="add-drop-zone" id="add-drop-zone"><input type="file" id="add-file-input" accept="video/*" onchange="handleAddVideoSelect(event)">動画をドラッグ＆ドロップ</div>
+      <button class="upload-btn" onclick="document.getElementById('add-file-input').click()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        ファイルを選択
+      </button>
       <div class="upload-progress" id="add-upload-progress"><div class="upload-progress-fill" id="add-upload-fill" style="width:0%"></div></div>
-      <video class="add-video-preview" id="add-video-preview" muted playsinline controls></video>
+      <video class="add-media-preview" id="add-video-preview" muted playsinline controls></video>
     </div>
     <button class="submit-btn" onclick="submitMove()">追加する</button>
   </div>
@@ -270,7 +349,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="set-detail-screen" id="set-detail-screen">
   <div class="detail-header">
-    <button class="back-btn" onclick="closeSetDetail()">← 戻る</button>
+    <button class="back-btn" onclick="closeSetDetail()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      戻る
+    </button>
     <span class="detail-name" id="set-detail-name"></span>
   </div>
   <div class="detail-body" id="set-detail-body"></div>
@@ -279,9 +361,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="player-screen" id="player-screen">
   <div class="player-header">
     <span class="player-title" id="player-title"></span>
-    <select class="player-beat-select" id="player-beat-select" onchange="changeBeat(this.value)"></select>
-    <button class="player-mute-btn" id="mute-btn" onclick="toggleMute()">🔊</button>
-    <button class="player-close" onclick="closePlayer()">✕</button>
+    <select class="player-beat-select" id="player-beat-select" onchange="changeTrack(this.value)">
+      <option value="">— 音楽なし —</option>
+    </select>
+    <button class="player-mute-btn" id="mute-btn" onclick="toggleMute()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+      音あり
+    </button>
+    <button class="player-close" onclick="closePlayer()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      閉じる
+    </button>
   </div>
   <div class="carousel-area" id="carousel-area">
     <div class="carousel-track" id="carousel-track"></div>
@@ -299,18 +389,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </div>
     <div class="bpm-control">
-      <span class="bpm-control-label">BPM</span>
-      <button class="bpm-btn" onclick="adjustBPM(-5)">－</button>
-      <button class="bpm-btn" onclick="adjustBPM(-1)" style="width:28px;height:28px;font-size:13px">−1</button>
-      <span class="bpm-value" id="bpm-value">93</span>
-      <button class="bpm-btn" onclick="adjustBPM(1)" style="width:28px;height:28px;font-size:13px">+1</button>
-      <button class="bpm-btn" onclick="adjustBPM(5)">＋</button>
-      <input class="bpm-slider" type="range" id="bpm-slider" min="60" max="180" value="93" oninput="setBPMFromSlider(this.value)">
+      <span class="bpm-label">BPM</span>
+      <button class="bpm-btn" onclick="adjustBPM(-5)">−</button>
+      <button class="bpm-btn bpm-btn-sm" onclick="adjustBPM(-1)">-1</button>
+      <span class="bpm-value" id="bpm-value">120</span>
+      <button class="bpm-btn bpm-btn-sm" onclick="adjustBPM(1)">+1</button>
+      <button class="bpm-btn" onclick="adjustBPM(5)">+</button>
+      <input class="bpm-slider" type="range" id="bpm-slider" min="60" max="200" value="120" oninput="setBPMFromSlider(this.value)">
     </div>
-    <button class="play-pause-btn" id="play-pause-btn" onclick="togglePlay()">▶ 再生</button>
+    <button class="play-pause-btn" id="play-pause-btn" onclick="togglePlay()">
+      <svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      再生
+    </button>
   </div>
 </div>
 
+<audio id="bg-audio" loop style="display:none"></audio>
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -323,510 +417,354 @@ const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
 const typeLabel={foot:"フットワーク",freeze:"フリーズ",power:"パワー",combo:"コンボ"};
 const typeClass={foot:"type-foot",freeze:"type-freeze",power:"type-power",combo:"type-combo"};
-let moves=[],sets=[],setMoves=[],customTags=[];
+let moves=[],sets=[],setMoves=[],customTags=[],beats=[];
 let activeTag="全て",searchQ="",selectedType="foot",editType="foot";
 let newMoveTags=[],editMoveTags=[],newSetTags=[];
 let expandedCardId=null,expandedPlayerCardIdx=null;
-let isMuted=false;
-
-// ===== DOPE BEATS — 3 tracks, fully engineered =====
-const BEATS={
-  // Track 1: BPM93 — J Dilla式極太ドランクブーンバップ
-  dilla_bounce:{
-    name:"Dilla Drunk",bpm:93,
-    desc:"極太ブーンバップ。キックが意図的に-18ms前倒し、スネアが+22ms後ろに引いてタメを作る。808はF1→D1の半音スライド。ビニールノイズと極太サブが肺を揺らす。",
-    // Swing: 16th note grid offset (0=straight, positive=late)
-    kickGrid:[0,4],// 8th note positions
-    kickOffset:-0.018,// seconds ahead of grid (Dilla drunk feel)
-    snareGrid:[2,6],
-    snareOffset:0.022,// behind grid
-    ghostSnare:[1,3,5,7],// ghost notes (very quiet)
-    hatGrid:[0,1,2,3,4,5,6,7],
-    hatSwing:0.66,// swing ratio
-    hatOpenGrid:[6],
-    bass:{root:41,slide:38,slideDur:0.3},// F1->D1
-    melody:{notes:[65,65,63,60,62,62,60,58],type:"sample"},// チョップしたソウルサンプル風
-    pad:{notes:[52,52,55,52],on:[0,4]},
-    hasVinyl:true,hasPerc:true,
-    percGrid:[3,7],// シェーカー的な裏拍
-  },
-  // Track 2: BPM108 — Timbaland変態シンコペーション3+3+2
-  timba_sync:{
-    name:"Timba Sick",bpm:108,
-    desc:"変態シンコペーション。3+3+2のリズムグリッド破壊。キックが1拍目と『アン3』に食い込む。ハットはグリッドの『e』と『ah』を強調した変則16分。ベースはGmのウォーキング。",
-    kickGrid:[0,5],// 3+3+2: kick on 0 and position 5 (the "and-3")
-    kickOffset:0.008,
-    snareGrid:[2,6],
-    snareOffset:0.012,
-    ghostSnare:[1,4],
-    hatGrid:[0,1,2,3,4,5,6,7],
-    hatSwing:0.56,
-    hatOpenGrid:[3,7],
-    bass:{root:43,slide:41,slideDur:0.2},// G1->F1 walking
-    melody:{notes:[67,65,67,65,64,62,64,62],type:"synth"},
-    pad:{notes:[55,55,53,52],on:[0,4]},
-    hasVinyl:false,hasPerc:true,
-    percGrid:[2,5],
-  },
-  // Track 3: BPM124 — アトランタ極悪トラップ 808グライド+ハット3連符
-  atl_trap:{
-    name:"ATL Grim",bpm:124,
-    desc:"アトランタ直系の極悪トラップ。808がC1→G0への長いグライドでスピーカーを破壊。ハイハットは3連符トリプレット連打。キックはビート1と『アン3』の2発。スネアは4拍目のみ、極太。",
-    kickGrid:[0,5],
-    kickOffset:0.005,
-    snareGrid:[4],// only beat 3 (position 4 in 8th-note grid)
-    snareOffset:0.008,
-    ghostSnare:[],
-    hatGrid:[0,1,2,3,4,5,6,7],// will be converted to triplets
-    hatSwing:0.5,// straight — trap hats are straight
-    hatOpenGrid:[],
-    bass:{root:36,slide:31,slideDur:0.6},// C1->G0 long slide
-    melody:{notes:[62,60,62,60,58,57,55,57],type:"dark"},
-    pad:{notes:[48,48,50,48],on:[0,4]},
-    hasVinyl:false,hasPerc:false,
-    isTrap:true,// triggers triplet hat engine
-  },
-  // Bonus: BPM88 DJ Muggs/Alchemist ダークアンダーグラウンド
-  muggs_dark:{
-    name:"Muggs Dark",bpm:88,
-    desc:"DJ Muggs meets Alchemist。ダークで重厚なアンダーグラウンド。スネアにリムショットを重ねて金属的に。808はEb1→Bb0の不穏なトライトーン下降。不協和音スレスレのシタール風メロ。",
-    kickGrid:[0,4],
-    kickOffset:-0.012,
-    snareGrid:[2,6],
-    snareOffset:0.028,
-    ghostSnare:[1,5],
-    hatGrid:[0,1,2,3,4,5,6,7],
-    hatSwing:0.7,// heavy swing
-    hatOpenGrid:[7],
-    bass:{root:39,slide:34,slideDur:0.4},// Eb1->Bb0 tritone
-    melody:{notes:[63,63,61,60,58,57,55,54],type:"dark"},
-    pad:{notes:[51,51,48,51],on:[0,4]},
-    hasVinyl:true,hasPerc:true,
-    percGrid:[1,4,6],
-    hasRimshot:true,
-  },
-  // Bonus: BPM115 ウェストコースト G-Funk
-  westcoast_g:{
-    name:"West G Funk",bpm:115,
-    desc:"ウェストコーストG-Funk。Dre的なシンセベース+ファンキーなリムショット。ハットはオープンを多用してバウンス感を演出。ベースラインがメロディを奏でる。",
-    kickGrid:[0,3,4],
-    kickOffset:0.006,
-    snareGrid:[2,6],
-    snareOffset:0.010,
-    ghostSnare:[3,7],
-    hatGrid:[0,1,2,3,4,5,6,7],
-    hatSwing:0.54,
-    hatOpenGrid:[1,3,5,7],// lots of open hats = bounce
-    bass:{root:41,slide:43,slideDur:0.15},// F1->G1 up
-    melody:{notes:[69,67,65,67,65,64,62,64],type:"synth"},
-    pad:{notes:[57,55,53,52],on:[0,4]},
-    hasVinyl:false,hasPerc:true,
-    percGrid:[1,5],
-  },
-  // Bonus: BPM80 Lo-Fi だがドープ (Pete Rock風)
-  pete_rock:{
-    name:"Pete Rock Flip",bpm:80,
-    desc:"Pete Rock式ソウルフリップ。テープ揺れとサチュレーションで温かく歪んだ音。スネアに生ドラムの息吹。ビニールノイズが常に鳴り、MPCチョップ風のメロループ。",
-    kickGrid:[0,4],
-    kickOffset:-0.020,
-    snareGrid:[2,6],
-    snareOffset:0.030,
-    ghostSnare:[1,3,5,7],
-    hatGrid:[0,1,2,3,4,5,6,7],
-    hatSwing:0.68,
-    hatOpenGrid:[3],
-    bass:{root:41,slide:38,slideDur:0.25},
-    melody:{notes:[64,64,65,64,62,60,62,64],type:"sample"},
-    pad:{notes:[52,52,55,57],on:[0,4]},
-    hasVinyl:true,hasPerc:true,
-    percGrid:[2,6],
-  },
-};
-
-let selectedBeatKey="dilla_bounce";
-let currentBeatKey="dilla_bounce";
-let currentBPM=93;// user-adjustable
-let previewKey=null,previewInterval=null,previewBeat=0;
-
-  
-  // ===== AUDIO ENGINE =====
-let audioCtx = null, isPlaying = false;
-let beatInterval = null, beatCount = 0, totalBeats = 0;
-let currentSetMoves = [], currentMoveIdx = 0, beatsPerMove = [];
-
-function getCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  return audioCtx;
-}
-function midiHz(n) { return 440 * Math.pow(2, (n - 69) / 12); }
-
-// 汚れたローファイ感と太さを出すためのマスターディストーション（歪み）
-function createDistortionCurve(amount = 20) {
-  const k = typeof amount === 'number' ? amount : 50;
-  const n_samples = 44100;
-  const curve = new Float32Array(n_samples);
-  const deg = Math.PI / 180;
-  for (let i = 0; i < n_samples; ++i) {
-    const x = (i * 2) / n_samples - 1;
-    curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
-  }
-  return curve;
-}
-
-// スネア・クラップ用の極太ノイズジェネレーター
-function noise(ctx, dur, freq, q, vol, t, isClap = false) {
-  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) {
-    const raw = Math.random() * 2 - 1;
-    d[i] = raw * Math.pow(1 - i / d.length, 1.8);
-  }
-  const src = ctx.createBufferSource(), g = ctx.createGain(), f = ctx.createBiquadFilter();
-  f.type = "bandpass"; 
-  f.frequency.value = freq; 
-  f.Q.value = q;
-  src.buffer = buf;
-  src.connect(f); 
-  f.connect(g); 
-  g.connect(ctx.destination);
-  
-  if (isClap) {
-    g.gain.setValueAtTime(vol, t);
-    g.gain.setValueAtTime(vol * 0.5, t + 0.01);
-    g.gain.setValueAtTime(vol * 0.7, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  } else {
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  }
-  src.start(t);
-}
-
-function playBeat(beatPos, globalBeat, beatKey, bpm) {
-  if (isMuted) return;
-  const ctx = getCtx();
-  const now = ctx.currentTime;
-  
-  // トラップは倍速解像度に変換
-  const isTrapKey = beatKey === "atl_trap";
-  const actualBPM = isTrapKey ? bpm * 2 : bpm;
-  const spb = 60 / actualBPM; 
-  const b = BEATS[beatKey] || BEATS.dilla_bounce;
-  const pos = beatPos % 8;
-
-  // === 1. KICK (重低音サチュレーション) ===
-  if (b.kickGrid.includes(pos)) {
-    const kickT = now + (b.kickOffset || 0);
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    const dist = ctx.createWaveShaper();
-    
-    dist.curve = createDistortionCurve(35);
-    o.connect(dist); dist.connect(g); g.connect(ctx.destination);
-    
-    o.frequency.setValueAtTime(85, kickT);
-    o.frequency.exponentialRampToValueAtTime(38, kickT + 0.08); 
-    
-    g.gain.setValueAtTime(0.95, kickT);
-    g.gain.exponentialRampToValueAtTime(0.001, kickT + 0.22);
-    o.start(kickT); o.stop(kickT + 0.25);
-  }
-
-  // === 2. SNARE / CLAP (肉厚なアタック) ===
-  if (b.snareGrid.includes(pos)) {
-    const snT = now + (b.snareOffset || 0);
-    noise(ctx, isTrapKey ? 0.25 : 0.2, isTrapKey ? 1200 : 1400, 1.2, 0.85, snT, isTrapKey);
-    
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.type = "triangle";
-    o.frequency.setValueAtTime(160, snT);
-    o.frequency.exponentialRampToValueAtTime(80, snT + 0.08);
-    g.gain.setValueAtTime(0.6, snT);
-    g.gain.exponentialRampToValueAtTime(0.001, snT + 0.15);
-    o.start(snT); o.stop(snT + 0.16);
-  }
-
-  // === 3. GHOST SNARE ===
-  if (b.ghostSnare && b.ghostSnare.includes(pos)) {
-    const swingOffset = pos % 2 === 1 ? (b.hatSwing - 0.5) * spb * 0.5 : 0;
-    noise(ctx, 0.06, 1200, 1.0, 0.15, now + swingOffset);
-  }
-
-  // === 4. HI-HAT (トラップ3連符対応) ===
-  if (b.hatGrid.includes(pos)) {
-    const swingOffset = pos % 2 === 1 ? (b.hatSwing - 0.5) * spb * 0.5 : 0;
-    const hatT = now + swingOffset;
-    
-    if (isTrapKey && pos % 2 === 1) {
-      for (let i = 0; i < 3; i++) {
-        const tRow = hatT + (i * (spb / 3));
-        noise(ctx, 0.03, 8000, 8.0, 0.35, tRow);
-      }
-    } else {
-      const isOpen = b.hatOpenGrid && b.hatOpenGrid.includes(pos);
-      noise(ctx, isOpen ? 0.2 : 0.04, 7500, 6.0, isOpen ? 0.35 : 0.45, hatT);
-    }
-  }
-
-  // === 5. 808 SUB-BASS (地鳴りサチュレーション) ===
-  if (pos === 0 || pos === 4) {
-    const bT = now;
-    const bassKey = b.bass || { root: 36, slide: 31, slideDur: 0.3 };
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    const shaper = ctx.createWaveShaper();
-    
-    const targetHz = midiHz(bassKey.root + 12); 
-    const slideHz = midiHz(bassKey.slide + 12);
-    
-    shaper.curve = createDistortionCurve(25);
-    o.connect(shaper); shaper.connect(g); g.connect(ctx.destination);
-    
-    o.type = "sawtooth";
-    o.frequency.setValueAtTime(targetHz, bT);
-    if (bassKey.slide) {
-      o.frequency.exponentialRampToValueAtTime(slideHz, bT + (bassKey.slideDur || 0.3));
-    }
-    
-    g.gain.setValueAtTime(0.55, bT);
-    g.gain.exponentialRampToValueAtTime(0.001, bT + spb * 3.5);
-    o.start(bT); o.stop(bT + spb * 3.8);
-  }
-
-  // === 6. MELODY LOOP (アングラ仕様) ===
-  if (pos % 2 === 0 && b.melody) {
-    const note = b.melody.notes[Math.floor(pos / 2) % b.melody.notes.length];
-    const mT = now;
-    const o = ctx.createOscillator(), g = ctx.createGain(), filter = ctx.createBiquadFilter();
-    o.connect(filter); filter.connect(g); g.connect(ctx.destination);
-    
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(900, mT);
-    
-    o.type = "triangle";
-    o.frequency.setValueAtTime(midiHz(note), mT);
-    
-    g.gain.setValueAtTime(0.18, mT);
-    g.gain.exponentialRampToValueAtTime(0.001, mT + spb * 0.4);
-    o.start(mT); o.stop(mT + spb * 0.45);
-  }
-
-  // === 7. VINYL NOISE ===
-  if (b.hasVinyl && pos === 0) {
-    const vbuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * spb * 8), ctx.sampleRate);
-    const vd = vbuf.getChannelData(0);
-    for (let i = 0; i < vd.length; i++) vd[i] = (Math.random() * 2 - 1) * 0.018;
-    const vs = ctx.createBufferSource(), vg = ctx.createGain(), vf = ctx.createBiquadFilter();
-    vf.type = "bandpass"; vf.frequency.value = 1800; vf.Q.value = 0.4;
-    vs.buffer = vbuf; vs.connect(vf); vf.connect(vg); vg.connect(ctx.destination);
-    vg.gain.setValueAtTime(0.25, now);
-    vs.start(now);
-  }
-}
+let isMuted=false,currentBPM=120;
+let isPlaying=false,beatInterval=null,beatCount=0,totalBeats=0;
+let currentSetMoves=[],currentMoveIdx=0,beatsPerMove=[];
+let selectedBeatId=null;
+const bgAudio=document.getElementById("bg-audio");
 
 // ===== BPM CONTROL =====
-window.adjustBPM = function(delta) {
-  currentBPM = Math.max(60, Math.min(180, currentBPM + delta));
+window.adjustBPM=function(d){
+  currentBPM=Math.max(60,Math.min(200,currentBPM+d));
   updateBPMDisplay();
-  if (isPlaying) { 
-    clearInterval(beatInterval); 
-    const isTrap = currentBeatKey === "atl_trap";
-    beatInterval = setInterval(tickBeat, 60000 / (isTrap ? currentBPM * 2 : currentBPM)); 
-  }
+  if(isPlaying)restartInterval();
 }
-window.setBPMFromSlider = function(val) {
-  currentBPM = parseInt(val);
+window.setBPMFromSlider=function(v){
+  currentBPM=parseInt(v);
   updateBPMDisplay();
-  if (isPlaying) { 
-    clearInterval(beatInterval); 
-    const isTrap = currentBeatKey === "atl_trap";
-    beatInterval = setInterval(tickBeat, 60000 / (isTrap ? currentBPM * 2 : currentBPM)); 
-  }
+  if(isPlaying)restartInterval();
 }
-function updateBPMDisplay() {
-  document.getElementById("bpm-value").textContent = currentBPM;
-  document.getElementById("bpm-slider").value = currentBPM;
+function updateBPMDisplay(){
+  document.getElementById("bpm-value").textContent=currentBPM;
+  document.getElementById("bpm-slider").value=currentBPM;
   updateTimeDisplay();
+}
+function restartInterval(){
+  clearInterval(beatInterval);
+  beatInterval=setInterval(tickBeat,60000/currentBPM);
 }
 
 // ===== MUTE =====
-window.toggleMute = function() {
-  isMuted = !isMuted;
-  const btn = document.getElementById("mute-btn");
-  btn.textContent = isMuted ? "🔇" : "🔊";
-  btn.classList.toggle("muted", isMuted);
+window.toggleMute=function(){
+  isMuted=!isMuted;
+  bgAudio.muted=isMuted;
+  const btn=document.getElementById("mute-btn");
+  btn.classList.toggle("muted",isMuted);
+  btn.innerHTML=isMuted
+    ?`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg> 無音`
+    :`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg> 音あり`;
 }
 
-// ===== PREVIEW =====
-function stopPreview() {
-  if (previewInterval) { clearInterval(previewInterval); previewInterval = null; }
-  previewKey = null; previewBeat = 0;
-  document.querySelectorAll(".beat-preview-btn").forEach(b => { b.textContent = "▶ 試聴"; b.classList.remove("playing"); });
-}
-window.toggleBeatPreview = function(key, btn) {
-  if (previewKey === key) { stopPreview(); return; }
-  stopPreview();
-  previewKey = key; previewBeat = 0;
-  btn.textContent = "⏹ 停止"; btn.classList.add("playing");
-  getCtx().resume();
-  const bpm = BEATS[key].bpm;
-  const isTrap = key === "atl_trap";
-  previewInterval = setInterval(() => {
-    playBeat(previewBeat % 8, previewBeat, key, bpm);
-    previewBeat++; if (previewBeat >= 32) previewBeat = 0;
-  }, 60000 / (isTrap ? bpm * 2 : bpm));
+// ===== AUDIO TRACK =====
+window.changeTrack=function(beatId){
+  selectedBeatId=beatId;
+  if(beatId){
+    const b=beats.find(x=>x.id===beatId);
+    if(b){bgAudio.src=b.url;if(isPlaying){bgAudio.play();}}
+  } else {
+    bgAudio.pause();bgAudio.src="";
+  }
 }
 
 // ===== PLAYER =====
-function startPlayer(setData) {
-  currentSetMoves = setData.moves || [];
-  if (!currentSetMoves.length) return;
-  document.getElementById("player-title").textContent = setData.name;
-  const sel = document.getElementById("player-beat-select");
-  sel.innerHTML = Object.entries(BEATS).map(([k, v]) => `<option value="${k}"${k === selectedBeatKey ? " selected" : ""}>${v.name}</option>`).join("");
-  currentBeatKey = selectedBeatKey;
-  currentBPM = BEATS[selectedBeatKey].bpm;
+function startPlayer(setData){
+  currentSetMoves=setData.moves||[];
+  if(!currentSetMoves.length)return;
+  document.getElementById("player-title").textContent=setData.name;
+  // populate beat select
+  const sel=document.getElementById("player-beat-select");
+  sel.innerHTML='<option value="">— 音楽なし —</option>'+beats.map(b=>`<option value="${b.id}"${b.id===selectedBeatId?" selected":""}>${b.name}</option>`).join("");
+  beatCount=0;currentMoveIdx=0;isPlaying=false;expandedPlayerCardIdx=null;
+  beatsPerMove=currentSetMoves.map(m=>parseInt(m.count)||8);
+  totalBeats=beatsPerMove.reduce((a,b)=>a+b,0);
+  isMuted=false;
+  const muteBtn=document.getElementById("mute-btn");
+  muteBtn.classList.remove("muted");
+  muteBtn.innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg> 音あり`;
   updateBPMDisplay();
-  beatCount = 0; currentMoveIdx = 0; isPlaying = false; expandedPlayerCardIdx = null;
-  beatsPerMove = currentSetMoves.map(m => parseInt(m.count) || 8);
-  totalBeats = beatsPerMove.reduce((a, b) => a + b, 0);
-  isMuted = false;
-  document.getElementById("mute-btn").textContent = "🔊";
-  document.getElementById("mute-btn").classList.remove("muted");
-  renderCarousel(0); renderProgressMarkers(); updateTimeDisplay();
-  document.getElementById("progress-played").style.width = "0%";
-  document.getElementById("play-pause-btn").textContent = "▶ 再生";
+  renderCarousel(0);renderProgressMarkers();updateTimeDisplay();
+  document.getElementById("progress-played").style.width="0%";
+  const ppBtn=document.getElementById("play-pause-btn");
+  ppBtn.innerHTML=`<svg id="play-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> 再生`;
   document.getElementById("player-screen").classList.add("open");
+  // load audio if selected
+  if(selectedBeatId){const b=beats.find(x=>x.id===selectedBeatId);if(b)bgAudio.src=b.url;}
 }
 
-function renderProgressMarkers() {
-  const marks = [];
-  for (let i = 1; i < totalBeats; i++) {
-    if (i % 32 === 0) marks.push(`<div class="pm-four" style="left:${(i / totalBeats) * 100}%"></div>`);
-    else if (i % 8 === 0) marks.push(`<div class="pm-eight" style="left:${(i / totalBeats) * 100}%"></div>`);
+function renderProgressMarkers(){
+  const marks=[];
+  for(let i=1;i<totalBeats;i++){
+    if(i%32===0)marks.push(`<div class="pm-four" style="left:${(i/totalBeats)*100}%"></div>`);
+    else if(i%8===0)marks.push(`<div class="pm-eight" style="left:${(i/totalBeats)*100}%"></div>`);
   }
-  let cum = 0;
-  for (let i = 0; i < beatsPerMove.length - 1; i++) { cum += beatsPerMove[i]; marks.push(`<div class="pm-move" style="left:${(cum / totalBeats) * 100}%"></div>`); }
-  document.getElementById("progress-markers").innerHTML = marks.join("");
+  let cum=0;
+  for(let i=0;i<beatsPerMove.length-1;i++){cum+=beatsPerMove[i];marks.push(`<div class="pm-move" style="left:${(cum/totalBeats)*100}%"></div>`);}
+  document.getElementById("progress-markers").innerHTML=marks.join("");
 }
 
-function updateTimeDisplay() {
-  const spb = 60 / currentBPM;
-  const cur = (currentBeatKey === "atl_trap" ? beatCount * 0.5 : beatCount) * spb;
-  const tot = totalBeats * spb;
-  document.getElementById("time-current").textContent = fmt(cur);
-  document.getElementById("time-total").textContent = fmt(tot);
-  const factor = currentBeatKey === "atl_trap" ? 16 : 8;
-  document.getElementById("time-eight").textContent = `${Math.floor(beatCount / factor) + 1}エイト目`;
+function updateTimeDisplay(){
+  const spb=60/currentBPM;
+  const cur=beatCount*spb,tot=totalBeats*spb;
+  document.getElementById("time-current").textContent=fmt(cur);
+  document.getElementById("time-total").textContent=fmt(tot);
+  document.getElementById("time-eight").textContent=`${Math.floor(beatCount/8)+1}エイト目`;
 }
-function fmt(s) { return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`; }
+function fmt(s){return`${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;}
 
-function renderCarousel(activeIdx) {
-  const area = document.getElementById("carousel-area");
-  const aW = area.offsetWidth || window.innerWidth;
-  const aH = area.offsetHeight || 260;
-  const actW = Math.min(aW * 0.60, 250);
-  const actH = Math.min(aH * 0.70, 190);
-  const inW = actW * 0.66;
-  const inH = actH * 0.66;
-  const gap = 14;
-  const track = document.getElementById("carousel-track");
-  track.innerHTML = currentSetMoves.map((m, i) => {
-    const isAct = i === activeIdx;
-    const isExp = expandedPlayerCardIdx === i && isAct;
-    const mFull = moves.find(x => x.id === m.id) || m;
-    const w = isAct ? actW : inW;
-    const h = isAct ? actH : inH;
-    return `<div class="carousel-card${isAct ? " active" : ""}" id="pcard-${i}"
-      style="width:${w}px;min-width:${w}px;min-height:${h}px;opacity:${isAct ? 1 : 0.28};transform:scale(${isAct ? 1 : 0.80})"
-      onclick="window.togglePlayerCard(${i})">
-      <div class="carousel-card-name" style="font-size:${isAct ? 20 : 13}px">${m.name}</div>
-      <div class="carousel-card-count" style="font-size:${isAct ? 12 : 10}px">${m.count ? m.count + "カウント" : ""}</div>
-      <div class="carousel-card-num" style="font-size:${isAct ? 11 : 9}px">${i + 1} / ${currentSetMoves.length}</div>
-      ${isAct ? `<div class="player-card-detail${isExp ? " open" : ""}">
-        ${mFull.videoUrl ? `<video class="player-card-video" src="${mFull.videoUrl}" controls playsinline muted></video>` : ""}
-        <div class="player-card-desc">${mFull.desc || ""}</div>
-      </div>` : ""}
+function renderCarousel(activeIdx){
+  const area=document.getElementById("carousel-area");
+  const aW=area.offsetWidth||window.innerWidth;
+  const aH=area.offsetHeight||260;
+  const actW=Math.min(aW*0.60,250);
+  const actH=Math.min(aH*0.75,210);
+  const inW=actW*0.65;
+  const inH=actH*0.65;
+  const gap=14;
+  const track=document.getElementById("carousel-track");
+  track.innerHTML=currentSetMoves.map((m,i)=>{
+    const isAct=i===activeIdx;
+    const isExp=expandedPlayerCardIdx===i&&isAct;
+    const mFull=moves.find(x=>x.id===m.id)||m;
+    const w=isAct?actW:inW;
+    const h=isAct?actH:inH;
+    return`<div class="carousel-card${isAct?" active":""}" id="pcard-${i}"
+      style="width:${w}px;min-width:${w}px;min-height:${h}px;max-height:${isExp?'90vh':h+'px'};opacity:${isAct?1:0.25};transform:scale(${isAct?1:0.78})"
+      onclick="window.togglePlayerCard(${i},event)">
+      <div class="carousel-card-name" style="font-size:${isAct?20:13}px">${m.name}</div>
+      <div class="carousel-card-count" style="font-size:${isAct?12:10}px">${m.count?m.count+"カウント":""}</div>
+      <div class="carousel-card-num" style="font-size:${isAct?11:9}px">${i+1} / ${currentSetMoves.length}</div>
+      ${isAct?`<div class="player-card-detail${isExp?" open":""}">
+        ${mFull.videoUrl?`<video class="player-card-video" src="${mFull.videoUrl}" controls playsinline muted></video>`:""}
+        <div class="player-card-desc">${mFull.desc||""}</div>
+        <button class="player-card-close" onclick="event.stopPropagation();window.closePlayerCard()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          閉じる
+        </button>
+      </div>`:""}
     </div>`;
   }).join("");
-  let left = aW / 2 - actW / 2;
-  for (let i = 0; i < activeIdx; i++) left -= inW + gap;
-  track.style.left = left + "px";
-  track.style.top = "50%";
-  track.style.transform = "translateY(-50%)";
+  let left=aW/2-actW/2;
+  for(let i=0;i<activeIdx;i++)left-=inW+gap;
+  track.style.left=left+"px";
+  track.style.top="50%";
+  track.style.transform="translateY(-50%)";
 }
 
-window.togglePlayerCard = function(idx) {
-  if (idx !== currentMoveIdx) return;
-  expandedPlayerCardIdx = expandedPlayerCardIdx === idx ? null : idx;
+window.togglePlayerCard=function(idx,e){
+  if(idx!==currentMoveIdx)return;
+  if(expandedPlayerCardIdx===idx){return;}// already open — do nothing (close via button only)
+  expandedPlayerCardIdx=idx;
+  renderCarousel(currentMoveIdx);
+}
+window.closePlayerCard=function(){
+  expandedPlayerCardIdx=null;
   renderCarousel(currentMoveIdx);
 }
 
-function tickBeat() {
-  const isTrap = currentBeatKey === "atl_trap";
-  playBeat(beatCount % 8, beatCount, currentBeatKey, currentBPM);
-  
-  // トラップの時はカウントの進みを半分にしてエイトとムーブの同期を維持
-  const checkCount = isTrap ? beatCount * 0.5 : beatCount;
-  
-  let cum = 0;
-  for (let i = 0; i < beatsPerMove.length; i++) {
-    cum += beatsPerMove[i];
-    if (checkCount < cum) { 
-      if (i !== currentMoveIdx) { currentMoveIdx = i; expandedPlayerCardIdx = null; renderCarousel(i); } 
-      break; 
-    }
+function tickBeat(){
+  let cum=0;
+  for(let i=0;i<beatsPerMove.length;i++){
+    cum+=beatsPerMove[i];
+    if(beatCount<cum){if(i!==currentMoveIdx){currentMoveIdx=i;expandedPlayerCardIdx=null;renderCarousel(i);}break;}
   }
-  const pct = Math.min((checkCount / totalBeats) * 100, 100);
-  document.getElementById("progress-played").style.width = pct + "%";
+  const pct=Math.min((beatCount/totalBeats)*100,100);
+  document.getElementById("progress-played").style.width=pct+"%";
   updateTimeDisplay();
   beatCount++;
-  if (checkCount >= totalBeats) { beatCount = 0; currentMoveIdx = 0; expandedPlayerCardIdx = null; renderCarousel(0); document.getElementById("progress-played").style.width = "0%"; }
-}
-
-window.togglePlay = function() {
-  if (isPlaying) { clearInterval(beatInterval); isPlaying = false; document.getElementById("play-pause-btn").textContent = "▶ 再生"; }
-  else { 
-    getCtx().resume(); 
-    const isTrap = currentBeatKey === "atl_trap";
-    beatInterval = setInterval(tickBeat, 60000 / (isTrap ? currentBPM * 2 : currentBPM)); 
-    isPlaying = true; 
-    document.getElementById("play-pause-btn").textContent = "⏸ 一時停止"; 
+  if(beatCount>=totalBeats){
+    beatCount=0;currentMoveIdx=0;expandedPlayerCardIdx=null;
+    renderCarousel(0);document.getElementById("progress-played").style.width="0%";
   }
 }
 
-window.seekTo = function(e) {
-  const rect = document.getElementById("progress-track").getBoundingClientRect();
-  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  const isTrap = currentBeatKey === "atl_trap";
-  beatCount = Math.floor(pct * totalBeats * (isTrap ? 2 : 1));
-  document.getElementById("progress-played").style.width = (pct * 100) + "%";
+window.togglePlay=function(){
+  if(isPlaying){
+    clearInterval(beatInterval);isPlaying=false;
+    bgAudio.pause();
+    document.getElementById("play-pause-btn").innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> 再生`;
+  } else {
+    beatInterval=setInterval(tickBeat,60000/currentBPM);isPlaying=true;
+    if(selectedBeatId&&bgAudio.src)bgAudio.play();
+    document.getElementById("play-pause-btn").innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> 一時停止`;
+  }
+}
+
+window.seekTo=function(e){
+  const rect=document.getElementById("progress-track").getBoundingClientRect();
+  const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+  beatCount=Math.floor(pct*totalBeats);
+  document.getElementById("progress-played").style.width=(pct*100)+"%";
   updateTimeDisplay();
-}
-
-window.changeBeat = function(key) {
-  currentBeatKey = key;
-  currentBPM = BEATS[key].bpm;
-  updateBPMDisplay();
-  if (isPlaying) { 
-    clearInterval(beatInterval); 
-    const isTrap = currentBeatKey === "atl_trap";
-    beatInterval = setInterval(tickBeat, 60000 / (isTrap ? currentBPM * 2 : currentBPM)); 
+  if(selectedBeatId&&bgAudio.src&&bgAudio.duration){
+    bgAudio.currentTime=pct*bgAudio.duration;
   }
 }
 
-window.closePlayer = function() {
-  clearInterval(beatInterval); isPlaying = false;
+window.closePlayer=function(){
+  clearInterval(beatInterval);isPlaying=false;
+  bgAudio.pause();
   document.getElementById("player-screen").classList.remove("open");
-  document.getElementById("play-pause-btn").textContent = "▶ 再生";
+  document.getElementById("play-pause-btn").innerHTML=`<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> 再生`;
 }
 
-// ===== TAG EDITOR =====
+// ===== BEATS (music library) =====
+async function loadBeats(){
+  const snap=await getDocs(query(collection(db,"beats"),orderBy("createdAt","desc")));
+  beats=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderBeatList();
+}
+
+function renderBeatList(){
+  const el=document.getElementById("beat-list");
+  if(!beats.length){
+    el.innerHTML='<div class="empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3;margin-bottom:8px"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><p>音楽がまだありません</p></div>';
+    return;
+  }
+  el.innerHTML=beats.map(b=>`
+    <div class="beat-card${b.id===selectedBeatId?" selected":""}">
+      <div class="beat-card-top">
+        <div class="beat-card-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        </div>
+        <div class="beat-card-info">
+          <div class="beat-card-name-row">
+            <span class="beat-card-name" id="beat-name-${b.id}">${b.name}</span>
+            ${b.id===selectedBeatId?'<span class="beat-selected-badge">使用中</span>':""}
+          </div>
+          <div class="beat-card-meta">${b.size?formatSize(b.size):""}</div>
+        </div>
+      </div>
+      ${(b.tags||[]).length?`<div class="beat-card-tags">${b.tags.map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>`:""}
+      <audio src="${b.url}" controls preload="none"></audio>
+      <div class="beat-card-actions">
+        <button class="beat-action-btn${b.id===selectedBeatId?" select-active":""}" onclick="window.selectBeat('${b.id}')">${b.id===selectedBeatId?"✓ 使用中":"再生に使用"}</button>
+        <button class="beat-action-btn" onclick="window.editBeatName('${b.id}')">名前変更</button>
+        <button class="beat-action-btn" onclick="window.editBeatTags('${b.id}')">タグ</button>
+        <button class="beat-action-btn danger" onclick="window.deleteBeat('${b.id}')">削除</button>
+      </div>
+      <div id="beat-tag-editor-${b.id}" style="display:none;margin-top:10px"></div>
+    </div>`).join("");
+}
+
+function formatSize(bytes){
+  if(bytes>1024*1024)return`${(bytes/1024/1024).toFixed(1)}MB`;
+  return`${Math.round(bytes/1024)}KB`;
+}
+
+window.selectBeat=function(id){
+  selectedBeatId=selectedBeatId===id?null:id;
+  renderBeatList();
+  const b=beats.find(x=>x.id===id);
+  if(selectedBeatId&&b){bgAudio.src=b.url;showToast(`${b.name}を選択`);}
+  else{bgAudio.src="";showToast("音楽の選択を解除しました");}
+  // update player select if open
+  const sel=document.getElementById("player-beat-select");
+  if(sel){
+    [...sel.options].forEach(o=>{o.selected=o.value===selectedBeatId;});
+  }
+}
+
+window.editBeatName=function(id){
+  const b=beats.find(x=>x.id===id);if(!b)return;
+  const newName=prompt("新しい名前を入力してください",b.name);
+  if(!newName||newName.trim()===b.name)return;
+  updateDoc(doc(db,"beats",id),{name:newName.trim()}).then(()=>{
+    beats=beats.map(x=>x.id===id?{...x,name:newName.trim()}:x);
+    renderBeatList();showToast("名前を変更しました");
+  });
+}
+
+window.editBeatTags=function(id){
+  const tagEl=document.getElementById(`beat-tag-editor-${id}`);
+  if(!tagEl)return;
+  const isOpen=tagEl.style.display!=="none"&&tagEl.innerHTML!=="";
+  if(isOpen){tagEl.style.display="none";tagEl.innerHTML="";return;}
+  const b=beats.find(x=>x.id===id);if(!b)return;
+  const currentTags=[...(b.tags||[])];
+  tagEl.style.display="block";
+  renderTagEditorInEl(tagEl,currentTags,async(tags)=>{
+    await updateDoc(doc(db,"beats",id),{tags});
+    beats=beats.map(x=>x.id===id?{...x,tags}:x);
+  });
+}
+
+function renderTagEditorInEl(el,currentTags,onUpdate){
+  const all=getAllTags().filter(t=>!currentTags.includes(t));
+  const uid="bte_"+Math.random().toString(36).slice(2);
+  el.innerHTML=`<div class="tag-editor">
+    <div class="tag-editor-current" id="${uid}-cur">${currentTags.map(t=>`<span class="tag-editor-tag">${t}<span class="tag-x" onclick="removeBeatTag('${uid}','${t}')">×</span></span>`).join("")}</div>
+    ${all.length?`<div class="tag-candidates">${all.map(t=>`<span class="tag-candidate" onclick="addBeatTag('${uid}','${t}')">${t}</span>`).join("")}</div>`:""}
+    <div class="tag-input-row"><input type="text" id="${uid}-input" placeholder="新しいタグ..."><button onclick="addBeatTagFromInput('${uid}')">追加</button></div>
+  </div>`;
+  window[`_btd_${uid}`]={tags:currentTags,onUpdate,el};
+}
+window.addBeatTag=function(uid,tag){const d=window[`_btd_${uid}`];if(!d||d.tags.includes(tag))return;d.tags.push(tag);d.onUpdate(d.tags);renderTagEditorInEl(d.el,d.tags,d.onUpdate);}
+window.removeBeatTag=function(uid,tag){const d=window[`_btd_${uid}`];if(!d)return;d.tags=d.tags.filter(t=>t!==tag);d.onUpdate(d.tags);renderTagEditorInEl(d.el,d.tags,d.onUpdate);}
+window.addBeatTagFromInput=function(uid){const i=document.getElementById(`${uid}-input`);const t=i?.value.trim();if(!t)return;window.addBeatTag(uid,t);i.value="";}
+
+window.deleteBeat=async function(id){
+  if(!confirm("この音楽を削除しますか？"))return;
+  await deleteDoc(doc(db,"beats",id));
+  beats=beats.filter(b=>b.id!==id);
+  if(selectedBeatId===id){selectedBeatId=null;bgAudio.src="";}
+  renderBeatList();showToast("削除しました");
+}
+
+// Beat upload
+async function uploadBeat(file){
+  const bar=document.getElementById("beat-upload-progress");
+  const fill=document.getElementById("beat-upload-progress-fill");
+  bar.style.display="block";fill.style.width="0%";
+  const fd=new FormData();
+  fd.append("file",file);
+  fd.append("upload_preset",UPLOAD_PRESET);
+  fd.append("resource_type","video");// Cloudinary uses "video" for audio too
+  return new Promise(resolve=>{
+    const xhr=new XMLHttpRequest();
+    xhr.upload.onprogress=e=>{if(e.lengthComputable)fill.style.width=(e.loaded/e.total*100)+"%";};
+    xhr.onload=async function(){
+      bar.style.display="none";
+      if(xhr.status===200){
+        const res=JSON.parse(xhr.responseText);
+        const beatDoc={name:file.name.replace(/\.[^.]+$/,""),url:res.secure_url,size:file.size,tags:[],createdAt:Date.now()};
+        const ref=await addDoc(collection(db,"beats"),beatDoc);
+        beats.unshift({id:ref.id,...beatDoc});
+        renderBeatList();showToast("音楽をアップロードしました！");
+        resolve(true);
+      } else {showToast("アップロード失敗");resolve(false);}
+    };
+    xhr.onerror=()=>{bar.style.display="none";showToast("通信エラー");resolve(false);};
+    xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
+    xhr.send(fd);
+  });
+}
+
+// Beat drop zone
+const beatDz=document.getElementById("beat-upload-zone");
+beatDz.addEventListener("click",()=>document.getElementById("beat-file-input").click());
+beatDz.addEventListener("dragover",e=>{e.preventDefault();beatDz.classList.add("dragover");});
+beatDz.addEventListener("dragleave",()=>beatDz.classList.remove("dragover"));
+beatDz.addEventListener("drop",e=>{
+  e.preventDefault();beatDz.classList.remove("dragover");
+  const f=e.dataTransfer?.files?.[0];
+  if(f&&f.type.startsWith("audio/"))uploadBeat(f);
+  else showToast("音楽ファイルを選択してください");
+});
+document.getElementById("beat-file-input").addEventListener("change",e=>{
+  const f=e.target.files[0];if(f)uploadBeat(f);
+  e.target.value="";
+});
+
 // ===== TAG EDITOR =====
 function getAllTags(){
   const s=new Set();
   moves.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));
   sets.forEach(f=>(f.tags||[]).forEach(t=>s.add(t)));
+  beats.forEach(b=>(b.tags||[]).forEach(t=>s.add(t)));
   customTags.forEach(t=>s.add(t.name));
   return[...s];
 }
@@ -872,33 +810,42 @@ function filteredMoves(){
     return mQ&&mT;
   });
 }
+
 function renderMoves(){
   const list=filteredMoves();
   const el=document.getElementById("moves-list");
-  if(!list.length){el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div style="font-size:40px">🕺</div><p>技がまだありません<br>＋ボタンで追加しよう</p></div>';return;}
+  if(!list.length){el.innerHTML='<div class="empty-state" style="grid-column:1/-1"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3;margin-bottom:8px"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg><p>技がまだありません<br>＋ボタンで追加しよう</p></div>';return;}
   el.innerHTML=list.map(m=>{
     const isExp=expandedCardId===m.id;
-    return`<div class="move-card${isExp?" expanded":""}" id="card-${m.id}" onclick="window.toggleCard('${m.id}')">
-      <div class="card-head"><span class="card-name">${m.name}</span><span class="type-badge ${typeClass[m.type]||'type-foot'}">${typeLabel[m.type]||m.type}</span></div>
-      ${m.count?`<div class="card-count">カウント：${m.count}</div>`:""}
-      <div class="card-tags">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
-      <div class="card-chevron${isExp?" open":""}">▼</div>
+    return`<div class="move-card${isExp?" expanded":""}" id="card-${m.id}">
+      <div onclick="window.toggleCard('${m.id}')">
+        <div class="card-head"><span class="card-name">${m.name}</span><span class="type-badge ${typeClass[m.type]||'type-foot'}">${typeLabel[m.type]||m.type}</span></div>
+        ${m.count?`<div class="card-count">カウント：${m.count}</div>`:""}
+        <div class="card-tags">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
+        <div class="card-chevron${isExp?" open":""}">▼</div>
+      </div>
       <div class="card-detail${isExp?" open":""}">
-        ${m.videoUrl?`<video class="card-detail-video" src="${m.videoUrl}" controls playsinline muted></video>`:""}
+        ${m.videoUrl?`<video class="card-detail-video" src="${m.videoUrl}" controls playsinline muted onclick="event.stopPropagation()"></video>`:""}
         <div class="card-detail-desc">${m.desc||"説明なし"}</div>
         <div class="card-detail-btns">
-          <button class="card-detail-btn" onclick="event.stopPropagation();window.addToSet('${m.id}')">⚡ セットに追加</button>
+          <button class="card-detail-btn" onclick="event.stopPropagation();window.addToSet('${m.id}')">セットに追加</button>
           <button class="card-detail-btn accent" onclick="event.stopPropagation();window.showDetail('${m.id}')">詳細・編集 →</button>
         </div>
+        <button class="card-detail-close" onclick="event.stopPropagation();window.toggleCard('${m.id}')">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          閉じる
+        </button>
       </div>
     </div>`;
   }).join("");
 }
+
 window.toggleCard=function(id){
   expandedCardId=expandedCardId===id?null:id;
   renderMoves();
   if(expandedCardId){setTimeout(()=>{const el=document.getElementById(`card-${id}`);if(el)el.scrollIntoView({behavior:"smooth",block:"nearest"});},50);}
 }
+
 function renderPickList(){
   document.getElementById("pick-list").innerHTML=moves.map(m=>`
     <div class="pick-card" onclick="window.addToSet('${m.id}')">
@@ -906,6 +853,7 @@ function renderPickList(){
       <span class="pick-plus">＋</span>
     </div>`).join("");
 }
+
 function calcEights(arr){
   const t=(arr||[]).reduce((a,m)=>a+(parseInt(m.count)||8),0);
   return{beats:t,eights:Math.round(t/8*10)/10};
@@ -913,49 +861,36 @@ function calcEights(arr){
 function renderSetArea(){
   const el=document.getElementById("set-area"),badge=document.getElementById("set-eight-count");
   if(!setMoves.length){el.innerHTML='<div class="set-empty">下から技を選んで追加</div>';badge.style.display="none";return;}
-  const{beats,eights}=calcEights(setMoves);
-  badge.style.display="inline-block";badge.textContent=`合計 ${eights} エイト（${beats}カウント）`;
+  const{beats:b,eights}=calcEights(setMoves);
+  badge.style.display="inline-block";badge.textContent=`合計 ${eights} エイト（${b}カウント）`;
   el.innerHTML=setMoves.map((m,i)=>`
     <div class="set-node">
-      ${i>0?'<span class="set-arrow">↓</span>':"<span style='width:18px'></span>"}
+      ${i>0?`<div class="set-arrow">↓</div>`:"<span style='width:18px'></span>"}
       <div class="set-pill"><span>${m.name}</span>${m.count?`<span class="count-badge">${m.count}ct</span>`:""}<span class="set-pill-remove" onclick="window.removeFromSet(${i})">×</span></div>
     </div>`).join("");
 }
 function renderSaved(){
   const el=document.getElementById("saved-list");
-  if(!sets.length){el.innerHTML='<div class="empty-state"><div style="font-size:40px">📋</div><p>保存済みセットがありません</p></div>';return;}
+  if(!sets.length){el.innerHTML='<div class="empty-state"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3;margin-bottom:8px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg><p>保存済みセットがありません</p></div>';return;}
   el.innerHTML=sets.map(f=>{
-    const{beats,eights}=calcEights(f.moves);
+    const{beats:b,eights}=calcEights(f.moves);
     return`<div class="saved-set-card" onclick="window.openSetDetail('${f.id}')">
       <div class="saved-set-name">${f.name}</div>
       ${(f.tags||[]).length?`<div class="card-tags" style="margin-bottom:8px">${f.tags.map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>`:""}
       <div class="saved-set-seq">${(f.moves||[]).map((m,i)=>`${i>0?'<span class="seq-arrow">→</span>':''}<span class="seq-pill">${m.name}</span>`).join("")}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:11px;color:#444">${(f.moves||[]).length}技・${eights}エイト</span>
-        <div style="display:flex;gap:8px">
-          <button class="play-set-btn" onclick="event.stopPropagation();window.playSet('${f.id}')">▶ 再生</button>
+        <span style="font-size:11px;color:#333">${(f.moves||[]).length}技・${eights}エイト</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="play-set-btn" onclick="event.stopPropagation();window.playSet('${f.id}')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            再生
+          </button>
           <button class="delete-set-btn" onclick="event.stopPropagation();window.deleteSet('${f.id}')">削除</button>
         </div>
       </div>
     </div>`;}).join("");
 }
-function renderBeatList(){
-  document.getElementById("beat-list").innerHTML=Object.entries(BEATS).map(([k,v])=>`
-    <div class="beat-card${k===selectedBeatKey?" selected":""}" onclick="window.selectBeat('${k}')">
-      <div class="beat-card-top">
-        <div>
-          <div class="beat-card-name">${v.name}${k===selectedBeatKey?'<span class="beat-active-badge" style="margin-left:8px">選択中</span>':""}</div>
-          <div class="beat-card-meta">${v.bpm} BPM</div>
-        </div>
-      </div>
-      <div class="beat-card-desc">${v.desc}</div>
-      <button class="beat-preview-btn${previewKey===k?" playing":""}" id="preview-btn-${k}"
-        onclick="event.stopPropagation();window.toggleBeatPreview('${k}',this)">
-        ${previewKey===k?"⏹ 停止":"▶ 試聴"}
-      </button>
-    </div>`).join("");
-}
-window.selectBeat=function(key){selectedBeatKey=key;currentBeatKey=key;renderBeatList();showToast(`${BEATS[key].name}を選択`);}
+
 window.setTag=t=>{activeTag=t;renderTagRow();renderMoves();}
 window.filterMoves=q=>{searchQ=q;renderMoves();}
 
@@ -965,39 +900,48 @@ window.showDetail=function(id){
   document.getElementById("detail-edit-btn").onclick=()=>window.openEdit(id);
   document.getElementById("detail-body").innerHTML=`
     <span class="type-badge ${typeClass[m.type]||'type-foot'}" style="display:inline-block;margin-bottom:12px">${typeLabel[m.type]||m.type}</span>
-    ${m.count?`<div style="font-size:13px;color:#777;margin-bottom:12px">カウント数：<span style="color:#fff;font-weight:600">${m.count}</span></div>`:""}
+    ${m.count?`<div style="font-size:13px;color:#555;margin-bottom:12px">カウント数：<span style="color:#fff;font-weight:600">${m.count}</span></div>`:""}
     <div class="detail-section-title">動きの説明</div>
     <div class="detail-desc-box">${m.desc||"説明なし"}</div>
     <div class="detail-section-title">動画</div>
-    ${m.videoUrl?`<div class="video-wrapper"><video src="${m.videoUrl}" controls playsinline muted></video></div><button class="delete-video-btn" onclick="window.deleteVideo('${id}')">🗑 動画を削除</button>`:""}
-    <div class="drop-zone" id="drop-zone-${id}"><input type="file" id="file-input-${id}" accept="video/*" onchange="window.handleVideoUpload(event,'${id}')">📹 ドラッグ＆ドロップ</div>
-    <button class="upload-btn" onclick="document.getElementById('file-input-${id}').click()">📁 ファイルを選択してアップロード</button>
+    ${m.videoUrl?`<div class="video-wrapper"><video src="${m.videoUrl}" controls playsinline muted></video></div><button class="delete-video-btn" onclick="window.deleteVideo('${id}')">動画を削除</button>`:""}
+    <div class="drop-zone" id="drop-zone-${id}"><input type="file" id="file-input-${id}" accept="video/*" onchange="window.handleVideoUpload(event,'${id}')">動画をドラッグ＆ドロップ</div>
+    <button class="upload-btn" onclick="document.getElementById('file-input-${id}').click()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      ファイルを選択してアップロード
+    </button>
     <div class="progress-bar-upload" id="progress-bar-${id}"><div class="progress-fill-upload" id="progress-fill-${id}" style="width:0%"></div></div>
     <div class="detail-section-title">タグ</div>
     <div class="card-tags" style="margin-bottom:8px">${(m.tags||[]).map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>
-    <button class="add-to-set-btn" onclick="window.addToSetFromDetail('${id}')">⚡ セットに追加</button>
-    <button class="delete-move-btn" onclick="window.deleteMove('${id}')">🗑 この技を削除</button>`;
+    <button class="add-to-set-btn" onclick="window.addToSetFromDetail('${id}')">セットに追加</button>
+    <button class="delete-move-btn" onclick="window.deleteMove('${id}')">この技を削除</button>`;
   const dz=document.getElementById(`drop-zone-${id}`);
   dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("dragover");});
   dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
   dz.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();dz.classList.remove("dragover");const f=e.dataTransfer?.files?.[0];if(f)window.uploadToCloudinary(f,id);});
   document.getElementById("detail-screen").classList.add("open");
 }
+
 window.openSetDetail=function(id){
   const s=sets.find(x=>x.id===id);if(!s)return;
-  const{beats,eights}=calcEights(s.moves);
+  const{beats:b,eights}=calcEights(s.moves);
   document.getElementById("set-detail-name").textContent=s.name;
   document.getElementById("set-detail-body").innerHTML=`
-    <div style="margin-bottom:16px"><button style="width:100%;padding:14px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer" onclick="window.playSet('${id}')">▶ セットを再生</button></div>
+    <div style="margin-bottom:16px">
+      <button style="width:100%;padding:14px;background:#fff;color:#000;border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onclick="window.playSet('${id}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        セットを再生
+      </button>
+    </div>
     ${(s.tags||[]).length?`<div class="card-tags" style="margin-bottom:12px">${s.tags.map(t=>`<span class="mini-tag">${t}</span>`).join("")}</div>`:""}
     <div class="detail-section-title">構成（${s.moves.length}技・${eights}エイト）</div>
-    ${s.moves.map((m,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#1a1a1a;border:1px solid #222;border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="window.showDetail('${m.id}')">
-      <span style="font-size:12px;color:#444;min-width:20px">${i+1}</span>
+    ${s.moves.map((m,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#141414;border:1px solid #1e1e1e;border-radius:12px;margin-bottom:8px;cursor:pointer" onclick="window.showDetail('${m.id}')">
+      <span style="font-size:11px;color:#333;min-width:20px">${i+1}</span>
       <span style="font-size:14px;color:#fff;flex:1">${m.name}</span>
       ${m.count?`<span class="count-badge">${m.count}ct</span>`:""}
-      <span style="font-size:12px;color:#333">→</span>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`).join("")}
-    <button class="delete-move-btn" style="margin-top:16px" onclick="if(confirm('このセットを削除しますか？')){window.deleteSet('${id}');window.closeSetDetail();}">🗑 このセットを削除</button>`;
+    <button class="delete-move-btn" style="margin-top:16px" onclick="if(confirm('このセットを削除しますか？')){window.deleteSet('${id}');window.closeSetDetail();}">このセットを削除</button>`;
   document.getElementById("set-detail-screen").classList.add("open");
 }
 window.closeSetDetail=()=>document.getElementById("set-detail-screen").classList.remove("open");
@@ -1066,7 +1010,11 @@ window.handleAddVideoSelect=function(e){
 const addDz=document.getElementById("add-drop-zone");
 addDz.addEventListener("dragover",e=>{e.preventDefault();addDz.classList.add("dragover");});
 addDz.addEventListener("dragleave",()=>addDz.classList.remove("dragover"));
-addDz.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();addDz.classList.remove("dragover");const f=e.dataTransfer?.files?.[0];if(f&&f.type.startsWith("video/")){const p=document.getElementById("add-video-preview");p.src=URL.createObjectURL(f);p.style.display="block";window._pendingVideoFile=f;}});
+addDz.addEventListener("drop",e=>{
+  e.preventDefault();e.stopPropagation();addDz.classList.remove("dragover");
+  const f=e.dataTransfer?.files?.[0];
+  if(f&&f.type.startsWith("video/")){const p=document.getElementById("add-video-preview");p.src=URL.createObjectURL(f);p.style.display="block";window._pendingVideoFile=f;}
+});
 window.addToSet=function(id){const m=moves.find(x=>x.id===id);if(!m)return;setMoves.push(m);renderSetArea();showToast(`${m.name}を追加`);}
 window.addToSetFromDetail=function(id){window.addToSet(id);window.closeDetail();switchTab("set",document.querySelectorAll(".tab")[1]);}
 window.removeFromSet=i=>{setMoves.splice(i,1);renderSetArea();}
@@ -1117,17 +1065,15 @@ function uploadVideoForNew(file){
 }
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 window.switchTab=function(name,el){
-  stopPreview();
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));el.classList.add("active");
   document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
   document.getElementById("sec-"+name).classList.add("active");
   document.getElementById("fab").style.display=name==="moves"?"flex":"none";
-  if(name==="beats")renderBeatList();
 }
 function closeDetail(){document.getElementById("detail-screen").classList.remove("open");}
 
 renderTagEditor("set-tag-editor-create",[],tags=>{newSetTags=tags;});
-loadMoves();loadSets();loadCustomTags();
+loadMoves();loadSets();loadCustomTags();loadBeats();
 </script>
 </body>
 </html>

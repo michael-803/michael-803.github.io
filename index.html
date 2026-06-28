@@ -353,7 +353,7 @@ window.showDetail=function(id){
       </div>
       <button class="delete-video-btn" onclick="window.deleteVideo('${id}')">🗑 動画を削除</button>
     `:""}
-    <div class="drop-zone" id="drop-zone-${id}" onclick="document.getElementById('file-input-${id}').click()">
+    <div class="drop-zone" id="drop-zone-${id}">
       <input type="file" id="file-input-${id}" accept="video/*,.mp4,.mov,.avi,.webm,.mkv" onchange="window.handleVideoUpload(event,'${id}')">
       📹 ${m.videoUrl?"動画を差し替え":"タップして動画を選択"}<br>
       <span style="font-size:11px;margin-top:4px;display:block">PCはドラッグ＆ドロップも可</span>

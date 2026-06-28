@@ -36,7 +36,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tab svg{width:19px;height:19px}
 .section{padding:12px 0;display:none}
 .section.active{display:block}
-/* 技カード（セット作成・編集内）*/
 .move-pick-card{background:#141414;border:1px solid #1e1e1e;border-radius:12px;padding:12px 14px;margin-bottom:8px;transition:border-color 0.2s}
 .move-pick-card:hover{border-color:#333}
 .move-pick-card.expanded{border-color:#444}
@@ -45,20 +44,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .move-pick-right{display:flex;align-items:center;gap:8px}
 .move-pick-add{width:28px;height:28px;border-radius:50%;background:#fff;color:#000;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s}
 .move-pick-add:hover{transform:scale(1.1)}
-.move-pick-chevron{font-size:10px;color:#333;transition:transform 0.25s}
+.move-pick-chevron{font-size:10px;color:#333;transition:transform 0.25s;user-select:none}
 .move-pick-chevron.open{transform:rotate(180deg)}
 .move-pick-detail{display:none;margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a}
 .move-pick-detail.open{display:block}
 .move-pick-desc{font-size:12px;color:#888;line-height:1.6;background:#0a0a0a;border-radius:8px;padding:10px;margin-bottom:8px}
 .move-pick-video{width:100%;border-radius:8px;margin-bottom:8px;display:block;max-height:160px;object-fit:contain;background:#000}
-/* type badges */
 .type-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;flex-shrink:0}
 .type-floor{background:#0a2e1a;color:#3dba6a;border:1px solid #1a5a30}
 .type-strong{background:#3a1a0a;color:#ff8c3a;border:1px solid #7a3a1a}
 .type-toprock{background:#0a1a3a;color:#5a9aff;border:1px solid #1a3a7a}
 .mini-tag{font-size:10px;padding:2px 8px;border-radius:20px;background:#1a1a1a;color:#555;border:1px solid #222}
 .count-badge{font-size:10px;padding:2px 7px;background:#1e1e1e;border-radius:20px;color:#666}
-/* 検索フィルター */
 .filter-area{margin-bottom:12px}
 .filter-search{width:100%;padding:9px 14px;background:#141414;border:1px solid #222;border-radius:10px;color:#fff;font-size:13px;margin-bottom:8px}
 .filter-search::placeholder{color:#444}
@@ -68,7 +65,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .filter-tag-row{display:flex;gap:6px;flex-wrap:wrap}
 .filter-tag-btn{padding:4px 10px;border-radius:20px;border:1px solid #1e1e1e;background:#141414;color:#555;font-size:11px;cursor:pointer;transition:all 0.15s}
 .filter-tag-btn.active{background:#fff;color:#000;border-color:#fff}
-/* セット一覧 */
 .saved-set-card{background:#141414;border:1px solid #1a1a1a;border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color 0.15s}
 .saved-set-card:hover{border-color:#444}
 .saved-set-name{font-size:15px;font-weight:600;color:#fff;margin-bottom:6px}
@@ -79,7 +75,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .delete-set-btn:hover{color:#bb3333}
 .play-set-btn{font-size:12px;color:#ddd;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;cursor:pointer;padding:5px 12px;display:flex;align-items:center;gap:5px;transition:all 0.15s}
 .play-set-btn:hover{border-color:#fff}
-/* セット作成・編集 */
 .set-builder{padding:14px 0}
 .set-name-input{width:100%;padding:11px 14px;background:#141414;border:1px solid #222;border-radius:12px;color:#fff;font-size:14px;margin-bottom:10px}
 .set-name-input::placeholder{color:#444}
@@ -95,7 +90,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section-label{font-size:10px;font-weight:700;color:#444;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;margin-top:4px}
 .add-move-inline-btn{width:100%;padding:10px;background:#141414;border:1px solid #222;border-radius:12px;color:#888;font-size:13px;cursor:pointer;margin-bottom:14px;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
 .add-move-inline-btn:hover{border-color:#fff;color:#fff}
-/* 詳細・編集スクリーン */
 .detail-screen{position:fixed;inset:0;background:#0f0f0f;z-index:200;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
 .detail-screen.open{transform:translateX(0)}
 .edit-screen{position:fixed;inset:0;background:#0f0f0f;z-index:250;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease}
@@ -159,7 +153,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tag-input-row input{flex:1;padding:8px 12px;background:#141414;border:1px solid #222;border-radius:10px;color:#fff;font-size:13px}
 .tag-input-row input::placeholder{color:#444}
 .tag-input-row button{padding:8px 14px;background:#fff;color:#000;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
-/* ビート */
 .beat-section-hd{font-size:10px;font-weight:700;color:#444;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #1a1a1a}
 .beat-upload-zone{border:2px dashed #1e1e1e;border-radius:14px;padding:22px;text-align:center;color:#444;font-size:13px;transition:all 0.2s;margin-bottom:8px;cursor:pointer}
 .beat-upload-zone:hover{border-color:#333;color:#777}
@@ -198,7 +191,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
 .loading{text-align:center;padding:40px;color:#444;font-size:13px}
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
-/* プレイヤー */
 .player-screen{position:fixed;inset:0;background:#060606;z-index:400;display:none;flex-direction:column}
 .player-screen.open{display:flex}
 .player-header{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #111;gap:8px;flex-shrink:0}
@@ -289,12 +281,10 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
     <button class="logout-btn" onclick="doLogout()"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>ログアウト</button>
   </div>
 
-  <!-- セット一覧 -->
   <div id="sec-saved" class="section active">
     <div style="padding:12px 0" id="saved-list"></div>
   </div>
 
-  <!-- セット作成 -->
   <div id="sec-set" class="section">
     <div class="set-builder">
       <input class="set-name-input" type="text" placeholder="セット名（例：バトル用コンボA）" id="set-name">
@@ -303,8 +293,7 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
       <div class="set-area" id="set-area"><div class="set-empty">下から技を選んで追加</div></div>
       <button class="save-set-btn" onclick="saveSet()">セットを保存</button>
       <button class="add-move-inline-btn" onclick="openAddMove()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        新しい技を追加
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>新しい技を追加
       </button>
       <div class="section-label">技を選ぶ</div>
       <div id="set-filter" class="filter-area"></div>
@@ -312,7 +301,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
     </div>
   </div>
 
-  <!-- ビート -->
   <div id="sec-beats" class="section">
     <div class="beat-section-hd">音楽ライブラリ</div>
     <div class="beat-upload-zone" id="beat-upload-zone">
@@ -322,8 +310,7 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
       <div style="font-size:11px;margin-top:3px;color:#2a2a2a">MP3 / WAV / AAC / FLAC / M4A</div>
     </div>
     <button class="beat-upload-btn" onclick="document.getElementById('beat-file-input').click()">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      ファイルを選択してアップロード
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>ファイルを選択してアップロード
     </button>
     <div class="beat-upload-bar" id="beat-upload-bar"><div class="beat-upload-bar-fill" id="beat-upload-bar-fill" style="width:0%"></div></div>
     <div id="beat-list"></div>
@@ -332,20 +319,16 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
 
 <div class="tabs" id="main-tabs" style="display:none">
   <button class="tab active" onclick="switchTab('saved',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-    セット一覧
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>セット一覧
   </button>
   <button class="tab" onclick="switchTab('set',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>
-    セット作成
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><line x1="12" y1="7" x2="5" y2="17"/><line x1="12" y1="7" x2="19" y2="17"/></svg>セット作成
   </button>
   <button class="tab" onclick="switchTab('beats',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-    ビート
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>ビート
   </button>
 </div>
 
-<!-- 技詳細 -->
 <div class="detail-screen" id="detail-screen">
   <div class="detail-header">
     <button class="back-btn" onclick="closeDetail()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>戻る</button>
@@ -355,7 +338,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
   <div class="detail-body" id="detail-body"></div>
 </div>
 
-<!-- 技編集 -->
 <div class="edit-screen" id="edit-screen">
   <div class="detail-header">
     <button class="back-btn" onclick="closeEdit()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>戻る</button>
@@ -364,7 +346,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
   <div class="add-move-body" id="edit-body"></div>
 </div>
 
-<!-- 技追加 -->
 <div class="add-move-screen" id="add-move-screen">
   <div class="detail-header">
     <button class="back-btn" onclick="closeAddMove()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>戻る</button>
@@ -393,7 +374,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
   </div>
 </div>
 
-<!-- セット編集 -->
 <div class="set-edit-screen" id="set-edit-screen">
   <div class="detail-header">
     <button class="back-btn" onclick="closeSetEdit()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>戻る</button>
@@ -402,7 +382,6 @@ audio{width:100%;margin-bottom:8px;opacity:0.6}
   <div class="set-edit-body" id="set-edit-body"></div>
 </div>
 
-<!-- プレイヤー -->
 <div class="player-screen" id="player-screen">
   <div class="player-header">
     <span class="player-title" id="player-title"></span>
@@ -516,13 +495,11 @@ let currentSetMoves=[],currentMoveIdx=0,beatsPerMove=[];
 let selectedBeatId=null,delayMs=0,currentDisplayIdx=0;
 let delayTimer=null,delayCountdownInterval=null;
 let editingSetId=null,editSetMoves=[];
-// filter state
 let setFilterQ="",setFilterType="",setFilterTag="";
 let editFilterQ="",editFilterType="",editFilterTag="";
 const bgAudio=document.getElementById("bg-audio");
 bgAudio.volume=0.8;
 
-// ===== VOLUME / BPM =====
 window.setVolume=function(v){bgAudio.volume=v/100;document.getElementById("volume-val").textContent=v+"%";}
 window.adjustBPM=function(d){currentBPM=Math.max(60,Math.min(200,currentBPM+d));updateBPMDisplay();if(isPlaying)restartInterval();}
 window.setBPMFromSlider=function(v){currentBPM=parseInt(v);updateBPMDisplay();if(isPlaying)restartInterval();}
@@ -556,7 +533,6 @@ function resetPlayback(){
   renderCarousel(0);updateTimeDisplay();
 }
 
-// ===== PLAYER =====
 function startPlayer(setData){
   currentSetMoves=setData.moves||[];if(!currentSetMoves.length)return;
   document.getElementById("player-title").textContent=setData.name;
@@ -583,17 +559,16 @@ function setPPBtn(playing){
 }
 
 function renderProgressMarkers(){
-  let ticksHtml="",labelsHtml="";
+  let t="",l="";
   for(let i=8;i<totalBeats;i+=8){
-    const pct=(i/totalBeats)*100;
-    const isFour=i%32===0,isMove=isMoveBreak(i);
-    ticksHtml+=`<div class="${isMove?"pm-tick pm-tick-move":isFour?"pm-tick pm-tick-four":"pm-tick pm-tick-eight"}" style="left:${pct}%;position:absolute"></div>`;
-    if(isMove)labelsHtml+=`<div class="pm-lbl pm-lbl-move" style="left:${pct}%">${getMoveLabel(i)}</div>`;
-    else if(isFour)labelsHtml+=`<div class="pm-lbl pm-lbl-four" style="left:${pct}%">${i/8}E</div>`;
-    else labelsHtml+=`<div class="pm-lbl" style="left:${pct}%">${i/8}</div>`;
+    const p=(i/totalBeats)*100,isF=i%32===0,isM=isMoveBreak(i);
+    t+=`<div class="${isM?"pm-tick pm-tick-move":isF?"pm-tick pm-tick-four":"pm-tick pm-tick-eight"}" style="left:${p}%;position:absolute"></div>`;
+    if(isM)l+=`<div class="pm-lbl pm-lbl-move" style="left:${p}%">${getMoveLabel(i)}</div>`;
+    else if(isF)l+=`<div class="pm-lbl pm-lbl-four" style="left:${p}%">${i/8}E</div>`;
+    else l+=`<div class="pm-lbl" style="left:${p}%">${i/8}</div>`;
   }
-  document.getElementById("progress-markers-layer").innerHTML=ticksHtml;
-  document.getElementById("pm-label-layer").innerHTML=labelsHtml;
+  document.getElementById("progress-markers-layer").innerHTML=t;
+  document.getElementById("pm-label-layer").innerHTML=l;
 }
 function isMoveBreak(beat){let c=0;for(let i=0;i<beatsPerMove.length-1;i++){c+=beatsPerMove[i];if(c===beat)return true;}return false;}
 function getMoveLabel(beat){let c=0;for(let i=0;i<beatsPerMove.length-1;i++){c+=beatsPerMove[i];if(c===beat)return(currentSetMoves[i+1]?.name||"").slice(0,5);}return"";}
@@ -607,13 +582,21 @@ function updateTimeDisplay(){
 }
 function fmt(s){return`${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;}
 
+// 音楽同期（ビート位置から正確に計算）
+function syncAudioToBeat(beat){
+  if(!selectedBeatId||!bgAudio.src||!bgAudio.duration)return;
+  const spb=60/currentBPM;
+  const pos=(beat*spb+delayMs/1000)%bgAudio.duration;
+  bgAudio.currentTime=Math.max(0,pos);
+}
+
 // ===== CAROUSEL SWIPE =====
 let carouselDragStartX=null,carouselDragging=false,carouselDragDelta=0;
 function initCarouselSwipe(){
   const area=document.getElementById("carousel-area");
   const start=x=>{carouselDragStartX=x;carouselDragging=true;carouselDragDelta=0;};
   const move=x=>{if(!carouselDragging)return;carouselDragDelta=x-carouselDragStartX;};
-  const end=()=>{if(carouselDragging&&Math.abs(carouselDragDelta)>50){if(carouselDragDelta<0)carouselSkip(1);else carouselSkip(-1);}carouselDragging=false;carouselDragDelta=0;};
+  const end=()=>{if(carouselDragging&&Math.abs(carouselDragDelta)>50){carouselDragDelta<0?carouselSkip(1):carouselSkip(-1);}carouselDragging=false;carouselDragDelta=0;};
   area.addEventListener("touchstart",e=>start(e.touches[0].clientX),{passive:true});
   area.addEventListener("touchmove",e=>move(e.touches[0].clientX),{passive:true});
   area.addEventListener("touchend",end);
@@ -624,8 +607,7 @@ function initCarouselSwipe(){
 }
 
 function carouselSkip(dir){
-  const maxIdx=currentSetMoves.length;
-  const newIdx=Math.max(0,Math.min(maxIdx,currentDisplayIdx+dir));
+  const newIdx=Math.max(0,Math.min(currentSetMoves.length,currentDisplayIdx+dir));
   if(newIdx===currentDisplayIdx)return;
   if(newIdx===0){
     beatCount=0;currentMoveIdx=0;currentDisplayIdx=0;
@@ -633,24 +615,13 @@ function carouselSkip(dir){
     renderCarousel(0);updateTimeDisplay();
     if(selectedBeatId&&bgAudio.src)bgAudio.currentTime=0;
   } else {
-    const moveIdx=newIdx-1;
-    let beatOffset=0;
-    for(let i=0;i<moveIdx;i++)beatOffset+=beatsPerMove[i];
-    beatCount=beatOffset;currentMoveIdx=moveIdx;currentDisplayIdx=newIdx;
-    expandedPlayerCardIdx=null;
+    const mi=newIdx-1;
+    let offset=0;for(let i=0;i<mi;i++)offset+=beatsPerMove[i];
+    beatCount=offset;currentMoveIdx=mi;currentDisplayIdx=newIdx;expandedPlayerCardIdx=null;
     document.getElementById("progress-played").style.width=(beatCount/totalBeats*100)+"%";
     renderCarousel(newIdx);updateTimeDisplay();
     syncAudioToBeat(beatCount);
   }
-}
-
-// 精度改善：ビート位置から音楽を正確に同期
-function syncAudioToBeat(beat){
-  if(!selectedBeatId||!bgAudio.src||!bgAudio.duration)return;
-  const spb=60/currentBPM;
-  // beatCountは0始まりで、delayMs後に0から始まるので音楽の再生位置 = beat*spb + delayMs/1000
-  const audioPos=(beat*spb+delayMs/1000)%bgAudio.duration;
-  bgAudio.currentTime=Math.max(0,audioPos);
 }
 
 function renderCarousel(activeIdx){
@@ -661,10 +632,9 @@ function renderCarousel(activeIdx){
   const track=document.getElementById("carousel-track");
   const setName=document.getElementById("player-title").textContent||"SET";
   const dMs=delayMs;
-  const displayCards=[{type:"delay",name:setName,delayMs:dMs},...currentSetMoves.map((m,i)=>({type:"move",move:m,idx:i}))];
-  track.innerHTML=displayCards.map((card,di)=>{
-    const isAct=di===activeIdx;
-    const w=isAct?actW:inW,h=isAct?actH:inH;
+  const cards=[{type:"delay",name:setName,delayMs:dMs},...currentSetMoves.map((m,i)=>({type:"move",move:m,idx:i}))];
+  track.innerHTML=cards.map((card,di)=>{
+    const isAct=di===activeIdx,w=isAct?actW:inW,h=isAct?actH:inH;
     if(card.type==="delay"){
       const secStr=dMs>=1000?(dMs/1000).toFixed(1)+"s":dMs+"ms";
       return`<div class="carousel-card delay-card${isAct?" active":""}" style="width:${w}px;min-width:${w}px;min-height:${h}px;opacity:${isAct?1:0.22};transform:scale(${isAct?1:0.76})">
@@ -674,8 +644,7 @@ function renderCarousel(activeIdx){
         <div class="delay-card-sub" style="font-size:${isAct?11:9}px">${dMs>0?"カード開始まで":""}</div>
       </div>`;
     }
-    const m=card.move,isExp=expandedPlayerCardIdx===card.idx&&isAct;
-    const mFull=moves.find(x=>x.id===m.id)||m;
+    const m=card.move,isExp=expandedPlayerCardIdx===card.idx&&isAct,mFull=moves.find(x=>x.id===m.id)||m;
     return`<div class="carousel-card${isAct?" active":""}" id="pcard-${card.idx}" style="width:${w}px;min-width:${w}px;min-height:${h}px;max-height:${isExp?"90vh":h+"px"};opacity:${isAct?1:0.22};transform:scale(${isAct?1:0.76})" onclick="window.tapPlayerCard(${card.idx},${di},event)">
       <div class="carousel-card-name" style="font-size:${isAct?20:13}px">${m.name}</div>
       <div class="carousel-card-count" style="font-size:${isAct?12:10}px">${m.count?m.count+"カウント":""}</div>
@@ -728,7 +697,6 @@ window.togglePlay=function(){
   } else {
     isPlaying=true;setPPBtn(true);
     if(delayMs>0&&beatCount===0){
-      // 音楽を正確な位置から開始
       if(selectedBeatId&&bgAudio.src){bgAudio.currentTime=0;bgAudio.play().catch(()=>{});}
       startDelayCountdown();
       delayTimer=setTimeout(()=>{
@@ -737,8 +705,8 @@ window.togglePlay=function(){
       },delayMs);
     } else {
       if(selectedBeatId&&bgAudio.src){
-        if(beatCount===0){bgAudio.currentTime=0;}
-        else{syncAudioToBeat(beatCount);}
+        if(beatCount===0)bgAudio.currentTime=0;
+        else syncAudioToBeat(beatCount);
         bgAudio.play().catch(()=>{});
       }
       if(beatCount===0){currentDisplayIdx=1;currentMoveIdx=0;renderCarousel(1);}
@@ -883,24 +851,22 @@ window.addTagTo=function(cid,tag){const d=window[`_td_${cid}`];if(!d||d.tags.inc
 window.removeTagFrom=function(cid,tag){const d=window[`_td_${cid}`];if(!d)return;d.tags=d.tags.filter(t=>t!==tag);d.onUpdate(d.tags);renderTagEditor(cid,d.tags,d.onUpdate);}
 window.addTagFrom=function(cid){const i=document.getElementById(`${cid}-input`);const t=i.value.trim();if(!t)return;window.addTagTo(cid,t);i.value="";}
 
-// ===== FILTER UI =====
+// ===== FILTER =====
 function getAllMoveTags(){const s=new Set();moves.forEach(m=>(m.tags||[]).forEach(t=>s.add(t)));return[...s];}
-
-function renderFilterArea(containerId,filterQ,filterType,filterTag,onChangeQ,onChangeType,onChangeTag){
+function renderFilterArea(containerId,fQ,fType,fTag,cbQ,cbType,cbTag){
   const el=document.getElementById(containerId);if(!el)return;
   const tags=getAllMoveTags();
   el.innerHTML=`
-    <input class="filter-search" type="text" placeholder="技名で検索..." value="${filterQ}" oninput="${onChangeQ}(this.value)">
+    <input class="filter-search" type="text" placeholder="技名で検索..." value="${fQ}" oninput="${cbQ}(this.value)">
     <div class="filter-type-row">
-      <button class="filter-type-btn${filterType===''?' active':''}" onclick="${onChangeType}('')">すべて</button>
-      <button class="filter-type-btn${filterType==='floor'?' active':''}" onclick="${onChangeType}('floor')">Floor</button>
-      <button class="filter-type-btn${filterType==='strong'?' active':''}" onclick="${onChangeType}('strong')">Strong</button>
-      <button class="filter-type-btn${filterType==='toprock'?' active':''}" onclick="${onChangeType}('toprock')">Toprock</button>
+      <button class="filter-type-btn${fType===''?' active':''}" onclick="${cbType}('')">すべて</button>
+      <button class="filter-type-btn${fType==='floor'?' active':''}" onclick="${cbType}('floor')">Floor</button>
+      <button class="filter-type-btn${fType==='strong'?' active':''}" onclick="${cbType}('strong')">Strong</button>
+      <button class="filter-type-btn${fType==='toprock'?' active':''}" onclick="${cbType}('toprock')">Toprock</button>
     </div>
-    ${tags.length?`<div class="filter-tag-row">${tags.map(t=>`<button class="filter-tag-btn${filterTag===t?' active':''}" onclick="${onChangeTag}('${t}')">${t}</button>`).join("")}</div>`:""}
+    ${tags.length?`<div class="filter-tag-row">${tags.map(t=>`<button class="filter-tag-btn${fTag===t?' active':''}" onclick="${cbTag}('${t}')">${t}</button>`).join("")}</div>`:""}
   `;
 }
-
 function filterMovesList(q,type,tag){
   return moves.filter(m=>{
     const mQ=!q||m.name.toLowerCase().includes(q.toLowerCase())||(m.desc||"").toLowerCase().includes(q.toLowerCase());
@@ -909,13 +875,9 @@ function filterMovesList(q,type,tag){
     return mQ&&mT&&mTag;
   });
 }
-
-// set作成フィルター
 window.setFQ=function(v){setFilterQ=v;renderPickList();}
 window.setFT=function(v){setFilterType=v;renderFilterArea("set-filter",setFilterQ,setFilterType,setFilterTag,"setFQ","setFT","setFTag");renderPickList();}
 window.setFTag=function(v){setFilterTag=setFilterTag===v?"":v;renderFilterArea("set-filter",setFilterQ,setFilterType,setFilterTag,"setFQ","setFT","setFTag");renderPickList();}
-
-// set編集フィルター
 window.editFQ=function(v){editFilterQ=v;renderEditPickList();}
 window.editFT=function(v){editFilterType=v;renderFilterArea("edit-filter",editFilterQ,editFilterType,editFilterTag,"editFQ","editFT","editFTag");renderEditPickList();}
 window.editFTag=function(v){editFilterTag=editFilterTag===v?"":v;renderFilterArea("edit-filter",editFilterQ,editFilterType,editFilterTag,"editFQ","editFT","editFTag");renderEditPickList();}
@@ -931,7 +893,6 @@ async function loadMoves(){
 async function loadSets(){const snap=await getDocs(query(collection(db,"sets"),orderBy("createdAt","desc")));sets=snap.docs.map(d=>({id:d.id,...d.data()}));renderSaved();}
 async function loadCustomTags(){const snap=await getDocs(collection(db,"customTags"));customTags=snap.docs.map(d=>({id:d.id,...d.data()}));}
 
-// ===== PICK LIST（セット作成）=====
 function renderPickList(){
   const el=document.getElementById("pick-list");
   const list=filterMovesList(setFilterQ,setFilterType,setFilterTag);
@@ -958,10 +919,8 @@ function renderPickList(){
     </div>`;
   }).join("");
 }
-
 window.togglePick=function(id){expandedPickId=expandedPickId===id?null:id;renderPickList();}
 
-// ===== EDIT PICK LIST（セット編集）=====
 function renderEditPickList(){
   const el=document.getElementById("edit-pick-list");if(!el)return;
   const list=filterMovesList(editFilterQ,editFilterType,editFilterTag);
@@ -1021,7 +980,6 @@ window.openSetEdit=function(id){
   renderSetEditBody(s);
   document.getElementById("set-edit-screen").classList.add("open");
 }
-
 function renderSetEditBody(s){
   const{beats:b,eights}=calcEights(editSetMoves);
   document.getElementById("set-edit-body").innerHTML=`
@@ -1060,7 +1018,6 @@ function renderSetEditBody(s){
   renderFilterArea("edit-filter",editFilterQ,editFilterType,editFilterTag,"editFQ","editFT","editFTag");
   renderEditPickList();
 }
-
 window.addToEditSet=function(id){
   const m=moves.find(x=>x.id===id);if(!m)return;
   editSetMoves.push({id:m.id,name:m.name,count:m.count||null});
@@ -1087,7 +1044,6 @@ window.deleteSetFromEdit=async function(){
   renderSaved();closeSetEdit();showToast("削除しました");
 }
 window.closeSetEdit=function(){document.getElementById("set-edit-screen").classList.remove("open");}
-
 window.playSet=function(id){const s=sets.find(x=>x.id===id);if(!s)return;startPlayer(s);}
 
 window.showDetail=function(id){
@@ -1114,7 +1070,6 @@ window.showDetail=function(id){
   dz.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();dz.classList.remove("dragover");const f=e.dataTransfer?.files?.[0];if(f)window.uploadToCloudinary(f,id);});
   document.getElementById("detail-screen").classList.add("open");
 }
-
 window.openEdit=function(id){
   const m=moves.find(x=>x.id===id);if(!m)return;
   editType=m.type||"floor";editMoveTags=[...(m.tags||[])];
@@ -1138,7 +1093,8 @@ window.submitEdit=async function(id){
   const desc=document.getElementById("edit-desc").value.trim(),count=document.getElementById("edit-count").value.trim();
   await updateDoc(doc(db,"moves",id),{name,type:editType,desc,count:count||null,tags:editMoveTags});
   moves=moves.map(m=>m.id===id?{...m,name,type:editType,desc,count:count||null,tags:editMoveTags}:m);
-  showToast("保存しました！");closeEdit();window.showDetail(id);renderPickList();renderFilterArea("set-filter",setFilterQ,setFilterType,setFilterTag,"setFQ","setFT","setFTag");
+  showToast("保存しました！");closeEdit();window.showDetail(id);
+  renderPickList();renderFilterArea("set-filter",setFilterQ,setFilterType,setFilterTag,"setFQ","setFT","setFTag");
 }
 window.closeEdit=()=>document.getElementById("edit-screen").classList.remove("open");
 window.deleteMove=async function(id){
@@ -1220,5 +1176,13 @@ function uploadVideoForNew(file){
 }
 function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2500);}
 window.switchTab=function(name,el){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));el.classList.add("active");
-  document.querySelectorAll(".section").forEach(s=>s
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById("sec-"+name).classList.add("active");
+}
+function closeDetail(){document.getElementById("detail-screen").classList.remove("open");}
+function closeEdit(){document.getElementById("edit-screen").classList.remove("open");}
+</script>
+</body>
+</html>

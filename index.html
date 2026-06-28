@@ -522,7 +522,7 @@ function uploadVideoForNew(file){
       else{showToast("動画アップロード失敗");resolve("");}
     };
     xhr.onerror=()=>{bar.style.display="none";resolve("");};
-    xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+    xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
     xhr.send(fd);
   });
 }

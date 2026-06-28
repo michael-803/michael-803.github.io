@@ -408,7 +408,7 @@ window.uploadToCloudinary=async function(file,moveId){
     }
   };
   xhr.onerror=()=>{showToast("通信エラーが発生しました");if(bar)bar.style.display="none";};
-  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`);
+  xhr.open("POST",`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`);
   xhr.send(fd);
 }
 

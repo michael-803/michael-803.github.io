@@ -442,7 +442,14 @@ const BEATS={
     percGrid:[2,6],
   },
 };
-// ===== AUDIO ENGINE =====
+
+let selectedBeatKey="dilla_bounce";
+let currentBeatKey="dilla_bounce";
+let currentBPM=93;// user-adjustable
+let previewKey=null,previewInterval=null,previewBeat=0;
+
+  
+  // ===== AUDIO ENGINE =====
 let audioCtx = null, isPlaying = false;
 let beatInterval = null, beatCount = 0, totalBeats = 0;
 let currentSetMoves = [], currentMoveIdx = 0, beatsPerMove = [];

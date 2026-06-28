@@ -366,7 +366,7 @@ window.showDetail=function(id){
   const dz=document.getElementById(`drop-zone-${id}`);
   dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("dragover");});
   dz.addEventListener("dragleave",()=>dz.classList.remove("dragover"));
-  dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("dragover");const f=e.dataTransfer.files[0];if(f)window.uploadToCloudinary(f,id);});
+  dz.addEventListener("drop",e=>{e.preventDefault();e.stopPropagation();dz.classList.remove("dragover");const files=e.dataTransfer.files;if(files&&files.length>0)window.uploadToCloudinary(files[0],id);});
   document.getElementById("detail-screen").classList.add("open");
 }
 
@@ -425,8 +425,8 @@ const addDz=document.getElementById("add-drop-zone");
 addDz.addEventListener("dragover",e=>{e.preventDefault();addDz.classList.add("dragover");});
 addDz.addEventListener("dragleave",()=>addDz.classList.remove("dragover"));
 addDz.addEventListener("drop",e=>{
-  e.preventDefault();addDz.classList.remove("dragover");
-  const f=e.dataTransfer.files[0];
+  e.preventDefault();e.stopPropagation();addDz.classList.remove("dragover");
+  const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
   if(f&&f.type.startsWith("video/")){
     const preview=document.getElementById("add-video-preview");
     preview.src=URL.createObjectURL(f);

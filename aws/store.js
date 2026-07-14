@@ -6,16 +6,15 @@
    ・別端末の更新は onChange コールバックで受け取れる
    ============================================================ */
 
-// ★★★ ここを自分の Firebase 設定に書き換える（ここ1箇所だけ）★★★
+// ★ Firebase 設定（aws-study-hub プロジェクト）
 window.FIREBASE_CONFIG = {
-  apiKey:            "AIzaSy...",           // ← 自分の値
-  authDomain:        "aws-study-hub.firebaseapp.com",
-  projectId:         "aws-study-hub",
-  storageBucket:     "aws-study-hub.firebasestorage.app",
-  messagingSenderId: "123456789012",
-  appId:             "1:123...:web:abc..."
+  apiKey:            "AIzaSyBYdrdGHoLqeMfsKQBK1sGdriXjk__iJ2o",
+  authDomain:        "aws-study-hub-9fa13.firebaseapp.com",
+  projectId:         "aws-study-hub-9fa13",
+  storageBucket:     "aws-study-hub-9fa13.firebasestorage.app",
+  messagingSenderId: "667642812393",
+  appId:             "1:667642812393:web:164a65c4819cdc8e431d78"
 };
-// ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
 window.CloudStore = (function(){
   const cfg = window.FIREBASE_CONFIG;

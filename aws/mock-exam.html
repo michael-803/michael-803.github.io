@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLF-C02 模擬試験センター — 本番形式フルシミュレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* 本番の試験デリバリー画面を意識した、装飾を削ぎ落としたUI */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bar:#1b2a41;         /* 試験画面ヘッダー */
+  --bar-2:#22334f;
+  --ink:#1f2632;
+  --ink-soft:#5c6675;
+  --bg:#eef0f3;
+  --panel:#ffffff;
+  --line:#d7dbe2;
+  --blue:#0f62ac;
+  --blue-dark:#0b4c86;
+  --flag:#e07000;
+  --ok:#0c7a2d;--ok-bg:#e9f7ec;
+  --ng:#c22525;--ng-bg:#fdefef;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+body{font-family:"Noto Sans JP",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.8}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:3px solid #7aa7ff;outline-offset:2px}
+
+/* ===== 試験ヘッダーバー ===== */
+.exam-bar{
+  background:var(--bar);color:#fff;height:54px;
+  display:flex;align-items:center;gap:16px;padding:0 18px;
+  position:sticky;top:0;z-index:40;font-size:13px;
+}
+.exam-bar .title{font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.exam-bar .title small{display:block;font-weight:400;color:#aab6c8;font-size:11px;line-height:1.3}
+.exam-bar .spacer{flex:1}
+.timer{
+  font-family:var(--mono);font-size:17px;font-weight:600;
+  background:var(--bar-2);border:1px solid #3a4d6d;border-radius:6px;padding:4px 14px;white-space:nowrap;
+}
+.timer.low{background:#5c1a1a;border-color:#8f3030;color:#ffd7d7;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.65}}
+.qcount{font-family:var(--mono);color:#c6d0de;white-space:nowrap}
+
+/* ===== 共通レイアウト ===== */
+.wrap{max-width:920px;margin:0 auto;padding:26px 18px 130px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px 32px;margin-bottom:18px}
+@media(max-width:600px){.panel{padding:20px 16px}.wrap{padding:16px 10px 140px}}
+h1{font-size:22px;font-weight:900;line-height:1.5;margin-bottom:10px}
+h2{font-size:16px;font-weight:700;margin:18px 0 8px}
+.soft{color:var(--ink-soft);font-size:13.5px}
+.mono{font-family:var(--mono)}
+
+/* ===== 問題画面 ===== */
+.q-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.q-num{font-weight:900;font-size:15px}
+.q-type{font-size:11.5px;font-weight:700;color:#5a4300;background:#fff3d6;border:1px solid #ecd9a0;border-radius:5px;padding:2px 9px}
+.flag-btn{
+  margin-left:auto;background:#fff;border:1px solid var(--line);border-radius:7px;
+  padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);
+  display:flex;align-items:center;gap:7px;
+}
+.flag-btn .f-ic{color:#c3c9d2;font-size:14px}
+.flag-btn.on{border-color:var(--flag);color:#9c4e00;background:#fff4e8}
+.flag-btn.on .f-ic{color:var(--flag)}
+.q-text{font-size:15.5px;font-weight:500;margin:6px 0 22px;line-height:1.9}
+.opt{
+  display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;
+  background:#fff;border:1px solid var(--line);border-radius:9px;
+  padding:13px 16px;margin:9px 0;font-size:14.5px;line-height:1.75;
+  transition:border-color .1s, background .1s;
+}
+.opt:hover{border-color:#9db3cc;background:#fafcff}
+.opt .box{
+  width:20px;height:20px;flex-shrink:0;margin-top:4px;border:2px solid #9aa5b4;background:#fff;
+  display:grid;place-items:center;font-size:12px;color:transparent;
+}
+.opt .box.r{border-radius:50%}
+.opt .box.c{border-radius:4px}
+.opt.sel{border-color:var(--blue);background:#eef5fc}
+.opt.sel .box{border-color:var(--blue);background:var(--blue);color:#fff}
+.opt .ol{font-weight:700;color:var(--ink-soft);flex-shrink:0;width:18px;margin-top:1px}
+.multi-note{font-size:12.5px;color:var(--ink-soft);margin-bottom:8px}
+
+/* 解説レビュー時 */
+.opt.rv-correct{border-color:var(--ok);background:var(--ok-bg)}
+.opt.rv-wrong{border-color:var(--ng);background:var(--ng-bg)}
+.opt.rv-correct .box{border-color:var(--ok);background:var(--ok);color:#fff}
+.exp{background:#eef5fd;border:1px solid #bcd7f2;border-radius:9px;padding:13px 17px;font-size:13.5px;color:#0d3f6e;margin-top:14px}
+.exp b{color:#082d4f}
+
+/* ===== フッターナビ ===== */
+.exam-foot{
+  position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid var(--line);
+  padding:12px 18px;display:flex;gap:10px;align-items:center;z-index:40;
+}
+.exam-foot .inner{max-width:920px;margin:0 auto;display:flex;gap:10px;align-items:center;width:100%}
+.nav-btn{
+  border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;border:1px solid var(--line);background:#fff;
+}
+.nav-btn:hover{border-color:#9aa5b4}
+.nav-btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.nav-btn.primary:hover{background:var(--blue-dark)}
+.nav-btn:disabled{opacity:.4;cursor:not-allowed}
+.foot-spacer{flex:1}
+.kbd-hint{font-size:11px;color:var(--ink-soft);display:none}
+@media(min-width:700px){.kbd-hint{display:block}}
+
+/* ===== レビュー画面(問題一覧) ===== */
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-soft);margin:10px 0 16px}
+.legend span{display:flex;align-items:center;gap:6px}
+.lg{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);display:inline-block;position:relative}
+.lg.ans{background:var(--blue);border-color:var(--blue)}
+.lg.flg::after{content:"";position:absolute;top:-1px;right:-1px;border-style:solid;border-width:0 9px 9px 0;border-color:transparent var(--flag) transparent transparent}
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
+.pal button{
+  position:relative;border:1px solid var(--line);background:#fff;border-radius:7px;
+  padding:9px 0;font-size:13px;font-weight:700;font-family:var(--mono);color:var(--ink-soft);
+}
+.pal button.ans{background:var(--blue);border-color:var(--blue);color:#fff}
+.pal button.flg::after{content:"";position:absolute;top:-1px;right:-1px;border-style:solid;border-width:0 11px 11px 0;border-color:transparent var(--flag) transparent transparent;border-top-right-radius:6px}
+.pal button.cur{outline:3px solid #7aa7ff}
+
+/* ===== 開始画面・ホーム ===== */
+.home-hero{background:var(--bar);color:#fff;border-radius:12px;padding:34px 34px;margin-bottom:20px}
+@media(max-width:600px){.home-hero{padding:24px 18px}}
+.home-hero .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:#f1a33c;font-weight:600}
+.home-hero h1{font-size:24px;margin:8px 0 10px}
+.home-hero p{color:#c2cbd8;font-size:13.5px;max-width:62ch}
+.exam-card{
+  display:flex;gap:18px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:20px 24px;margin:12px 0;flex-wrap:wrap;
+}
+.exam-card .no{
+  font-family:var(--mono);font-weight:600;font-size:12px;color:#fff;background:var(--bar);
+  border-radius:8px;padding:10px 12px;line-height:1.4;text-align:center;flex-shrink:0;
+}
+.exam-card .no b{display:block;font-size:19px}
+.exam-card .info{flex:1;min-width:220px}
+.exam-card .info h3{font-size:16px;font-weight:700}
+.exam-card .info p{font-size:12.5px;color:var(--ink-soft)}
+.best{font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.best b{font-size:16px;color:var(--ink)}
+.best .pass{color:var(--ok)}.best .fail{color:var(--ng)}
+.start-btn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:11px 26px;font-weight:700;font-size:14px}
+.start-btn:hover{background:var(--blue-dark)}
+.rule-list{margin:10px 0 10px 24px;font-size:14px}
+.rule-list li{margin:7px 0}
+.notice{background:#fff8e6;border:1px solid #ecd695;border-radius:9px;padding:12px 16px;font-size:13px;color:#6e4d0e;margin:14px 0}
+
+/* ===== 結果画面 ===== */
+.result-hero{text-align:center;padding:34px 20px 26px}
+.verdict{display:inline-block;font-size:20px;font-weight:900;border-radius:10px;padding:10px 34px;margin-bottom:14px}
+.verdict.pass{background:var(--ok-bg);color:var(--ok);border:2px solid #9fd8ae}
+.verdict.fail{background:var(--ng-bg);color:var(--ng);border:2px solid #eeb1b1}
+.score-big{font-family:var(--mono);font-size:56px;font-weight:600;line-height:1.1}
+.score-big small{font-size:16px;color:var(--ink-soft);font-family:"Noto Sans JP"}
+.dom-row{display:flex;align-items:center;gap:14px;margin:13px 0;flex-wrap:wrap}
+.dom-row .dn{flex:0 0 260px;font-size:13.5px;font-weight:600}
+@media(max-width:640px){.dom-row .dn{flex-basis:100%}}
+.dom-bar{flex:1;min-width:140px;height:14px;background:#e7eaef;border-radius:7px;overflow:hidden}
+.dom-bar i{display:block;height:100%;border-radius:7px;background:var(--blue)}
+.dom-bar i.low{background:var(--ng)}
+.dom-pct{font-family:var(--mono);font-size:13px;width:110px;font-weight:600}
+.dom-judge{font-size:11.5px;font-weight:700;border-radius:5px;padding:2px 9px}
+.dom-judge.ok{background:var(--ok-bg);color:var(--ok)}
+.dom-judge.ng{background:var(--ng-bg);color:var(--ng)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.filter-row button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 16px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.filter-row button.on{background:var(--bar);border-color:var(--bar);color:#fff}
+.rv-q{border-top:1px solid var(--line);padding:22px 0 8px;margin-top:14px}
+.rv-tag{font-size:11px;font-weight:700;border-radius:5px;padding:2px 9px;margin-right:8px}
+.rv-tag.ok{background:var(--ok-bg);color:var(--ok)}
+.rv-tag.ng{background:var(--ng-bg);color:var(--ng)}
+.rv-tag.dm{background:#eef1f6;color:var(--ink-soft)}
+.hist-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.hist-table th,.hist-table td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left}
+.hist-table th{font-size:11.5px;color:var(--ink-soft)}
+dialog{border:none;border-radius:12px;padding:26px 30px;max-width:440px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(15,22,35,.55)}
+dialog h3{font-size:17px;font-weight:900;margin-bottom:8px}
+dialog p{font-size:13.5px;color:var(--ink-soft)}
+dialog .d-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.home-link{position:fixed;bottom:14px;left:14px;z-index:60;background:#22334f;color:#c6d0de;border:1px solid #3a4d6d;border-radius:20px;padding:6px 14px;font-size:12px;text-decoration:none;opacity:.85;transition:opacity .2s}
+.home-link:hover{opacity:1;color:#fff}
+@media print{.home-link{display:none}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<a href="index.html" class="home-link" aria-label="Study Deckへ戻る">⬅ Study Deck</a>
+<script src="store.js"></script>
+<script>
+/* ============================================================
+   問題データ
+   d: 1=クラウドのコンセプト 2=セキュリティとコンプライアンス
+      3=クラウドテクノロジーとサービス 4=請求、料金、およびサポート
+   m: 0=択一(4択) 1=複数選択(5択から2つ)
+   ============================================================ */
+const DOMAINS = {
+  1:{name:"クラウドのコンセプト", w:"24%"},
+  2:{name:"セキュリティとコンプライアンス", w:"30%"},
+  3:{name:"クラウドテクノロジーとサービス", w:"34%"},
+  4:{name:"請求、料金、およびサポート", w:"12%"}
+};
+
+const EXAMS = [
+/* ================================================================
+   模擬試験 第1回
+   ================================================================ */
+{ id:1, title:"模擬試験 第1回", questions:[
+/* ---- 分野1: クラウドのコンセプト (16問) ---- */
+{d:1,m:0,q:"ある企業がオンプレミスのデータセンターからAWSクラウドへ移行することを検討しています。財務面での主なメリットはどれですか。",
+ o:["サーバーへの先行投資(設備投資)を、使用量に応じた変動費に置き換えられる","ハードウェアの減価償却期間を延長できる","すべてのAWSサービスが定額制になる","データセンターの資産価値が向上する"],
+ a:[0],e:"クラウド移行の代表的な価値は、CapEx(設備投資)からOpEx(運用費・変動費)への転換です。使った分だけ支払う従量課金により、先行投資が不要になります。"},
+{d:1,m:0,q:"AWSが多数の顧客の使用量を集約することで低価格を実現できる理由を最もよく表す概念はどれですか。",
+ o:["垂直スケーリング","規模の経済","疎結合アーキテクチャ","エッジコンピューティング"],
+ a:[1],e:"数十万の顧客の利用が集約されることで調達・運用コストが下がり、それが値下げとして還元されます。これが「規模の経済(Economies of Scale)」です。"},
+{d:1,m:0,q:"「需要の増減に応じてリソースを自動的に取得・解放できる」というクラウドの特性を表す用語はどれですか。",
+ o:["俊敏性","弾力性","耐障害性","一貫性"],
+ a:[1],e:"弾力性(Elasticity)は需要に合わせてリソースを増減できる性質です。ピークに合わせた過剰な事前調達が不要になります。"},
+{d:1,m:0,q:"開発チームが新しいアイデアを思いついてから数分でテスト環境を用意し、失敗したらすぐ破棄できるようになりました。このメリットを表すクラウドの価値はどれですか。",
+ o:["高可用性","俊敏性","耐久性","整合性"],
+ a:[1],e:"俊敏性(Agility)は、リソースを即座に調達して実験・イノベーションのスピードを上げられるという価値です。失敗のコストが下がることで挑戦が容易になります。"},
+{d:1,m:0,q:"単一のAWSリージョン内でアプリケーションの可用性を高める方法として、最も適切なものはどれですか。",
+ o:["1つのアベイラビリティーゾーン内でインスタンスサイズを大きくする","複数のアベイラビリティーゾーンにインスタンスを分散配置する","複数のAWSアカウントを作成する","インスタンスを毎日再起動する"],
+ a:[1],e:"AZは物理的に隔離されたデータセンター群です。複数AZへの分散配置により、1つのAZの障害時もサービスを継続できます。"},
+{d:1,m:0,q:"AWS Well-Architected フレームワークの柱に含まれるものはどれですか。",
+ o:["オペレーショナルエクセレンス","グローバルリーチ","従量課金","仮想化"],
+ a:[0],e:"6つの柱は「オペレーショナルエクセレンス」「セキュリティ」「信頼性」「パフォーマンス効率」「コスト最適化」「持続可能性」です。"},
+{d:1,m:0,q:"アプリケーションのコンポーネント間を直接接続せず、障害の影響が波及しないように設計したいと考えています。この「疎結合」を実現するために使用できるAWSサービスはどれですか。",
+ o:["Amazon SQS","Amazon EBS","AWS CloudTrail","Amazon Route 53"],
+ a:[0],e:"SQS(メッセージキュー)をコンポーネント間に挟むことで、片方が停止してもメッセージがキューに保持され、システム全体の障害を防げます。疎結合の代表パターンです。"},
+{d:1,m:0,q:"ある企業は規制要件により一部のデータをオンプレミスに残しつつ、他のワークロードをAWSで実行しています。このクラウドデプロイモデルはどれですか。",
+ o:["パブリッククラウド","プライベートクラウド","ハイブリッドクラウド","マルチクラウド"],
+ a:[2],e:"オンプレミス環境とクラウドを接続して併用する形態がハイブリッドクラウドです。"},
+{d:1,m:0,q:"移行戦略のうち「リホスト(リフトアンドシフト)」の説明として正しいものはどれですか。",
+ o:["アプリケーションを大幅に作り替えてクラウドネイティブにする","アプリケーションをほぼ変更せずにそのままクラウドへ移す","アプリケーションを廃止する","SaaS製品の購入に切り替える"],
+ a:[1],e:"リホストは変更を最小限にしてそのまま移す戦略です。作り替えはリファクタリング、廃止はリタイア、SaaS購入はリパーチェスです。"},
+{d:1,m:0,q:"オンプレミスとAWSの総所有コスト(TCO)を比較する際、オンプレミス側のコストとして考慮すべきものはどれですか。",
+ o:["データ転送(受信)の料金","データセンターの電力・冷却・物理スペースの費用","APIリクエストごとの課金","リザーブドインスタンスの前払い金"],
+ a:[1],e:"TCO比較ではサーバー代だけでなく、電力・冷却・ラックスペース・運用人件費などオンプレミス特有の間接コストを含める必要があります。"},
+{d:1,m:0,q:"AWSのグローバルインフラストラクチャを利用する利点として最も適切なものはどれですか。",
+ o:["すべてのデータが自動的に全リージョンに複製される","世界中のユーザーの近くにアプリケーションを数分でデプロイし、レイテンシーを低減できる","リージョン間の通信は常に無料である","1つのリージョンしか使用できないため管理が簡単になる"],
+ a:[1],e:"世界各地のリージョンを使えば、物理的にユーザーに近い場所へ迅速にデプロイでき、低レイテンシーを実現できます。データの複製や料金は自動・無料ではありません。"},
+{d:1,m:0,q:"「高可用性」と「耐障害性(フォールトトレランス)」の違いの説明として最も適切なものはどれですか。",
+ o:["両者は完全に同じ意味である","高可用性はダウンタイムを最小限にすること、耐障害性は障害が発生しても機能を中断なく継続できることを指す","耐障害性はコストが安く、高可用性は高い","高可用性はハードウェア、耐障害性はソフトウェアにのみ関係する"],
+ a:[1],e:"高可用性は「復旧が速く停止時間が短い」設計、耐障害性は「障害が起きても止まらない」より強い設計です。一般に耐障害性の方が冗長化コストが高くなります。"},
+{d:1,m:1,q:"クラウドコンピューティングの6つの利点に含まれるものはどれですか。(2つ選択してください。)",
+ o:["キャパシティの需要予測が不要になる","データセンターの物理サーバーを自社で所有できる","わずか数分で世界中にデプロイできる","すべてのアプリケーションが自動的に高速化される","ハードウェア障害が発生しなくなる"],
+ a:[0,2],e:"6つの利点には「キャパシティ予測が不要」「数分でグローバル展開」が含まれます。物理サーバーの所有はむしろ不要になるもので、高速化や障害ゼロは保証されません。"},
+{d:1,m:1,q:"AWS Well-Architected フレームワークの柱はどれですか。(2つ選択してください。)",
+ o:["信頼性","収益性","持続可能性","匿名性","移植性"],
+ a:[0,2],e:"6つの柱は、オペレーショナルエクセレンス、セキュリティ、信頼性、パフォーマンス効率、コスト最適化、持続可能性です。収益性・匿名性・移植性は含まれません。"},
+{d:1,m:0,q:"サーバーレスアーキテクチャを採用する主な利点はどれですか。",
+ o:["サーバーのOSを自由にカスタマイズできる","サーバーのプロビジョニングや管理が不要になり、コードに集中できる","物理サーバーの設置場所を選択できる","常時稼働するため応答が保証される"],
+ a:[1],e:"サーバーレスの本質は「インフラ管理からの解放」です。プロビジョニング・パッチ適用・スケーリングをAWSに任せ、開発者はコードに集中できます。"},
+{d:1,m:0,q:"クラウド導入フレームワーク(AWS CAF)の主な目的はどれですか。",
+ o:["AWSの月額料金を見積もる","組織がクラウド移行を計画する際の指針を、ビジネスや人材などの観点(パースペクティブ)ごとに提供する","ネットワーク帯域を最適化する","プログラミング言語を選定する"],
+ a:[1],e:"CAFはビジネス・人材・ガバナンス・プラットフォーム・セキュリティ・オペレーションの6つの視点から、組織のクラウド移行を体系的に支援するフレームワークです。"},
+/* ---- 分野4: 請求、料金、およびサポート (8問) ---- */
+{d:4,m:0,q:"テクニカルアカウントマネージャー(TAM)が付くAWSサポートプランはどれですか。",
+ o:["ベーシック","デベロッパー","ビジネス","エンタープライズ"],
+ a:[3],e:"専任のTAMが付くのはエンタープライズプランです(Enterprise On-RampではTAMチームへのアクセス)。ビジネス以下にTAMは付きません。"},
+{d:4,m:0,q:"本番システムで障害が発生した際に24時間365日、電話・チャットで技術サポートを受けられる最も安価なサポートプランはどれですか。",
+ o:["ベーシック","デベロッパー","ビジネス","エンタープライズ"],
+ a:[2],e:"24時間365日の電話・チャットサポートはビジネスプラン以上です。デベロッパーは営業時間内のメールのみ、ベーシックに技術サポートはありません。"},
+{d:4,m:0,q:"AWSをまだ利用していない企業が、想定するアーキテクチャの月額費用を事前に見積もりたいと考えています。使用すべきツールはどれですか。",
+ o:["AWS Cost Explorer","AWS Pricing Calculator","AWS Budgets","AWS Cost and Usage Report"],
+ a:[1],e:"利用前の見積もりはPricing Calculatorです。Cost Explorerは利用後の分析、Budgetsはしきい値通知、CURは詳細な明細データです。"},
+{d:4,m:1,q:"AWS Organizationsの一括請求(コンソリデーティッドビリング)を利用する利点はどれですか。(2つ選択してください。)",
+ o:["複数アカウントの使用量が合算され、ボリューム割引が適用されやすくなる","すべてのアカウントのリソースが自動的に暗号化される","複数アカウントの請求を1つにまとめて支払える","各アカウントのIAMユーザーが統合される","すべてのサービスが無料になる"],
+ a:[0,2],e:"一括請求の利点は「支払いの一元化」と「使用量合算によるボリューム割引・無料枠の共有」です。暗号化やIAM統合は請求機能とは無関係です。"},
+{d:4,m:0,q:"過去6か月のサービス別コストの推移をグラフで可視化し、今後3か月のコストを予測したいと考えています。使用すべきツールはどれですか。",
+ o:["AWS Pricing Calculator","AWS Cost Explorer","AWS Artifact","Amazon CloudWatch"],
+ a:[1],e:"Cost Explorerは過去コストの可視化・分析に加え、将来の使用量予測(フォーキャスト)機能も備えています。"},
+{d:4,m:0,q:"AWS無料利用枠に関する説明として正しいものはどれですか。",
+ o:["すべてのAWSサービスが永久に無料で利用できる","「12か月間無料」「常時無料」「トライアル」の3種類の無料枠がある","無料利用枠はエンタープライズサポート契約者のみが対象である","無料利用枠を超えても課金されることはない"],
+ a:[1],e:"無料枠には、アカウント作成から12か月間有効なもの(EC2 t2.micro等)、常時無料のもの(Lambda月100万リクエスト等)、期間限定トライアルの3種類があります。超過分は課金されます。"},
+{d:4,m:0,q:"AWSのデータ転送料金に関する一般的な説明として正しいものはどれですか。",
+ o:["インターネットからAWSへのデータ受信(イン)は通常無料で、AWSからインターネットへの送信(アウト)は課金される","送信・受信ともに常に無料である","受信は課金され、送信は無料である","データ転送はすべて定額制である"],
+ a:[0],e:"原則として「イン(受信)は無料、アウト(送信)は課金」です。移行時の持ち込みは安く、大量配信はコストがかかる、と覚えましょう。"},
+{d:4,m:0,q:"部署ごとにAWSのコストを分類・集計できるようにしたいと考えています。最も適切な方法はどれですか。",
+ o:["部署ごとにリージョンを分ける","リソースにコスト配分タグを付与し、タグ別にコストを集計する","部署ごとに毎回スクリーンショットを保存する","すべてのリソース名に日付を入れる"],
+ a:[1],e:"コスト配分タグ(例: Department=Sales)を有効化すると、Cost Explorer等でタグ単位のコスト集計が可能になります。"},
+/* ---- 分野2: セキュリティとコンプライアンス (19問) ---- */
+{d:2,m:0,q:"AWS責任共有モデルにおいて、AWS側の責任に該当するものはどれですか。",
+ o:["IAMユーザーのアクセス権限の設定","データセンターの物理的なセキュリティ","S3バケットに保存するデータの分類","EC2インスタンス上のアプリケーションの脆弱性対応"],
+ a:[1],e:"AWSは「クラウド“の”セキュリティ」(物理設備、ハードウェア、基盤ソフトウェア)に責任を持ちます。権限設定やデータ管理は顧客側の責任です。"},
+{d:2,m:0,q:"Amazon EC2を利用する場合、責任共有モデルにおいて顧客側の責任となるものはどれですか。",
+ o:["ホストサーバーのハードウェア保守","ハイパーバイザーへのパッチ適用","ゲストOSへのセキュリティパッチ適用","データセンターの入退室管理"],
+ a:[2],e:"EC2はIaaSのため、ゲストOS以上のレイヤー(OSパッチ、ミドルウェア、アプリ、データ)は顧客の責任です。物理・仮想化基盤はAWSの責任です。"},
+{d:2,m:0,q:"EC2インスタンス上のアプリケーションからS3バケットへ安全にアクセスさせる方法として、最も推奨されるものはどれですか。",
+ o:["IAMユーザーのアクセスキーをソースコードに埋め込む","EC2インスタンスにIAMロールをアタッチする","S3バケットをパブリックに公開する","ルートユーザーの認証情報を使用する"],
+ a:[1],e:"AWSサービスに権限を与える場合はIAMロールを使います。一時的な認証情報が自動的に払い出され、キー漏洩のリスクを排除できます。"},
+{d:2,m:0,q:"パスワードに加えて認証アプリが生成するワンタイムコードの入力を必須にすることで、サインインのセキュリティを強化する仕組みはどれですか。",
+ o:["シングルサインオン(SSO)","多要素認証(MFA)","フェデレーション","パスワードポリシー"],
+ a:[1],e:"MFA(多要素認証)は「知識(パスワード)+所持(デバイス)」など複数の要素を組み合わせる認証で、認証情報漏洩時の不正アクセスを防ぎます。"},
+{d:2,m:0,q:"AWSアカウントのルートユーザーでなければ実行できないタスクはどれですか。",
+ o:["EC2インスタンスの起動","AWSアカウントの解約","S3バケットの作成","IAMユーザーの作成"],
+ a:[1],e:"アカウントの解約、サポートプランの変更、一部の税務・請求設定などはルートユーザー専用のタスクです。日常操作はIAMで行い、ルートは封印します。"},
+{d:2,m:0,q:"IAMにおける「最小権限の原則」を実践している例として最も適切なものはどれですか。",
+ o:["全社員にAdministratorAccessを付与して業務効率を上げる","データアナリストに、分析対象のS3バケットへの読み取り権限のみを付与する","退職者のIAMユーザーを残しておく","開発者全員でひとつのIAMユーザーを共有する"],
+ a:[1],e:"業務に必要な最小限の権限だけを付与するのが最小権限の原則です。過剰な権限・共有アカウント・放置アカウントはすべてアンチパターンです。"},
+{d:2,m:0,q:"AWSアカウント内の悪意のあるアクティビティや異常な挙動(不正なAPIコール、マイニング通信など)を機械学習で継続的に検出するサービスはどれですか。",
+ o:["Amazon GuardDuty","AWS WAF","AWS Shield","Amazon Macie"],
+ a:[0],e:"GuardDutyはCloudTrail・VPCフローログ・DNSログなどを分析し、脅威を自動検出する脅威検出サービスです。"},
+{d:2,m:0,q:"EC2インスタンスやコンテナイメージをスキャンして、ソフトウェアの脆弱性や意図しないネットワーク公開を検出するサービスはどれですか。",
+ o:["Amazon Inspector","AWS Artifact","Amazon Cognito","AWS Config"],
+ a:[0],e:"Inspectorは脆弱性管理サービスで、EC2・ECRイメージ・Lambdaを自動スキャンしてCVE(既知の脆弱性)などを検出します。"},
+{d:2,m:0,q:"S3バケット内に保存された個人情報(PII)などの機密データを、機械学習を用いて自動的に検出・分類するサービスはどれですか。",
+ o:["Amazon GuardDuty","Amazon Macie","AWS KMS","Amazon Detective"],
+ a:[1],e:"MacieはS3内のデータをスキャンし、氏名・クレジットカード番号などの機密データを検出・分類するサービスです。"},
+{d:2,m:0,q:"DDoS攻撃からAWS上のアプリケーションを保護するマネージドサービスはどれですか。",
+ o:["AWS Shield","AWS KMS","AWS Secrets Manager","Amazon Inspector"],
+ a:[0],e:"ShieldはDDoS保護サービスです。Standardは全顧客に無料で自動適用され、Advancedは高度な保護と専門チームのサポートを提供します。"},
+{d:2,m:0,q:"SQLインジェクションやクロスサイトスクリプティングなど、Webアプリケーションへの一般的な攻撃リクエストをフィルタリングするサービスはどれですか。",
+ o:["AWS WAF","AWS Shield","セキュリティグループ","Amazon GuardDuty"],
+ a:[0],e:"WAF(Web Application Firewall)はHTTP/HTTPSリクエストをルールで検査し、SQLi・XSSなどの攻撃パターンをブロックします。"},
+{d:2,m:0,q:"データ暗号化に使用する暗号化キーの作成・管理を一元的に行えるサービスはどれですか。",
+ o:["AWS KMS","AWS WAF","Amazon Inspector","AWS Trusted Advisor"],
+ a:[0],e:"KMS(Key Management Service)は暗号化キーの作成・ローテーション・アクセス制御を担い、EBS・S3・RDSなど多くのサービスの暗号化と統合されています。"},
+{d:2,m:0,q:"「いつ、誰が、どのAPIを呼び出したか」というAWSアカウント内の操作履歴を記録し、監査に利用できるサービスはどれですか。",
+ o:["Amazon CloudWatch","AWS CloudTrail","AWS Config","AWS X-Ray"],
+ a:[1],e:"CloudTrailはAPIコールの証跡(誰が・いつ・何を)を記録します。CloudWatchはメトリクス監視、Configはリソース構成の記録・評価です。"},
+{d:2,m:0,q:"AWSリソースの構成変更を継続的に記録し、「EBSはすべて暗号化されているか」のようなルールに準拠しているかを評価するサービスはどれですか。",
+ o:["AWS CloudTrail","AWS Config","Amazon GuardDuty","AWS Systems Manager"],
+ a:[1],e:"Configはリソースの構成履歴を記録し、ルールに基づいて準拠/非準拠を継続的に評価します。「構成」がキーワードならConfigです。"},
+{d:2,m:0,q:"監査人からSOCレポートやISO認証などのAWSのコンプライアンスレポートの提出を求められました。これらをダウンロードできるサービスはどれですか。",
+ o:["AWS Artifact","AWS Config","AWS License Manager","Amazon Inspector"],
+ a:[0],e:"ArtifactはAWSのコンプライアンスレポート(SOC、ISO、PCIなど)をセルフサービスでダウンロードできるポータルです。"},
+{d:2,m:0,q:"データベースの認証情報やAPIキーを安全に保存し、自動的なローテーション(定期変更)も行えるサービスはどれですか。",
+ o:["AWS Secrets Manager","Amazon S3のパブリックバケット","AWS CloudTrail","Amazon SNS"],
+ a:[0],e:"Secrets Managerはシークレット(認証情報等)を暗号化して保存し、RDSなどと連携した自動ローテーションが可能です。"},
+{d:2,m:1,q:"AWSアカウントを保護するためのベストプラクティスはどれですか。(2つ選択してください。)",
+ o:["ルートユーザーにMFAを設定する","ルートユーザーのアクセスキーを作成して日常的に使用する","ルートユーザーのアクセスキーは作成せず、日常作業はIAMユーザー(またはIAM Identity Center)で行う","パスワードを全社員で共有する","すべてのIAMユーザーにAdministratorAccessを付与する"],
+ a:[0,2],e:"ルートのMFA有効化と、ルートアクセスキーを作らず日常作業をIAMに移すことが基本のベストプラクティスです。"},
+{d:2,m:1,q:"転送中および保存時のデータ保護に役立つ方法はどれですか。(2つ選択してください。)",
+ o:["TLS/SSL(HTTPS)を使用して通信を暗号化する","AWS KMSのキーを使用してS3やEBSのデータを暗号化する","すべてのデータをパブリックバケットに保存する","暗号化はパフォーマンスに影響するためすべて無効にする","データをメールで平文送信する"],
+ a:[0,1],e:"転送中の保護はTLS/SSL、保存時の保護はKMS等による暗号化が基本です。"},
+{d:2,m:0,q:"セキュリティグループとネットワークACLの違いとして正しいものはどれですか。",
+ o:["セキュリティグループはステートフルで許可ルールのみ、ネットワークACLはステートレスで許可と拒否の両方を記述できる","両者は完全に同じ機能である","ネットワークACLはインスタンス単位、セキュリティグループはサブネット単位で適用される","セキュリティグループは拒否ルールのみ記述できる"],
+ a:[0],e:"SG=インスタンス単位・ステートフル・許可のみ/NACL=サブネット単位・ステートレス・許可も拒否も。この対比は最頻出です。"},
+/* ---- 分野3: クラウドテクノロジーとサービス (22問) ---- */
+{d:3,m:0,q:"処理の中断が許容されるバッチ処理を、可能な限り低コストで実行したいと考えています。最も適切なEC2の購入オプションはどれですか。",
+ o:["オンデマンドインスタンス","リザーブドインスタンス","スポットインスタンス","Dedicated Hosts"],
+ a:[2],e:"スポットインスタンスはAWSの余剰キャパシティを最大90%割引で利用できますが、中断される可能性があります。「中断OK+最安」がキーワードです。"},
+{d:3,m:0,q:"法規制により7年間保管が必要だが、取り出す機会はほとんどないデータを最も低コストで保存できるS3ストレージクラスはどれですか。",
+ o:["S3 Standard","S3 Standard-IA","S3 Glacier Deep Archive","S3 Intelligent-Tiering"],
+ a:[2],e:"Glacier Deep Archiveは取り出しに時間(標準12時間)がかかる代わりに最安の長期アーカイブ向けクラスです。"},
+{d:3,m:0,q:"複数のEC2インスタンスから同時にマウントして共有できるファイルストレージはどれですか。",
+ o:["Amazon EBS","Amazon EFS","インスタンスストア","Amazon S3 Glacier"],
+ a:[1],e:"EFSは複数インスタンスから同時マウントできるNFSファイルシステムです。EBSは基本的に1インスタンスにアタッチするブロックストレージです。"},
+{d:3,m:0,q:"Amazon RDSを利用する主なメリットはどれですか。",
+ o:["データベースのOSに自由にソフトウェアをインストールできる","バックアップ、パッチ適用、フェイルオーバーなどの運用管理をAWSに任せられる","ライセンス費用が常に無料になる","NoSQLデータベースとして利用できる"],
+ a:[1],e:"RDSはマネージドリレーショナルデータベースで、バックアップ・パッチ・マルチAZフェイルオーバー等の運用をAWSが担います。OSへのアクセスはできません。"},
+{d:3,m:0,q:"ミリ秒単位の応答が求められる大規模なキーバリュー型データを扱う、フルマネージドのNoSQLデータベースはどれですか。",
+ o:["Amazon RDS","Amazon DynamoDB","Amazon Redshift","Amazon Aurora"],
+ a:[1],e:"DynamoDBはサーバーレスのNoSQL(キーバリュー/ドキュメント)データベースで、規模によらず一桁ミリ秒の性能を発揮します。"},
+{d:3,m:0,q:"ペタバイト級のデータに対して複雑な分析クエリを実行する、データウェアハウス向けのサービスはどれですか。",
+ o:["Amazon Redshift","Amazon ElastiCache","Amazon Neptune","Amazon SQS"],
+ a:[0],e:"Redshiftは分析用途(OLAP)のデータウェアハウスです。大量データへの集計・分析クエリが得意です。"},
+{d:3,m:0,q:"データベースへの読み取りアクセスを高速化するため、インメモリキャッシュ層を追加したいと考えています。適切なサービスはどれですか。",
+ o:["Amazon ElastiCache","Amazon S3","AWS Storage Gateway","Amazon EFS"],
+ a:[0],e:"ElastiCache(Redis/Memcached互換)はインメモリキャッシュで、頻繁に読まれるデータをメモリ上に置いてDB負荷を下げ応答を高速化します。"},
+{d:3,m:0,q:"サーバーのプロビジョニングなしにコードを実行でき、実行時間に応じてミリ秒単位で課金されるサービスはどれですか。",
+ o:["Amazon EC2","AWS Lambda","Amazon LightSail","AWS Outposts"],
+ a:[1],e:"Lambdaはサーバーレスコンピューティングサービスです。イベント駆動で実行され、コードが動いた時間だけ課金されます。"},
+{d:3,m:0,q:"コンテナを実行したいが、基盤となるEC2インスタンスの管理はしたくないと考えています。適切な起動タイプ/サービスはどれですか。",
+ o:["AWS Fargate","Amazon EC2","AWS Snowball","Amazon WorkSpaces"],
+ a:[0],e:"FargateはECS/EKS用のサーバーレスコンテナ実行エンジンで、ホストインスタンスの管理が不要になります。"},
+{d:3,m:0,q:"開発者がコードをアップロードするだけで、キャパシティのプロビジョニング、ロードバランシング、Auto Scaling、モニタリングまで自動的に処理してくれるサービスはどれですか。",
+ o:["AWS Elastic Beanstalk","AWS CloudTrail","Amazon VPC","AWS Direct Connect"],
+ a:[0],e:"Elastic BeanstalkはPaaS型のサービスで、コードを渡すだけでインフラ一式を自動構築・管理します。内部リソースの制御権も維持されます。"},
+{d:3,m:0,q:"ドメイン名(example.com)をIPアドレスに変換する、高可用性のDNSサービスはどれですか。",
+ o:["Amazon CloudFront","Amazon Route 53","AWS Direct Connect","Amazon API Gateway"],
+ a:[1],e:"Route 53はマネージドDNSサービスです。ドメイン登録、ヘルスチェック、各種ルーティングポリシーも提供します。"},
+{d:3,m:0,q:"世界中のユーザーに動画や画像などのコンテンツを低レイテンシーで配信するために、エッジロケーションを利用するサービスはどれですか。",
+ o:["Amazon CloudFront","Amazon EBS","AWS Batch","Amazon RDS"],
+ a:[0],e:"CloudFrontはCDNサービスで、世界中のエッジロケーションにコンテンツをキャッシュし、ユーザーの近くから高速配信します。"},
+{d:3,m:0,q:"オンプレミスのデータセンターとAWSの間を、インターネットを経由しない専用ネットワーク回線で接続するサービスはどれですか。",
+ o:["AWS Direct Connect","Amazon CloudFront","AWS Site-to-Site VPN","Amazon Route 53"],
+ a:[0],e:"Direct Connectは専用線接続サービスで、安定した帯域と一貫したネットワーク品質を提供します。VPNはインターネット経由の暗号化接続です。"},
+{d:3,m:0,q:"注文処理システムで、Webサーバーと処理サーバーの間にメッセージを一時保管するキューを挟み、疎結合にしたいと考えています。適切なサービスはどれですか。",
+ o:["Amazon SNS","Amazon SQS","AWS Step Functions","Amazon Kinesis"],
+ a:[1],e:"SQSはフルマネージドのメッセージキューです。受信側が停止してもメッセージが保持され、処理の平準化と疎結合を実現します。"},
+{d:3,m:0,q:"1つのイベントを、Eメール・SMS・複数のシステムへ同時に通知(パブリッシュ/サブスクライブ)したいと考えています。適切なサービスはどれですか。",
+ o:["Amazon SQS","Amazon SNS","AWS CloudTrail","Amazon EFS"],
+ a:[1],e:"SNSはpub/sub型の通知サービスで、1つのトピックに発行したメッセージを複数のサブスクライバー(メール、Lambda、SQS等)へ同時配信します。"},
+{d:3,m:0,q:"インフラストラクチャをテンプレートファイル(コード)として定義し、同じ環境を繰り返し自動構築できるようにするサービスはどれですか。",
+ o:["AWS CloudFormation","Amazon CloudWatch","AWS Trusted Advisor","Amazon Connect"],
+ a:[0],e:"CloudFormationはIaC(Infrastructure as Code)サービスです。テンプレートから環境を再現性高くプロビジョニングできます。"},
+{d:3,m:0,q:"EC2インスタンスのCPU使用率を監視し、しきい値を超えたら通知するアラームを設定したいと考えています。適切なサービスはどれですか。",
+ o:["AWS CloudTrail","Amazon CloudWatch","AWS Config","Amazon Macie"],
+ a:[1],e:"CloudWatchはメトリクスの収集・可視化・アラームを担う監視サービスです。APIの記録はCloudTrail、構成の記録はConfigです。"},
+{d:3,m:0,q:"ネットワーク帯域が限られた環境から、数百テラバイトのデータを物理デバイスでAWSへ移送したいと考えています。適切なサービスはどれですか。",
+ o:["AWS Snowball Edge","AWS Direct Connect","Amazon CloudFront","AWS DataSync"],
+ a:[0],e:"Snowファミリーは物理デバイスによるデータ移送サービスです。ネットワーク転送では時間がかかりすぎる大容量データに適しています。"},
+{d:3,m:1,q:"リレーショナルデータベースを提供するAWSのサービスはどれですか。(2つ選択してください。)",
+ o:["Amazon RDS","Amazon DynamoDB","Amazon Aurora","Amazon SQS","Amazon ElastiCache"],
+ a:[0,2],e:"RDSとAurora(MySQL/PostgreSQL互換の高性能DB)がリレーショナルです。DynamoDBはNoSQL、SQSはキュー、ElastiCacheはキャッシュです。"},
+{d:3,m:1,q:"急なアクセス増にも自動で対応できる可用性の高いWebアプリケーションを構築します。組み合わせて使用すべきサービスはどれですか。(2つ選択してください。)",
+ o:["Elastic Load Balancing","Amazon EC2 Auto Scaling","AWS CloudTrail","Amazon Polly","AWS Artifact"],
+ a:[0,1],e:"ELBで複数インスタンスへトラフィックを分散し、Auto Scalingで需要に応じてインスタンス数を自動増減させるのが定番構成です。"},
+{d:3,m:0,q:"アップロードされた画像から顔やオブジェクト、不適切なコンテンツを検出したいと考えています。機械学習の専門知識なしで利用できるサービスはどれですか。",
+ o:["Amazon Rekognition","Amazon Polly","Amazon Comprehend","AWS Glue"],
+ a:[0],e:"Rekognitionは画像・動画分析のAIサービスです。Pollyは音声合成、Comprehendは自然言語処理(テキスト分析)です。"},
+{d:3,m:0,q:"S3に保存された大量のログファイルに対して、サーバーを立てずに標準SQLで直接クエリを実行したいと考えています。適切なサービスはどれですか。",
+ o:["Amazon Athena","Amazon RDS","AWS Snowball","Amazon MQ"],
+ a:[0],e:"AthenaはS3上のデータに直接SQLを実行できるサーバーレスのクエリサービスです。スキャンしたデータ量に応じた課金です。"},
+]},
+/* ================================================================
+   模擬試験 第2回
+   ================================================================ */
+{ id:2, title:"模擬試験 第2回", questions:[
+/* ---- 分野1 (16問) ---- */
+{d:1,m:0,q:"クラウドの従量課金制(pay-as-you-go)がもたらす主なメリットはどれですか。",
+ o:["需要を正確に予測して数年分のリソースを事前購入できる","使用した分だけ支払うため、需要に合わせてコストを最適化できる","料金が毎月固定になる","リソースの解放が不要になる"],
+ a:[1],e:"従量課金では、必要な時に必要な分だけ使い、使った分だけ支払います。過剰な事前投資も遊休リソースも減らせます。"},
+{d:1,m:0,q:"EC2インスタンスのサイズをt3.mediumからt3.xlargeに変更して性能を上げました。このスケーリング手法はどれですか。",
+ o:["水平スケーリング(スケールアウト)","垂直スケーリング(スケールアップ)","オートヒーリング","シャーディング"],
+ a:[1],e:"1台の性能を上げるのが垂直スケーリング(スケールアップ)、台数を増やすのが水平スケーリング(スケールアウト)です。"},
+{d:1,m:0,q:"AWSリージョンを選択する際の考慮事項として適切でないものはどれですか。",
+ o:["エンドユーザーとの距離(レイテンシー)","データ所在地に関する法規制やコンプライアンス要件","利用したいサービスがそのリージョンで提供されているか","リージョンごとのAWSアカウント作成費用"],
+ a:[3],e:"リージョン選択の観点はレイテンシー・コンプライアンス・サービス提供状況・料金です。アカウント作成費用というものは存在しません。"},
+{d:1,m:0,q:"アベイラビリティーゾーン(AZ)の説明として正しいものはどれですか。",
+ o:["1つのデータセンターの中の1つのラックを指す","リージョン内にある、物理的に分離された1つ以上のデータセンター群で、AZ間は低レイテンシーのネットワークで接続されている","世界中に200か所以上あるコンテンツ配信拠点を指す","AWSアカウントごとに専有される物理施設を指す"],
+ a:[1],e:"AZは電源・冷却・ネットワークが独立したデータセンター群で、リージョン内で相互に高速接続されています。配信拠点はエッジロケーションです。"},
+{d:1,m:0,q:"Well-Architected フレームワークの「信頼性」の柱に沿った設計原則はどれですか。",
+ o:["障害の発生を前提とし、自動的に復旧できるように設計する","すべてのリソースを1つのAZに集約して管理を簡素化する","障害は運用担当者が手動で対応する","テストは本番リリース後に行う"],
+ a:[0],e:"「Design for failure(障害を前提に設計する)」が信頼性の柱の中心的な考え方です。自動復旧・冗長化・復旧手順のテストが推奨されます。"},
+{d:1,m:0,q:"移行戦略のうち「リファクタリング(リアーキテクト)」の説明として正しいものはどれですか。",
+ o:["アプリケーションを変更せずそのまま移行する","OSやDBを一部変更するが、アーキテクチャの中核は維持する","クラウドネイティブな機能を最大限活用できるよう、アプリケーションを再設計する","アプリケーションの利用を停止する"],
+ a:[2],e:"リファクタリングはサーバーレス化やマネージドDB化など、クラウドの利点を最大化するための再設計です。効果は大きい一方、工数も最大の戦略です。"},
+{d:1,m:0,q:"季節セールの期間だけトラフィックが通常の10倍になるECサイトがあります。クラウドのどの特性が最も価値を発揮しますか。",
+ o:["弾力性 — ピーク時だけリソースを増やし、終了後に減らせる","耐久性 — データが失われにくい","可搬性 — 他のクラウドへ移行できる","一貫性 — データが常に同期される"],
+ a:[0],e:"需要の山谷が大きいワークロードこそ弾力性の出番です。ピークに合わせた常時保有が不要になり、コストを大幅に削減できます。"},
+{d:1,m:0,q:"パブリッククラウドの特徴として最も適切なものはどれですか。",
+ o:["インフラを自社のデータセンター内に構築し、自社のみが利用する","クラウド事業者が所有・運用するインフラを、インターネット経由で複数の顧客が共用する","物理サーバーを1社で専有することが必須である","インターネットに接続できない"],
+ a:[1],e:"パブリッククラウドは事業者のインフラをマルチテナントで共用するモデルです。自社専有で構築するのはプライベートクラウドです。"},
+{d:1,m:0,q:"クラウドを利用することで実現しやすくなる「イノベーションの加速」の説明として最も適切なものはどれですか。",
+ o:["実験用の環境を低コストかつ数分で用意でき、失敗してもすぐに破棄できるため、試行回数を増やせる","1回の試行に時間をかけることが推奨される","新しい試みには必ず稟議と設備購入が必要になる","イノベーションはクラウドとは無関係である"],
+ a:[0],e:"環境調達の時間とコストが劇的に下がることで「たくさん試して速く学ぶ」ことが可能になります。これがクラウドによるイノベーション加速の本質です。"},
+{d:1,m:0,q:"モノリシックなアプリケーションをマイクロサービスに分割する主な利点はどれですか。",
+ o:["すべてのコンポーネントを同時にデプロイする必要がある","各コンポーネントを独立して開発・デプロイ・スケールでき、1つの障害が全体に波及しにくくなる","コードの総量が必ず減る","データベースが不要になる"],
+ a:[1],e:"疎結合なマイクロサービスは独立した変更・スケーリングが可能で、障害の影響範囲(ブラスト半径)も限定されます。"},
+{d:1,m:0,q:"Well-Architected フレームワークの「コスト最適化」の柱に沿ったプラクティスはどれですか。",
+ o:["最大負荷を想定して常に最大サイズのインスタンスを稼働させる","使用状況を計測し、不要なリソースを停止・削除して支出を管理する","コストの確認は年に1回だけ行う","すべてのワークロードにオンデマンドのみを使用する"],
+ a:[1],e:"コスト最適化の基本は「計測と適正化」。使用状況を可視化し、適切なサイズ・購入オプション・不要リソースの削除を継続的に行います。"},
+{d:1,m:0,q:"創業間もないスタートアップにとって、クラウドがもたらす最も大きな利点はどれですか。",
+ o:["大企業と同等のインフラを初期投資なしで利用でき、事業の成長に合わせて拡張できる","物理サーバーを保有することで資産が増える","インフラ管理者を多数雇用できる","固定費が増える"],
+ a:[0],e:"初期投資ゼロで世界水準のインフラを使えることは、資金の限られたスタートアップにとって決定的な利点です。"},
+{d:1,m:1,q:"オンプレミスと比較したAWSクラウドの経済的メリットはどれですか。(2つ選択してください。)",
+ o:["データセンターの維持管理費が不要になる","ハードウェアのリプレース計画を自社で立てる必要がある","使用量に応じた支払いにより過剰投資を回避できる","電気代を自社で直接管理できる","サーバーの物理的な所有権を持てる"],
+ a:[0,2],e:"設備の維持管理からの解放と、従量課金による過剰投資の回避が経済的メリットです。所有・管理の継続はオンプレミスの特徴です。"},
+{d:1,m:1,q:"アプリケーション移行の「7R」戦略に含まれるものはどれですか。(2つ選択してください。)",
+ o:["リホスト","リブート","リパーチェス","リフレッシュ","リマインド"],
+ a:[0,2],e:"7Rはリホスト、リプラットフォーム、リパーチェス、リファクタリング、リタイア、リテイン、リロケートです。リブート等は含まれません。"},
+{d:1,m:0,q:"マネージドサービス(RDS、Lambdaなど)を採用する主な利点はどれですか。",
+ o:["運用管理の負担をAWSに任せ、自社はビジネス価値を生む差別化業務に集中できる","インフラのあらゆる詳細を自社で制御できる","障害対応をすべて自社で行える","OSのカーネルをカスタマイズできる"],
+ a:[0],e:"パッチ・バックアップ・スケーリングなどの「差別化につながらない重労働」をAWSに任せることで、開発リソースを本業に集中できます。"},
+{d:1,m:0,q:"ある企業は自社専用に構築されたクラウド環境を自社データセンター内で運用しています。このデプロイモデルはどれですか。",
+ o:["パブリッククラウド","プライベートクラウド(オンプレミス)","ハイブリッドクラウド","コミュニティクラウド"],
+ a:[1],e:"自社専有で運用するのがプライベートクラウドです。仮想化等のクラウド技術を使っていても、専有ならプライベートに分類されます。"},
+/* ---- 分野4 (8問) ---- */
+{d:4,m:0,q:"ミッションクリティカルなシステム停止時に15分以内の応答が保証され、専任のテクニカルアカウントマネージャーが付くサポートプランはどれですか。",
+ o:["デベロッパー","ビジネス","エンタープライズ","ベーシック"],
+ a:[2],e:"エンタープライズプランは、ビジネスクリティカル障害への15分以内の応答と専任TAMを提供する最上位プランです。"},
+{d:4,m:0,q:"すべてのAWSアカウントに追加料金なしで含まれるサポート内容はどれですか。",
+ o:["24時間365日の電話による技術サポート","公式ドキュメント・ホワイトペーパー・AWS re:Postへのアクセスと、アカウント・請求に関するカスタマーサービス","専任TAMによる月次レビュー","インフライベント管理"],
+ a:[1],e:"ベーシックサポート(無料)にはドキュメント類、コミュニティ、請求サポート、Trusted Advisorのコアチェックが含まれます。技術サポートは有料プランからです。"},
+{d:4,m:0,q:"月のAWS利用額が予算の80%に達した時点でメール通知を受け取りたいと考えています。使用すべきサービスはどれですか。",
+ o:["AWS Budgets","AWS Pricing Calculator","AWS Artifact","AWS CloudFormation"],
+ a:[0],e:"Budgetsは予算としきい値を設定し、実績または予測がしきい値に達した時に通知するサービスです。"},
+{d:4,m:0,q:"最も詳細な粒度でAWSの請求・使用状況データを取得し、自社の分析基盤に取り込みたいと考えています。適切なものはどれですか。",
+ o:["AWS Cost and Usage Report(CUR)","AWS Pricing Calculator","AWSサポートへの問い合わせ","AWS Health Dashboard"],
+ a:[0],e:"CURは時間単位・リソース単位まで分解された最も詳細な請求データをS3に出力します。詳細分析の一次データとして使われます。"},
+{d:4,m:0,q:"リザーブドインスタンスと比較した場合のSavings Plansの特徴として正しいものはどれですか。",
+ o:["1時間あたりの利用額をコミットする代わりに、インスタンスファミリーやリージョンをまたぐ柔軟な割引が受けられる","特定のインスタンスIDに割引が固定される","コミットなしで割引が受けられる","スポットインスタンスにのみ適用される"],
+ a:[0],e:"Savings Plansは「使用量(＄/時)」へのコミットで、Compute Savings Plansならファミリー・リージョン・FargateやLambdaにまで柔軟に割引が適用されます。"},
+{d:4,m:0,q:"サードパーティ製ソフトウェア(セキュリティ製品、BIツールなど)を検索し、AWSの請求に統合して購入・デプロイできる場はどれですか。",
+ o:["AWS Marketplace","AWS Artifact","AWS re:Post","AWS CloudShell"],
+ a:[0],e:"Marketplaceはサードパーティ製品のデジタルカタログです。購入額はAWSの請求にまとめられ、多くはすぐデプロイ可能な形で提供されます。"},
+{d:4,m:0,q:"AWS Trusted Advisorの説明として正しいものはどれですか。",
+ o:["コスト最適化、セキュリティ、耐障害性、パフォーマンス、サービスの上限などの観点で環境をチェックし、改善を推奨する","AWSの新サービスを発表するブログである","コードの構文エラーを検出するツールである","ドメイン名を登録するサービスである"],
+ a:[0],e:"Trusted Advisorはベストプラクティスとの差分を自動チェックするツールです。全チェック項目の利用はビジネスプラン以上で解放されます。"},
+{d:4,m:0,q:"S3の利用量が増えるほど、GBあたりの単価が段階的に安くなる料金体系を何と呼びますか。",
+ o:["ボリューム(段階制)割引","スポット料金","無料利用枠","前払い割引"],
+ a:[0],e:"S3やデータ転送には使用量の階層(ティア)ごとに単価が下がるボリューム割引があります。「使うほど単価が下がる」仕組みです。"},
+/* ---- 分野2 (19問) ---- */
+{d:2,m:0,q:"AWS Lambdaを利用する場合、責任共有モデルにおいて顧客側の責任となるものはどれですか。",
+ o:["Lambdaの実行基盤(サーバー)へのパッチ適用","アップロードする関数コードのセキュリティと、関数に付与するIAM権限の管理","データセンターの物理セキュリティ","ランタイム環境の基盤メンテナンス"],
+ a:[1],e:"マネージド度が高いサービスほどAWS側の責任範囲が広がりますが、コード自体・データ・権限設定は常に顧客の責任です。"},
+{d:2,m:0,q:"Amazon S3を利用する場合、責任共有モデルにおいて顧客側の責任となるものはどれですか。",
+ o:["ストレージ基盤のハードウェア管理","バケットポリシーやアクセス許可の適切な設定","S3を構成するデータセンターの災害対策","ストレージの冗長化の実装"],
+ a:[1],e:"S3の基盤(ハードウェア・冗長化)はAWSの責任、バケットに入れるデータの管理とアクセス設定は顧客の責任です。公開設定ミスは顧客側の事故になります。"},
+{d:2,m:0,q:"IAMポリシーの説明として正しいものはどれですか。",
+ o:["どのアクションを許可または拒否するかを定義したJSON形式のドキュメント","EC2インスタンスのOS設定ファイル","ネットワークの経路情報","AWSの利用料金表"],
+ a:[0],e:"IAMポリシーはEffect(許可/拒否)、Action(操作)、Resource(対象)などをJSONで記述した権限定義書です。"},
+{d:2,m:0,q:"開発部門の20人に同じ権限セットを付与し、今後の人員変更にも効率的に対応したいと考えています。最も適切な方法はどれですか。",
+ o:["20人それぞれのIAMユーザーに個別にポリシーをアタッチする","IAMグループを作成してポリシーをアタッチし、20人のユーザーをグループに追加する","20人でひとつのIAMユーザーを共有する","全員にルートユーザーの認証情報を配布する"],
+ a:[1],e:"グループにポリシーを付け、ユーザーの出入りはグループへの追加・削除で管理するのが定石です。共有アカウントやルート配布は重大なアンチパターンです。"},
+{d:2,m:0,q:"IAMユーザーのアクセスキーの管理として最も適切なものはどれですか。",
+ o:["ソースコードリポジトリにコミットして共有する","定期的にローテーションし、不要になったキーは無効化・削除する","チーム全員で同じキーを使い回す","パスワードと同じ文字列に設定する"],
+ a:[1],e:"アクセスキーは定期ローテーションと不要キーの削除が基本です。コードへの埋め込みや共有は漏洩事故の典型原因です。"},
+{d:2,m:0,q:"AWS上の自社ワークロードに対するペネトレーションテスト(侵入テスト)に関する説明として正しいものはどれですか。",
+ o:["いかなる場合もペネトレーションテストは禁止されている","EC2やRDSなど許可されたサービスに対しては、事前承認なしで自社リソースへのテストを実施できる","他社のAWSリソースにも自由にテストできる","テストにはAWSの物理データセンターへの立ち入りが必要である"],
+ a:[1],e:"AWSはポリシーで定められた対象サービスへの自社リソースのペネトレーションテストを事前承認なしで認めています。他者のリソースへの攻撃は当然禁止です。"},
+{d:2,m:0,q:"GuardDuty、Inspector、Macieなど複数のセキュリティサービスからの検出結果を一元的に集約し、セキュリティ状況を横断的に把握できるサービスはどれですか。",
+ o:["AWS Security Hub","AWS CloudShell","Amazon EventBridge","AWS Batch"],
+ a:[0],e:"Security Hubは各セキュリティサービスの検出結果(Findings)を集約し、標準への準拠状況とあわせて一元管理するダッシュボードです。"},
+{d:2,m:0,q:"開発中のWebアプリやモバイルアプリに、サインアップ・サインイン機能(エンドユーザー認証)を簡単に組み込みたいと考えています。適切なサービスはどれですか。",
+ o:["Amazon Cognito","AWS IAM","AWS Directory Service","AWS Artifact"],
+ a:[0],e:"Cognitoはアプリのエンドユーザー向け認証・認可サービスです。IAMはAWSリソースの操作権限を管理するもので、アプリ利用者の認証には使いません。"},
+{d:2,m:0,q:"厳格なコンプライアンス要件により、専有のハードウェアセキュリティモジュール上で暗号化キーを管理する必要があります。適切なサービスはどれですか。",
+ o:["AWS CloudHSM","AWS WAF","Amazon GuardDuty","AWS Firewall Manager"],
+ a:[0],e:"CloudHSMは専有のハードウェアセキュリティモジュール(FIPS 140-2レベル3検証済み)を提供します。共有基盤のKMSでは満たせない専有要件に対応します。"},
+{d:2,m:0,q:"AWS Trusted Advisorが検出できるセキュリティ上の問題の例はどれですか。",
+ o:["誰でもアクセス可能な状態になっているS3バケット","アプリケーションコードのバグ","従業員のパスワードの実際の文字列","オフィスの入退室記録"],
+ a:[0],e:"Trusted AdvisorのセキュリティチェックにはS3バケットの公開設定、セキュリティグループの過剰開放、ルートMFA未設定などが含まれます。"},
+{d:2,m:0,q:"AWS Shield Standardの説明として正しいものはどれですか。",
+ o:["追加料金なしで、すべてのAWS顧客に一般的なDDoS攻撃からの保護を自動的に提供する","月額課金の高度なDDoS対策で、専門チームのサポートが付く","Webアプリケーションの脆弱性を修正するサービスである","オンプレミス専用のファイアウォールである"],
+ a:[0],e:"Shield Standardは無料・自動適用でL3/L4の一般的なDDoS攻撃から保護します。高度な保護・専門チーム対応・コスト保護はShield Advanced(有料)です。"},
+{d:2,m:0,q:"複数のAWSアカウントを利用する組織で、従業員が1つのIDですべてのアカウントにサインインできるようにしたいと考えています。適切なサービスはどれですか。",
+ o:["AWS IAM Identity Center","Amazon Macie","AWS KMS","Amazon Inspector"],
+ a:[0],e:"IAM Identity Center(旧AWS SSO)は複数アカウントへのシングルサインオンとアクセス権限の一元管理を提供します。"},
+{d:2,m:0,q:"IAMユーザーのパスワードに「12文字以上」「記号を含む」などの要件を強制する機能はどれですか。",
+ o:["パスワードポリシー","バケットポリシー","キーペア","証明書ポリシー"],
+ a:[0],e:"IAMのアカウントパスワードポリシーで、長さ・文字種・有効期限・再利用制限などを強制できます。"},
+{d:2,m:0,q:"S3バケットに保存するデータを、保存時に自動的に暗号化する機能はどれですか。",
+ o:["サーバーサイド暗号化(SSE)","TLS/SSL","セキュリティグループ","バージョニング"],
+ a:[0],e:"S3のサーバーサイド暗号化は保存時(at rest)の暗号化です。TLSは転送中(in transit)の暗号化で、両者の区別が問われます。"},
+{d:2,m:0,q:"オンプレミスのネットワークとVPCの間に、インターネット経由の暗号化されたトンネルを比較的短期間・低コストで確立する方法はどれですか。",
+ o:["AWS Site-to-Site VPN","AWS Direct Connect","Amazon CloudFront","VPCピアリング"],
+ a:[0],e:"Site-to-Site VPNはIPsecの暗号化トンネルをインターネット上に構築します。専用線のDirect Connectより安価・迅速に導入できます。"},
+{d:2,m:0,q:"「先月、本番環境のセキュリティグループ設定を誰が変更したのか」を調査する必要があります。確認すべきサービスはどれですか。",
+ o:["AWS CloudTrail","Amazon CloudFront","AWS Pricing Calculator","Amazon EFS"],
+ a:[0],e:"CloudTrailにはAPIコールの履歴(実行者・日時・操作内容・送信元IP)が記録されており、変更操作の監査・調査に使用します。"},
+{d:2,m:1,q:"AWSアカウント内での不正なアクティビティの検出・調査に役立つサービスはどれですか。(2つ選択してください。)",
+ o:["Amazon GuardDuty","AWS CloudTrail","Amazon Polly","AWS Elastic Beanstalk","Amazon Lex"],
+ a:[0,1],e:"GuardDutyが脅威を自動検出し、CloudTrailのAPI履歴で詳細を調査するのが基本の組み合わせです。PollyやLexはAIサービスです。"},
+{d:2,m:1,q:"監査・コンプライアンス対応を支援するAWSのサービスはどれですか。(2つ選択してください。)",
+ o:["AWS Artifact","AWS Audit Manager","Amazon GameLift","AWS Snowcone","Amazon Kendra"],
+ a:[0,1],e:"ArtifactはAWSのコンプライアンスレポートの取得、Audit Managerは自社利用状況の証跡収集を自動化し、監査準備を支援します。"},
+{d:2,m:0,q:"「本番アカウント内のすべてのEBSボリュームが暗号化されているか」を継続的にチェックし、違反リソースを一覧化したいと考えています。適切なサービスはどれですか。",
+ o:["AWS Config","AWS CloudTrail","Amazon SNS","AWS Batch"],
+ a:[0],e:"Configルールを使うと、リソース構成がルール(例: EBS暗号化必須)に準拠しているかを継続評価し、非準拠を検出できます。"},
+/* ---- 分野3 (22問) ---- */
+{d:3,m:0,q:"EC2 Auto Scalingの主な機能はどれですか。",
+ o:["需要やスケジュールに応じてEC2インスタンスの台数を自動的に増減させる","インスタンスのOSを自動的に切り替える","請求書を自動的に支払う","コードのバグを自動修正する"],
+ a:[0],e:"Auto Scalingはポリシー(CPU使用率など)やスケジュールに基づきインスタンス数を自動調整し、可用性維持とコスト最適化を両立させます。"},
+{d:3,m:0,q:"HTTP/HTTPSトラフィックをパスやホスト名に基づいて複数のターゲットへ振り分けたい場合、最も適切なElastic Load Balancingのタイプはどれですか。",
+ o:["Application Load Balancer(ALB)","Network Load Balancer(NLB)","Gateway Load Balancer","Classic Load Balancer"],
+ a:[0],e:"ALBはレイヤー7(HTTP/HTTPS)で動作し、パス・ホストベースの高度なルーティングが可能です。超高性能なTCP/UDP処理はNLBの領域です。"},
+{d:3,m:0,q:"S3 Intelligent-Tieringの説明として正しいものはどれですか。",
+ o:["アクセスパターンを監視し、オブジェクトを最適なアクセス階層へ自動的に移動してコストを最適化する","すべてのデータを最も高価な階層に固定する","データを自動的に削除する","EC2専用のストレージである"],
+ a:[0],e:"Intelligent-Tieringはアクセス頻度の変化が予測できないデータに向いており、階層間の移動を自動化してストレージコストを最適化します。"},
+{d:3,m:0,q:"MySQLおよびPostgreSQLと互換性があり、標準的なMySQLと比べて高いスループットを発揮するようAWSがクラウド向けに構築したリレーショナルデータベースはどれですか。",
+ o:["Amazon Aurora","Amazon DynamoDB","Amazon Redshift","Amazon DocumentDB"],
+ a:[0],e:"AuroraはMySQL/PostgreSQL互換のクラウドネイティブRDBで、高性能・高可用性(3AZに6コピー)が特徴です。"},
+{d:3,m:0,q:"稼働中のオンプレミスのデータベースを、ダウンタイムを最小限に抑えながらAWSへ移行したいと考えています。適切なサービスはどれですか。",
+ o:["AWS Database Migration Service(DMS)","AWS CloudFormation","Amazon QuickSight","AWS X-Ray"],
+ a:[0],e:"DMSは稼働中のDBを継続レプリケーションしながら移行できるサービスです。異なるDBエンジン間の移行(Oracle→Auroraなど)にも対応します。"},
+{d:3,m:0,q:"オンプレミスのファイルサーバーとAWSストレージ間の大量データ転送を、ネットワーク経由で高速・自動的に行うサービスはどれですか。",
+ o:["AWS DataSync","AWS Snowball","Amazon Route 53","AWS Shield"],
+ a:[0],e:"DataSyncはオンライン(ネットワーク経由)のデータ転送を自動化・高速化します。物理輸送のSnowファミリーとの使い分けが問われます。"},
+{d:3,m:0,q:"オンプレミスのアプリケーションからは従来通りのファイル共有として見えるが、実データはS3に保存される、というハイブリッドストレージを実現するサービスはどれですか。",
+ o:["AWS Storage Gateway","Amazon EBS","AWS Glue","Amazon MQ"],
+ a:[0],e:"Storage Gatewayはオンプレミスとクラウドストレージを橋渡しするハイブリッドサービスで、ファイル/ボリューム/テープの各ゲートウェイがあります。"},
+{d:3,m:0,q:"Kubernetesクラスターの運用管理(コントロールプレーンの維持など)をAWSに任せたいと考えています。適切なサービスはどれですか。",
+ o:["Amazon EKS","Amazon EC2","AWS CloudTrail","Amazon Aurora"],
+ a:[0],e:"EKS(Elastic Kubernetes Service)はマネージドKubernetesサービスです。AWS独自方式のコンテナオーケストレーションはECSです。"},
+{d:3,m:0,q:"複数のLambda関数や処理ステップからなるワークフローを、視覚的に定義・実行・管理できるサービスはどれですか。",
+ o:["AWS Step Functions","Amazon SQS","AWS Direct Connect","Amazon Athena"],
+ a:[0],e:"Step Functionsはステートマシンとしてワークフローを定義し、条件分岐・リトライ・並列処理などを含む一連の処理をオーケストレーションします。"},
+{d:3,m:0,q:"IoTセンサーから毎秒送られてくる大量のストリーミングデータをリアルタイムに収集・処理する基盤として適切なサービスはどれですか。",
+ o:["Amazon Kinesis","Amazon S3 Glacier","AWS Backup","Amazon WorkSpaces"],
+ a:[0],e:"Kinesisはストリーミングデータのリアルタイム収集・処理サービスです。「リアルタイム」「ストリーミング」がキーワードです。"},
+{d:3,m:0,q:"データ分析の前処理として、データの抽出・変換・ロード(ETL)をサーバーレスで実行できるサービスはどれですか。",
+ o:["AWS Glue","Amazon Route 53","AWS WAF","Amazon Connect"],
+ a:[0],e:"GlueはサーバーレスETLサービスで、データカタログ機能も提供します。分析前のデータ整形・統合に使用します。"},
+{d:3,m:0,q:"経営層向けにデータをグラフやダッシュボードで可視化するBI(ビジネスインテリジェンス)サービスはどれですか。",
+ o:["Amazon QuickSight","AWS CloudShell","Amazon EFS","AWS Fargate"],
+ a:[0],e:"QuickSightはマネージドBIサービスで、各種データソースからインタラクティブなダッシュボードを作成できます。"},
+{d:3,m:0,q:"機械学習モデルの構築・トレーニング・デプロイまでを一貫して行える、開発者・データサイエンティスト向けのサービスはどれですか。",
+ o:["Amazon SageMaker","Amazon Rekognition","Amazon Polly","Amazon Translate"],
+ a:[0],e:"SageMakerはMLモデル開発のフルマネージドプラットフォームです。Rekognition等は学習済みモデルを使うAPI型AIサービスという違いがあります。"},
+{d:3,m:0,q:"テキストを自然な音声に変換する(音声合成)AIサービスはどれですか。",
+ o:["Amazon Polly","Amazon Transcribe","Amazon Comprehend","Amazon Textract"],
+ a:[0],e:"Pollyはテキスト→音声の合成サービスです。逆の音声→テキストはTranscribe、テキスト分析はComprehend、文書からの抽出はTextractです。"},
+{d:3,m:0,q:"EC2インスタンス群へのOSパッチ適用やコマンドの一括実行など、運用作業を一元管理・自動化するサービスはどれですか。",
+ o:["AWS Systems Manager","Amazon GuardDuty","AWS Artifact","Amazon SNS"],
+ a:[0],e:"Systems Managerはパッチマネージャー、セッションマネージャー(SSH不要の接続)、Run Commandなど運用管理機能を統合したサービスです。"},
+{d:3,m:0,q:"世界中のユーザーからのトラフィックを、AWSのグローバルネットワークを経由して最適なリージョンのエンドポイントへルーティングし、アプリケーションの可用性と性能を向上させるサービスはどれですか。",
+ o:["AWS Global Accelerator","Amazon EBS","AWS Config","Amazon RDS"],
+ a:[0],e:"Global Acceleratorは静的なグローバルIPを提供し、AWSバックボーン経由で最寄りの正常なエンドポイントへ誘導します。CDN(キャッシュ)のCloudFrontとの違いに注意。"},
+{d:3,m:0,q:"低レイテンシー要件やローカルデータ処理の規制のため、AWSのインフラとサービスを自社のデータセンター内で実行したいと考えています。適切なサービスはどれですか。",
+ o:["AWS Outposts","Amazon Lightsail","AWS Lambda","Amazon CloudFront"],
+ a:[0],e:"OutpostsはAWSのラックを顧客のデータセンターに設置し、オンプレミスでAWSサービスを実行できるハイブリッドソリューションです。"},
+{d:3,m:0,q:"仮想サーバー・ストレージ・データ転送がセットになった予測可能な月額料金で、簡単にWebサイトや小規模アプリを構築できるサービスはどれですか。",
+ o:["Amazon Lightsail","AWS Outposts","Amazon Redshift","AWS Direct Connect"],
+ a:[0],e:"LightsailはVPS型のシンプルなサービスで、複雑な構成なしに定額でサーバーを使いたい入門用途・小規模用途に向いています。"},
+{d:3,m:0,q:"Amazon EC2のインスタンスストア(エフェメラルストレージ)の特徴として正しいものはどれですか。",
+ o:["インスタンスを停止・終了するとデータが失われる一時ストレージである","データは自動的に複数リージョンへ複製される","インスタンスから独立して永続する","無制限の容量を持つ"],
+ a:[0],e:"インスタンスストアはホストに物理的に接続された一時領域で、停止・終了でデータが消えます。永続化が必要ならEBSやS3を使います。"},
+{d:3,m:0,q:"モバイルアプリやWebアプリのバックエンドとして、REST APIやWebSocket APIを作成・公開・管理するサービスはどれですか。",
+ o:["Amazon API Gateway","Amazon EFS","AWS Snowball","Amazon Neptune"],
+ a:[0],e:"API GatewayはAPIの作成・公開・認証・スロットリング・モニタリングを担うフルマネージドサービスで、Lambdaと組み合わせたサーバーレスAPIが定番です。"},
+{d:3,m:1,q:"静的なWebサイトを低コストかつ高いスケーラビリティで世界に公開したいと考えています。組み合わせて使用するのに適したサービスはどれですか。(2つ選択してください。)",
+ o:["Amazon S3(静的ウェブサイトホスティング)","Amazon CloudFront","Amazon RDS","AWS Direct Connect","Amazon EMR"],
+ a:[0,1],e:"S3で静的ファイルをホストし、CloudFrontで世界中へ低レイテンシー配信するのが定番のサーバーレス構成です。データベースや専用線は不要です。"},
+{d:3,m:1,q:"アプリケーションのイベント駆動アーキテクチャを構築する際に、サービス間のイベントの受け渡しに使用できるサービスはどれですか。(2つ選択してください。)",
+ o:["Amazon EventBridge","Amazon SNS","Amazon EBS","AWS Artifact","Amazon WorkSpaces"],
+ a:[0,1],e:"EventBridgeはイベントバスでルールに基づきイベントを配信、SNSはpub/sub通知です。EBSはストレージ、Artifactはレポート、WorkSpacesは仮想デスクトップです。"},
+]},
+/* ================================================================
+   模擬試験 第3回
+   ================================================================ */
+{ id:3, title:"模擬試験 第3回", questions:[
+/* ---- 分野1 (16問) ---- */
+{d:1,m:0,q:"クラウド移行によって「固定費が変動費に変わる」ことの説明として最も適切なものはどれですか。",
+ o:["データセンターやサーバーへの大きな先行投資が不要になり、実際の使用量に応じて支払うようになる","毎月の支払額が完全に一定になる","費用が発生しなくなる","会計上の処理が不要になる"],
+ a:[0],e:"クラウドでは資産の購入(固定費・CapEx)が不要になり、使用量ベースの支払い(変動費・OpEx)に変わります。"},
+{d:1,m:0,q:"「キャパシティの推測が不要になる」というクラウドの利点の説明として正しいものはどれですか。",
+ o:["需要に応じてリソースを増減できるため、事前に正確な需要予測をしてリソースを確保しておく必要がなくなる","キャパシティという概念自体が存在しなくなる","AWSが顧客のビジネス需要を予測してくれる","リソースの上限がなくなる"],
+ a:[0],e:"オンプレミスでは需要予測を誤ると「過剰投資」か「機会損失」になりますが、クラウドでは需要に追従してスケールできるため推測が不要になります。"},
+{d:1,m:0,q:"Well-Architected フレームワークの「持続可能性」の柱が主に扱うテーマはどれですか。",
+ o:["ワークロードの環境負荷(エネルギー消費など)を削減すること","ビジネスの黒字を維持すること","システムを長期間変更しないこと","従業員の勤続年数を延ばすこと"],
+ a:[0],e:"持続可能性の柱は、リソース効率の最大化などによりワークロードの環境への影響を削減することを扱います。2021年に6つ目の柱として追加されました。"},
+{d:1,m:0,q:"Well-Architected フレームワークにおいて、「セキュリティ」の柱に含まれる考え方はどれですか。",
+ o:["すべてのレイヤーでセキュリティを適用し、トレーサビリティを確保する","セキュリティは最後にまとめて追加する","セキュリティは特定の担当者だけの責任とする","利便性のために認証を省略する"],
+ a:[0],e:"セキュリティの柱は「全レイヤーでの多層防御」「追跡可能性」「最小権限」「自動化」などの設計原則を掲げます。後付け・属人化はアンチパターンです。"},
+{d:1,m:0,q:"「パフォーマンス効率」の柱に沿ったプラクティスとして適切なものはどれですか。",
+ o:["新しいインスタンスタイプやサービスを試し、要件に最適なリソースを選択し続ける","一度選んだ構成は要件が変わっても変更しない","常に最大スペックを選んでおけばよい","性能測定は行わない"],
+ a:[0],e:"パフォーマンス効率の柱は「進化するテクノロジーの活用」「実験の推奨」「適切なリソース選択」を掲げます。計測と見直しの継続が鍵です。"},
+{d:1,m:0,q:"移行戦略の「リパーチェス」に該当する例はどれですか。",
+ o:["自社運用のメールサーバーを廃止し、SaaS型のメールサービスの利用に切り替える","サーバーをそのままEC2へ移す","データベースだけマネージドサービスに変える","アプリケーションを廃止して何も置き換えない"],
+ a:[0],e:"リパーチェスは既存製品を捨てて別製品(主にSaaS)を「買い直す」戦略です。廃止だけならリタイア、そのまま移行はリホストです。"},
+{d:1,m:0,q:"RDSのマルチAZ配置を有効にする主な目的はどれですか。",
+ o:["読み取り性能を向上させるため","プライマリ障害時に別AZのスタンバイへ自動フェイルオーバーし、可用性を高めるため","ストレージ料金を安くするため","データを別リージョンに複製するため"],
+ a:[1],e:"マルチAZは可用性のための仕組みです(同期レプリケーション+自動フェイルオーバー)。読み取りスケールが目的ならリードレプリカを使います。"},
+{d:1,m:0,q:"「スケールアウト」の説明として正しいものはどれですか。",
+ o:["サーバーの台数を増やして処理能力を高める","サーバー1台のCPUやメモリを増強する","サーバーを停止する","サーバーを別リージョンに移動する"],
+ a:[0],e:"スケールアウト=台数を増やす(水平)、スケールアップ=1台を強くする(垂直)です。クラウドではAuto Scalingによるスケールアウトが基本戦略です。"},
+{d:1,m:0,q:"グローバル企業が新しい国でサービスを開始する際、クラウドの利点が最も発揮される点はどれですか。",
+ o:["現地にデータセンターを建設してから開始できる","その国に近いリージョンを選択し、数分〜数日でインフラを展開できる","現地の電力会社と契約してから開始できる","物理サーバーを輸送してから開始できる"],
+ a:[1],e:"AWSの既存リージョンを使えば、データセンター建設に何年もかけることなく短期間でグローバル展開が可能です。"},
+{d:1,m:0,q:"オンプレミスからクラウドへ移行することで削減が期待できる「間接的なコスト」の例はどれですか。",
+ o:["ハードウェア調達・設置・保守にかかる担当者の作業時間","AWSの月額利用料","従量課金のデータ転送費用","リザーブドインスタンスの前払い金"],
+ a:[0],e:"TCOには人件費や機会損失などの間接コストが含まれます。調達・ラッキング・保守といった作業からの解放は大きな削減要素です。"},
+{d:1,m:1,q:"アプリケーションの高可用性を高める設計プラクティスはどれですか。(2つ選択してください。)",
+ o:["複数のアベイラビリティーゾーンにリソースを配置する","Elastic Load Balancingで複数インスタンスにトラフィックを分散する","すべてのリソースを単一のインスタンスに集約する","バックアップを取得しない","単一AZでインスタンスサイズのみを大きくする"],
+ a:[0,1],e:"マルチAZ配置とロードバランサーによる分散が高可用性の基本です。単一障害点(SPOF)を作る構成は可用性を下げます。"},
+{d:1,m:1,q:"クラウドにおける「俊敏性」がもたらす効果はどれですか。(2つ選択してください。)",
+ o:["新しい環境の調達が数か月から数分に短縮される","実験の失敗コストが下がり、イノベーションに挑戦しやすくなる","ハードウェアの所有権が得られる","物理サーバーの寿命が延びる","監査が不要になる"],
+ a:[0,1],e:"俊敏性の本質は「調達スピード」と「低コストな試行錯誤」です。所有・監査はクラウドの利点とは関係ありません。"},
+{d:1,m:0,q:"1つのリージョン全体に及ぶ大規模障害に備えて事業継続性を高めたい場合、検討すべき構成はどれですか。",
+ o:["同一AZ内にインスタンスを追加する","別のリージョンにもワークロードやバックアップを配置する(マルチリージョン)","インスタンスタイプを変更する","タグを追加する"],
+ a:[1],e:"AZ障害への備えはマルチAZ、リージョン障害への備えはマルチリージョン(DR構成やクロスリージョンレプリケーション)です。障害の粒度と対策を対応させましょう。"},
+{d:1,m:0,q:"クラウドにおける「エッジロケーション」の主な役割はどれですか。",
+ o:["CloudFrontなどがコンテンツをキャッシュし、ユーザーの近くから配信するための拠点","EC2インスタンスを起動するための拠点","AWSの本社オフィス","顧客専用の物理データセンター"],
+ a:[0],e:"エッジロケーションは世界中に数百か所ある配信拠点で、リージョンやAZよりも数が多く、CDNやRoute 53などが利用します。"},
+{d:1,m:0,q:"開発チームがインフラ構築を待たずに、セルフサービスで必要なリソースをすぐ入手できるというクラウドの特性は、ビジネスに何をもたらしますか。",
+ o:["市場投入までの時間(Time to Market)の短縮","物理資産の増加","固定費の増加","調達プロセスの複雑化"],
+ a:[0],e:"セルフサービスかつオンデマンドの調達により、アイデアから提供開始までのリードタイムが短縮されます。"},
+{d:1,m:0,q:"ECサイトの深夜帯はトラフィックが少ないため、リソースを自動的に縮小してコストを抑えたいと考えています。この考え方に最も関連するものはどれですか。",
+ o:["需要と供給の一致(弾力性によるコスト最適化)","データの耐久性向上","ネットワークの冗長化","暗号化の強化"],
+ a:[0],e:"「需要に供給を一致させる」ことはクラウド経済学の中心概念で、Auto Scalingやサーバーレスにより実現します。"},
+/* ---- 分野4 (8問) ---- */
+{d:4,m:0,q:"営業時間内のEメールによる技術サポートが利用できる、最も安価な有料サポートプランはどれですか。",
+ o:["ベーシック","デベロッパー","ビジネス","エンタープライズ"],
+ a:[1],e:"デベロッパープランは営業時間内のEメールサポート(一般的な質問24時間以内、システム障害12時間以内の応答目標)を提供します。"},
+{d:4,m:0,q:"EC2インスタンスのサイズが実際の使用状況に対して過剰(オーバープロビジョニング)でないかを、機械学習で分析して最適なリソース設定を推奨するサービスはどれですか。",
+ o:["AWS Compute Optimizer","AWS Artifact","Amazon Macie","AWS CloudShell"],
+ a:[0],e:"Compute Optimizerは使用状況メトリクスを分析し、EC2・EBS・Lambdaなどの最適なサイズ設定を推奨します。ライトサイジングの強力な味方です。"},
+{d:4,m:0,q:"AWS Budgetsで設定できる予算の種類として正しいものはどれですか。",
+ o:["コスト予算に加え、使用量・リザーブドインスタンスやSavings Plansの使用率・カバレッジの予算も設定できる","コスト予算のみ設定できる","予算は1アカウントに1つしか作れない","予算は米ドル以外では設定できない"],
+ a:[0],e:"Budgetsはコストだけでなく、使用量やRI/SPの使用率・カバレッジに対するしきい値アラートも設定できます。"},
+{d:4,m:0,q:"AWS Organizationsを利用して複数アカウントを管理する利点はどれですか。",
+ o:["アカウントの一括請求に加え、サービスコントロールポリシー(SCP)でアカウント群に対する権限のガードレールを設定できる","すべてのアカウントのデータが自動的に統合される","アカウント間のネットワークが自動的に接続される","リージョンが増える"],
+ a:[0],e:"Organizationsは一括請求とSCPによる組織的なガバナンス(許可の上限設定)を提供します。ネットワーク接続やデータ統合は別途設定が必要です。"},
+{d:4,m:0,q:"1年または3年の利用をコミットする代わりに、オンデマンドと比べて大幅な割引を受けられるEC2の購入オプションはどれですか。",
+ o:["リザーブドインスタンス","スポットインスタンス","オンデマンドインスタンス","キャパシティ予約のみ"],
+ a:[0],e:"リザーブドインスタンス(およびSavings Plans)は1年/3年のコミットで最大72%程度の割引を受けられます。定常的なワークロード向けです。"},
+{d:4,m:0,q:"AWSのサービスやリージョンで現在発生している障害情報や、自分のアカウントに影響するイベントの通知を確認できる場所はどれですか。",
+ o:["AWS Health Dashboard","AWS Marketplace","Amazon QuickSight","AWS Artifact"],
+ a:[0],e:"Health Dashboardはサービス全体の稼働状況と、自アカウントに影響するイベント(メンテナンス予定など)を確認できます。"},
+{d:4,m:0,q:"コンソールへのMFA未設定ユーザーや、公開されたアクセスキーの検出など「無料で利用できる」Trusted Advisorのチェックに関する説明として正しいものはどれですか。",
+ o:["すべてのサポートプランで、セキュリティとサービス上限に関する一部のコアチェックを利用できる","Trusted Advisorはエンタープライズプラン専用である","無料で全チェック項目を利用できる","Trusted Advisorは有料オプションを購入したアカウント専用である"],
+ a:[0],e:"コアチェック(セキュリティの基本項目+サービスクォータ)は全プランで利用可能です。全チェックの解放はビジネスプラン以上です。"},
+{d:4,m:0,q:"AWSアカウントの月額料金に「意図しない高額課金」が発生していないかをメールで早期に知りたい、という個人学習者に最初に推奨される設定はどれですか。",
+ o:["AWS Budgetsで少額の予算とアラートを設定する","毎日コンソールにログインして請求書を目視する","課金を気にせず利用する","サポートに毎日電話する"],
+ a:[0],e:"少額予算+しきい値アラートの設定は、学習用アカウントの定番の防御策です。CloudWatchの請求アラームも併用できます。"},
+/* ---- 分野2 (19問) ---- */
+{d:2,m:0,q:"Amazon RDSを利用する場合、責任共有モデルにおいてAWS側の責任となるものはどれですか。",
+ o:["データベースエンジンやOSへのパッチ適用","保存するデータの内容と分類","データベースへのアクセス権限の設定","アプリケーションからの接続情報の管理"],
+ a:[0],e:"RDSはマネージドサービスのため、OS・DBエンジンのパッチはAWSが担います。データ・権限・接続情報の管理は顧客の責任です。"},
+{d:2,m:0,q:"利用するAWSサービスの種類にかかわらず、常に顧客側の責任となるものはどれですか。",
+ o:["データセンターの空調管理","自社のデータの管理と、IAMによるアクセス権限の適切な設定","ハイパーバイザーの脆弱性対応","物理ネットワーク機器の交換"],
+ a:[1],e:"「データ」と「アクセス管理」はIaaSでもSaaSに近いサービスでも常に顧客の責任として残ります。"},
+{d:2,m:0,q:"「EC2への不審なSSH試行やマイニング通信を自動検出したい」場合と「EC2内のソフトウェア脆弱性(CVE)を検出したい」場合の適切なサービスの組み合わせはどれですか。",
+ o:["前者:GuardDuty、後者:Inspector","前者:Inspector、後者:GuardDuty","前者:Macie、後者:WAF","前者:Shield、後者:Artifact"],
+ a:[0],e:"GuardDutyは「振る舞い(脅威)の検出」、Inspectorは「脆弱性のスキャン」です。この使い分けは頻出です。"},
+{d:2,m:0,q:"ある企業は顧客の個人情報を含むファイルがS3のどこに保存されているかを把握できていません。この状況の改善に最も役立つサービスはどれですか。",
+ o:["Amazon Macie","AWS Shield","Amazon Route 53","AWS Batch"],
+ a:[0],e:"MacieはS3内をスキャンして個人情報などの機密データの所在を可視化します。データガバナンスの第一歩に有効です。"},
+{d:2,m:0,q:"公開しているWebアプリケーションに対する既知の攻撃パターン(SQLインジェクション等)への防御と、特定の国からのアクセス制限を同時に実現したいと考えています。適切なサービスはどれですか。",
+ o:["AWS WAF","AWS KMS","Amazon Inspector","AWS CloudTrail"],
+ a:[0],e:"WAFはWebリクエストをルールで検査し、攻撃パターンのブロックや地理的制限(ジオマッチ)を適用できます。"},
+{d:2,m:0,q:"EBSボリュームを暗号化する際、暗号化キーの管理に使用されるサービスはどれですか。",
+ o:["AWS KMS","Amazon Cognito","AWS WAF","Amazon SNS"],
+ a:[0],e:"EBS・S3・RDSなど多くのサービスの暗号化はKMSのキーと統合されています。キー管理の中心サービスです。"},
+{d:2,m:0,q:"Webサイトの通信をHTTPS化するためのSSL/TLS証明書を、無料でプロビジョニングし自動更新もしてくれるサービスはどれですか。",
+ o:["AWS Certificate Manager(ACM)","AWS CloudHSM","Amazon GuardDuty","AWS Artifact"],
+ a:[0],e:"ACMはパブリックSSL/TLS証明書の発行・自動更新を無料で提供し、ELBやCloudFrontに簡単に適用できます。"},
+{d:2,m:0,q:"IAMユーザーとIAMロールの違いとして最も適切な説明はどれですか。",
+ o:["ユーザーは特定の人やアプリに紐づく永続的な認証情報を持ち、ロールは必要な主体が一時的に引き受ける(Assume)権限のセットである","ロールはパスワードでログインするためのものである","ユーザーは一時的、ロールは永続的である","両者に違いはない"],
+ a:[0],e:"ロールは認証情報を持たず、EC2・Lambda・他アカウントのユーザーなどが一時的に引き受けます。一時認証情報の利用はセキュリティ上も推奨されます。"},
+{d:2,m:0,q:"数十人の従業員のIAM権限管理が複雑化してきました。最小権限を保ちながら管理を効率化する方法として最も適切なものはどれですか。",
+ o:["職務(開発・運用・閲覧など)ごとにIAMグループを作り、必要なポリシーをグループに付与して人を所属させる","全員に個別のインラインポリシーを手書きする","全員にAdministratorAccessを付与する","権限管理をやめる"],
+ a:[0],e:"職務ベースのグループ管理は、最小権限と運用効率を両立する定石です。"},
+{d:2,m:0,q:"MFAデバイスとして利用できるものの例はどれですか。",
+ o:["スマートフォンの認証アプリ(仮想MFAデバイス)やハードウェアセキュリティキー","プリンター","HDMIケーブル","マウス"],
+ a:[0],e:"MFAには認証アプリ(TOTP)、FIDO2セキュリティキー、ハードウェアTOTPトークンなどが利用できます。"},
+{d:2,m:0,q:"AWSアカウントのサポートプランの変更や解約など、特定の操作を行うためにサインインが必要なのはどれですか。",
+ o:["ルートユーザー","任意のIAMユーザー","閲覧専用のIAMユーザー","フェデレーションユーザー"],
+ a:[0],e:"アカウント解約・一部の請求/税務設定・サポートプラン変更などはルートユーザー専用タスクです。"},
+{d:2,m:0,q:"CloudTrailのログに記録される情報の例として正しいものはどれですか。",
+ o:["APIを呼び出したユーザー、日時、操作内容、送信元IPアドレス","EC2インスタンスのCPU使用率の推移","AWSの月額料金の見積もり","従業員の勤怠情報"],
+ a:[0],e:"CloudTrailは「誰が・いつ・どこから・何のAPIを」呼び出したかを記録します。CPUなどのメトリクスはCloudWatchの領域です。"},
+{d:2,m:0,q:"社内のセキュリティ基準として「作成されるすべてのセキュリティグループでポート22の全開放(0.0.0.0/0)を禁止」というルールへの準拠を継続的に監視したいと考えています。適切なサービスはどれですか。",
+ o:["AWS Config","Amazon Polly","AWS Snow Family","Amazon Lightsail"],
+ a:[0],e:"Configルールでリソース構成のコンプライアンスを継続監視できます。非準拠リソースの検出や自動修復アクションとの連携も可能です。"},
+{d:2,m:0,q:"顧客企業の監査人が「AWS自体が特定のセキュリティ基準を満たしていること」の証明書類を必要としています。顧客が取るべき行動はどれですか。",
+ o:["AWS Artifactから該当するコンプライアンスレポート(SOC、ISOなど)をダウンロードして提供する","AWSのデータセンターへの立ち入り監査を依頼する","レポートを自作する","監査を諦める"],
+ a:[0],e:"AWS側の統制の証明はArtifactのレポートで提供します。データセンターへの顧客の立ち入り監査は原則できません。"},
+{d:2,m:0,q:"セキュリティインシデントの発生後、GuardDutyの検出結果やCloudTrailログを自動的に関連付けて分析し、根本原因の調査を支援するサービスはどれですか。",
+ o:["Amazon Detective","Amazon Comprehend","AWS DataSync","Amazon MQ"],
+ a:[0],e:"Detectiveはログデータを関連付けてグラフ化し、セキュリティ問題の調査(なぜ・どこから起きたか)を効率化します。"},
+{d:2,m:1,q:"S3バケット内の機密データを保護するための適切な対策はどれですか。(2つ選択してください。)",
+ o:["ブロックパブリックアクセスを有効に保つ","サーバーサイド暗号化を有効にする","バケットを全世界に公開する","バケット名に機密情報を含める","暗号化をすべて解除する"],
+ a:[0,1],e:"公開ブロックの維持と保存時暗号化が基本の防御です。公開設定や名前への機密情報埋め込みは事故のもとです。"},
+{d:2,m:1,q:"アプリケーションが使用する認証情報(DBパスワード等)を安全に管理する方法はどれですか。(2つ選択してください。)",
+ o:["AWS Secrets Managerに保存し、自動ローテーションを設定する","コードへの埋め込みをやめ、実行時に取得する方式にする","ソースコードに平文で記述してリポジトリで共有する","付箋に書いてモニターに貼る","公開S3バケットに保存する"],
+ a:[0,1],e:"シークレットは専用サービスで管理し、コードから分離して実行時に取得します。埋め込み・平文共有は漏洩の典型経路です。"},
+{d:2,m:0,q:"AWSのグローバルインフラにおける「コンプライアンスの継承」の考え方として正しいものはどれですか。",
+ o:["AWSが取得している認証(ISO 27001等)の対象範囲について、顧客はAWS側の統制を自社の監査で再検証する必要がなく、その上に自社の統制を構築すればよい","AWSの認証があれば顧客側の対策は一切不要になる","顧客はAWSの認証を利用できない","認証はリージョンごとに顧客が取得する"],
+ a:[0],e:"AWS側の統制は認証・レポートで担保され、顧客はその上のレイヤー(自社データ・設定)の統制に集中できます。ただし顧客側の責任がなくなるわけではありません。"},
+{d:2,m:0,q:"退職した従業員のIAMユーザーに関して、最初に行うべき対応はどれですか。",
+ o:["認証情報(パスワード・アクセスキー)を無効化し、ユーザーを削除する","そのまま残しておく","権限を増やす","パスワードだけ本人に変更してもらう"],
+ a:[0],e:"不要になった認証情報の迅速な無効化・削除はアクセス管理の基本です。放置された認証情報は攻撃の入口になります。"},
+/* ---- 分野3 (22問) ---- */
+{d:3,m:0,q:"EBSボリュームの特定時点のデータを保存し、そこから新しいボリュームを復元できる機能はどれですか。",
+ o:["EBSスナップショット","インスタンスストア","S3バージョニング","AMIの削除"],
+ a:[0],e:"スナップショットはEBSの増分バックアップで、S3に保存されます。別AZ・別リージョンへの復元やAMI作成の元にもなります。"},
+{d:3,m:0,q:"S3で誤ってオブジェクトを上書き・削除しても、以前の版を復元できるようにする機能はどれですか。",
+ o:["バージョニング","ブロックパブリックアクセス","転送アクセラレーション","静的ウェブサイトホスティング"],
+ a:[0],e:"バージョニングを有効にすると、オブジェクトの全世代が保持され、誤操作からの復元が可能になります。"},
+{d:3,m:0,q:"再作成が容易なデータを、S3 Standard-IAより低コストで、ただし単一AZ障害時の損失リスクを許容して保存したい場合に適したストレージクラスはどれですか。",
+ o:["S3 One Zone-IA","S3 Standard","S3 Glacier Instant Retrieval","EBS gp3"],
+ a:[0],e:"One Zone-IAは1つのAZのみに保存することでStandard-IAより安価です。「失っても再作成できるデータ」向けです。"},
+{d:3,m:0,q:"RDSで読み取りクエリの負荷を分散し、読み取り性能をスケールさせるための機能はどれですか。",
+ o:["リードレプリカ","マルチAZ配置","自動バックアップ","パラメータグループ"],
+ a:[0],e:"リードレプリカは読み取り専用の複製で、読み取りスケールが目的です。可用性目的のマルチAZとの違いが最頻出ポイントです。"},
+{d:3,m:0,q:"SNS上の「友人関係」のような複雑なつながり(グラフ構造)を扱うのに適したマネージドデータベースはどれですか。",
+ o:["Amazon Neptune","Amazon Redshift","Amazon ElastiCache","Amazon Athena"],
+ a:[0],e:"Neptuneはグラフデータベースで、ノード間の関係性を高速にたどるクエリが得意です。用途特化型DBの代表例として出題されます。"},
+{d:3,m:0,q:"アクセス頻度が不規則なデータベースワークロードに対して、需要に応じて容量を自動的に増減させたい場合に適したものはどれですか。",
+ o:["Amazon Aurora Serverless","EC2上の自己管理データベース","Amazon Redshift(固定ノード)","オンプレミスのDBサーバー"],
+ a:[0],e:"Aurora Serverlessは需要に応じてDB容量を自動スケールし、アイドル時のコストを抑えられます。「不規則・断続的な負荷」がキーワードです。"},
+{d:3,m:0,q:"「S3に画像がアップロードされたら自動的にサムネイルを生成する」という処理の実行環境として最も適切なものはどれですか。",
+ o:["AWS Lambda(S3イベントをトリガーに起動)","常時起動のEC2インスタンスでポーリング","手動での画像処理","Amazon Route 53"],
+ a:[0],e:"イベント駆動の短時間処理はLambdaの得意分野です。S3イベント通知と直接統合でき、実行された時間だけの課金で済みます。"},
+{d:3,m:0,q:"Dockerコンテナイメージを保存・管理するためのフルマネージドなレジストリサービスはどれですか。",
+ o:["Amazon ECR","Amazon EBS","AWS CloudTrail","Amazon SES"],
+ a:[0],e:"ECR(Elastic Container Registry)はコンテナイメージのレジストリです。ECS/EKS/Fargateと連携してデプロイに使用します。"},
+{d:3,m:0,q:"2つのVPCの間をプライベートIPアドレスで直接通信できるように接続する機能はどれですか。",
+ o:["VPCピアリング","インターネットゲートウェイ","エッジロケーション","S3バケットポリシー"],
+ a:[0],e:"VPCピアリングは2つのVPC間の1対1のプライベート接続です。多数のVPCを束ねる場合はTransit Gatewayを使います。"},
+{d:3,m:0,q:"プライベートサブネット内のEC2インスタンスから、インターネット上のリポジトリへアップデートを取得しに行けるようにする(外からの接続は受け付けない)ためのコンポーネントはどれですか。",
+ o:["NATゲートウェイ","インターネットゲートウェイのみ","VPCエンドポイントなしのS3","ネットワークACLの全拒否"],
+ a:[0],e:"NATゲートウェイは「内→外」の片方向通信を実現します。パブリックサブネットに配置し、プライベートサブネットのルートテーブルから参照します。"},
+{d:3,m:0,q:"Route 53のルーティングポリシーのうち、ユーザーを最も応答時間が短いリージョンのエンドポイントへ誘導するものはどれですか。",
+ o:["レイテンシーベースルーティング","シンプルルーティング","フェイルオーバールーティング","加重ルーティング"],
+ a:[0],e:"レイテンシーベースは応答が最速のリージョンへ、フェイルオーバーは障害時の切替、加重は割合での振り分けです。"},
+{d:3,m:0,q:"CloudFrontがコンテンツの配信に利用するインフラストラクチャはどれですか。",
+ o:["世界中のエッジロケーション","単一のリージョンのみ","顧客のオンプレミスサーバー","アベイラビリティーゾーン内のEBS"],
+ a:[0],e:"CloudFrontは世界数百か所のエッジロケーションにコンテンツをキャッシュし、ユーザー最寄りの拠点から配信します。"},
+{d:3,m:0,q:"ネットワーク環境が不安定な遠隔地(船舶、建設現場など)で、データ収集とエッジ処理を行える小型で頑丈なデバイスはどれですか。",
+ o:["AWS Snowcone","Amazon WorkSpaces","AWS App Runner","Amazon Redshift"],
+ a:[0],e:"Snowファミリー最小のSnowconeは、過酷な環境でのデータ収集・転送・簡易エッジ処理に使える小型デバイスです。"},
+{d:3,m:0,q:"カスタマーレビューのテキストから感情(ポジティブ/ネガティブ)やキーフレーズを抽出したいと考えています。適切なAIサービスはどれですか。",
+ o:["Amazon Comprehend","Amazon Polly","Amazon Rekognition","AWS Glue"],
+ a:[0],e:"Comprehendは自然言語処理サービスで、感情分析・エンティティ抽出・言語判定などをAPIで提供します。"},
+{d:3,m:0,q:"音声とテキストの両方に対応したチャットボット(対話型インターフェース)を構築するためのサービスはどれですか。",
+ o:["Amazon Lex","Amazon Textract","Amazon Athena","AWS Backup"],
+ a:[0],e:"LexはAlexaと同じ技術を基にした会話ボット構築サービスです。音声認識と自然言語理解を備えています。"},
+{d:3,m:0,q:"スキャンした請求書や契約書などの文書画像から、テキストや表・フォームの内容を自動的に抽出するサービスはどれですか。",
+ o:["Amazon Textract","Amazon Translate","Amazon Kendra","Amazon SQS"],
+ a:[0],e:"TextractはOCRを超えて、表やフォームの構造も理解して抽出します。Translateは翻訳、Kendraは社内検索です。"},
+{d:3,m:0,q:"EC2、RDS、EFS、DynamoDBなど複数サービスのバックアップを、一元的なポリシーで自動化・管理するサービスはどれですか。",
+ o:["AWS Backup","AWS Artifact","Amazon Inspector","AWS WAF"],
+ a:[0],e:"AWS Backupはバックアップの計画(頻度・保持期間)を一元定義し、複数サービスに横断適用できるマネージドサービスです。"},
+{d:3,m:0,q:"アプリケーションのビルド・テスト・デプロイを自動化する継続的デリバリー(CI/CD)パイプラインを構築するサービスはどれですか。",
+ o:["AWS CodePipeline","Amazon GuardDuty","AWS Direct Connect","Amazon EFS"],
+ a:[0],e:"CodePipelineはCI/CDのオーケストレーションサービスで、CodeBuild(ビルド)やCodeDeploy(デプロイ)と連携します。"},
+{d:3,m:0,q:"社員にクラウド上の仮想デスクトップ環境(VDI)を提供し、どの端末からでも安全に業務環境へアクセスできるようにするサービスはどれですか。",
+ o:["Amazon WorkSpaces","Amazon ECS","AWS Snowball","Amazon Aurora"],
+ a:[0],e:"WorkSpacesはマネージド仮想デスクトップサービスです。リモートワークやセキュアな端末環境の提供に使われます。"},
+{d:3,m:0,q:"AWSリソースの操作方法のうち、スクリプトによる自動化に最も適したものはどれですか。",
+ o:["AWS CLIやSDKを使用してAPIを呼び出す","マネジメントコンソールを毎回手動で操作する","電話でAWSに依頼する","紙の申請書を提出する"],
+ a:[0],e:"コンソール・CLI・SDKはいずれも同じAPIを呼び出します。反復作業の自動化にはCLI/SDK(またはIaC)が適しています。"},
+{d:3,m:1,q:"Dockerコンテナを実行できるAWSのオーケストレーションサービスはどれですか。(2つ選択してください。)",
+ o:["Amazon ECS","Amazon EKS","Amazon EFS","AWS CloudTrail","Amazon Route 53"],
+ a:[0,1],e:"ECS(AWS独自方式)とEKS(Kubernetes)がコンテナオーケストレーションです。EFSはファイルストレージなので注意。"},
+{d:3,m:1,q:"オンプレミスのデータセンターとAWSを接続する方法はどれですか。(2つ選択してください。)",
+ o:["AWS Site-to-Site VPN","AWS Direct Connect","Amazon CloudFront","AWS Fargate","Amazon Athena"],
+ a:[0,1],e:"VPN(インターネット経由・暗号化)とDirect Connect(専用線)がハイブリッド接続の二本柱です。要件(コスト・帯域・安定性)での使い分けが問われます。"},
+]}
+];
+
+/* ============================================================
+   試験エンジン
+   ============================================================ */
+const EXAM_MIN = 90;
+const PASS_SCORE = 700;
+const HIST_KEY = "clfMockHistoryV1";
+
+const S = {
+  view:"home",        // home | intro | exam | palette | result
+  examId:null,
+  qIdx:0,
+  answers:{},         // qIdx -> [選択肢index,...]
+  flags:{},           // qIdx -> true
+  deadline:null,
+  timerInt:null,
+  lastResult:null,
+  filter:"all"
+};
+
+function loadHist(){
+  return CloudStore.get(HIST_KEY) || [];
+}
+function saveHist(h){ CloudStore.set(HIST_KEY, h); }
+
+function exam(){ return EXAMS.find(e=>e.id===S.examId); }
+function esc(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function el(id){ return document.getElementById(id); }
+const APP = document.getElementById("app");
+
+/* ---------- タイマー ---------- */
+function startTimer(){
+  stopTimer();
+  S.deadline = Date.now() + EXAM_MIN*60*1000;
+  S.timerInt = setInterval(tick, 500);
+}
+function stopTimer(){ if(S.timerInt){ clearInterval(S.timerInt); S.timerInt=null; } }
+function remainMs(){ return Math.max(0, S.deadline - Date.now()); }
+function fmtTime(ms){
+  const s = Math.ceil(ms/1000);
+  const m = Math.floor(s/60), ss = s%60;
+  return String(m).padStart(2,"0")+":"+String(ss).padStart(2,"0");
+}
+function tick(){
+  const t = el("timer");
+  if(t){
+    const ms = remainMs();
+    t.textContent = "残り " + fmtTime(ms);
+    t.classList.toggle("low", ms < 10*60*1000);
+  }
+  if(remainMs()<=0){ stopTimer(); submitExam(true); }
+}
+
+/* ---------- 画面遷移 ---------- */
+function go(view){ S.view = view; render(); window.scrollTo({top:0}); }
+
+function startIntro(id){ S.examId = id; go("intro"); }
+
+function startExam(){
+  S.qIdx=0; S.answers={}; S.flags={}; S.lastResult=null;
+  startTimer();
+  go("exam");
+}
+
+function jumpQ(i){
+  S.qIdx = i;
+  go("exam");
+}
+
+/* ---------- 解答操作 ---------- */
+function pick(oi){
+  const q = exam().questions[S.qIdx];
+  if(q.m===0){
+    S.answers[S.qIdx] = [oi];
+  }else{
+    let cur = S.answers[S.qIdx] || [];
+    if(cur.includes(oi)) cur = cur.filter(x=>x!==oi);
+    else{
+      if(cur.length>=2){ return; } // 本番同様、2つまでしか選択できない
+      cur = [...cur, oi];
+    }
+    if(cur.length===0) delete S.answers[S.qIdx];
+    else S.answers[S.qIdx] = cur;
+  }
+  render();
+}
+function toggleFlag(){
+  if(S.flags[S.qIdx]) delete S.flags[S.qIdx];
+  else S.flags[S.qIdx] = true;
+  render();
+}
+function nav(d){
+  const n = exam().questions.length;
+  S.qIdx = Math.min(n-1, Math.max(0, S.qIdx + d));
+  render(); window.scrollTo({top:0});
+}
+
+/* ---------- 採点 ---------- */
+function arrEq(a,b){
+  if(!a||!b||a.length!==b.length) return false;
+  const x=[...a].sort(), y=[...b].sort();
+  return x.every((v,i)=>v===y[i]);
+}
+function submitExam(auto){
+  stopTimer();
+  const ex = exam();
+  let correct = 0;
+  const dom = {1:{c:0,t:0},2:{c:0,t:0},3:{c:0,t:0},4:{c:0,t:0}};
+  ex.questions.forEach((q,i)=>{
+    dom[q.d].t++;
+    if(arrEq(S.answers[i], q.a)){ correct++; dom[q.d].c++; }
+  });
+  const scaled = Math.round(100 + (correct/ex.questions.length)*900);
+  const pass = scaled >= PASS_SCORE;
+  S.lastResult = {correct, total:ex.questions.length, scaled, pass, dom, auto:!!auto};
+  const hist = loadHist();
+  hist.unshift({examId:ex.id, title:ex.title, date:new Date().toLocaleString("ja-JP"), scaled, pass, correct, total:ex.questions.length});
+  saveHist(hist.slice(0,50));
+  S.filter="all";
+  const dlg = el("confirmDlg"); if(dlg && dlg.open) dlg.close();
+  go("result");
+}
+function askSubmit(){
+  const ex = exam();
+  const un = ex.questions.length - Object.keys(S.answers).length;
+  const fl = Object.keys(S.flags).length;
+  el("dlgBody").innerHTML =
+    (un>0?`<p style="color:var(--ng);font-weight:700">未解答の問題が ${un} 問あります。</p>`:`<p style="color:var(--ok);font-weight:700">すべての問題に解答済みです。</p>`)+
+    (fl>0?`<p>フラグ付きの問題が ${fl} 問あります。</p>`:"")+
+    `<p>試験を終了すると、解答の変更はできません。採点してよろしいですか?</p>`;
+  el("confirmDlg").showModal();
+}
+
+/* ============================================================
+   ビュー
+   ============================================================ */
+function vHome(){
+  const hist = loadHist();
+  const bestOf = id => {
+    const rs = hist.filter(h=>h.examId===id);
+    if(!rs.length) return null;
+    return rs.reduce((a,b)=>a.scaled>=b.scaled?a:b);
+  };
+  APP.innerHTML = `
+  <div class="exam-bar"><div class="title">CLF-C02 模擬試験センター</div></div>
+  <div class="wrap" style="padding-bottom:40px">
+    <div class="home-hero">
+      <div class="eyebrow">AWS CERTIFIED CLOUD PRACTITIONER (CLF-C02)</div>
+      <h1>本番形式フル模擬試験 — 全3回・195問</h1>
+      <p>本試験と同じ 65問 / 90分 / 1000点満点(合格ライン700点)/ 分野別出題比率で構成したオリジナル模擬試験です。実際の過去問はNDAにより非公開のため、本試験の出題形式・傾向・難易度を忠実に再現した問題を収録しています。</p>
+      <p style="margin-top:8px">出題比率(本番準拠):クラウドのコンセプト 24%(16問)/ セキュリティとコンプライアンス 30%(19問)/ クラウドテクノロジーとサービス 34%(22問)/ 請求、料金、サポート 12%(8問)</p>
+    </div>
+    ${EXAMS.map(ex=>{
+      const b = bestOf(ex.id);
+      return `<div class="exam-card">
+        <div class="no">EXAM<b>${ex.id}</b></div>
+        <div class="info">
+          <h3>${esc(ex.title)}</h3>
+          <p>65問 / 制限時間90分 / 択一問題 + 複数選択問題(2つ選択)</p>
+        </div>
+        ${b?`<div class="best">自己ベスト<br><b class="${b.pass?"pass":"fail"}">${b.scaled}</b> / 1000</div>`:`<div class="best soft">未受験</div>`}
+        <button class="start-btn" onclick="startIntro(${ex.id})">受験する</button>
+      </div>`;
+    }).join("")}
+    ${hist.length?`
+    <div class="panel" style="margin-top:22px">
+      <h2 style="margin-top:0">受験履歴</h2>
+      <table class="hist-table"><tr><th>日時</th><th>試験</th><th>スコア</th><th>正答</th><th>判定</th></tr>
+      ${hist.slice(0,10).map(h=>`<tr>
+        <td class="soft">${esc(h.date)}</td><td>${esc(h.title)}</td>
+        <td class="mono">${h.scaled}</td><td class="mono">${h.correct}/${h.total}</td>
+        <td style="font-weight:700;color:${h.pass?"var(--ok)":"var(--ng)"}">${h.pass?"合格":"不合格"}</td></tr>`).join("")}
+      </table>
+    </div>`:""}
+    <p class="soft" style="margin-top:16px">※ スコアは正答率から換算した参考値です(本試験は統計的な採点方式のため厳密には一致しません)。本試験には採点対象外の問題が15問含まれますが、本模試では全問を採点対象としています。</p>
+  </div>`;
+}
+
+function vIntro(){
+  const ex = exam();
+  APP.innerHTML = `
+  <div class="exam-bar"><div class="title">${esc(ex.title)}<small>AWS Certified Cloud Practitioner (CLF-C02)</small></div></div>
+  <div class="wrap" style="padding-bottom:40px">
+    <div class="panel">
+      <h1>試験を開始する前にお読みください</h1>
+      <ul class="rule-list">
+        <li>問題数は <b>65問</b>、制限時間は <b>90分</b> です。残り時間は画面右上に常に表示されます。</li>
+        <li>問題形式は<b>択一問題</b>(4つの選択肢から1つ)と<b>複数選択問題</b>(5つの選択肢から2つ)です。</li>
+        <li>「<b>後で見直すためにフラグを付ける</b>」ボタンで問題に印を付け、レビュー画面から戻ることができます。</li>
+        <li>解答は試験終了まで何度でも変更できます。<b>誤答による減点はない</b>ため、すべての問題に解答することをおすすめします。</li>
+        <li>制限時間が経過すると、その時点の解答で<b>自動的に採点</b>されます。</li>
+        <li>スコアは100〜1000のスケールで表示され、<b>700点以上で合格</b>です。</li>
+      </ul>
+      <div class="notice">キーボード操作:← → で前後の問題へ移動 / 1〜5キーで選択肢を選択 / F でフラグの切り替え</div>
+      <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+        <button class="nav-btn" onclick="go('home')">← 戻る</button>
+        <button class="nav-btn primary" onclick="startExam()">試験を開始する</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function vExam(){
+  const ex = exam();
+  const q = ex.questions[S.qIdx];
+  const picked = S.answers[S.qIdx] || [];
+  const flagged = !!S.flags[S.qIdx];
+  APP.innerHTML = `
+  <div class="exam-bar">
+    <div class="title">${esc(ex.title)}<small>AWS Certified Cloud Practitioner (CLF-C02)</small></div>
+    <div class="spacer"></div>
+    <span class="qcount">${S.qIdx+1} / ${ex.questions.length}</span>
+    <span class="timer" id="timer">残り ${fmtTime(remainMs())}</span>
+  </div>
+  <div class="wrap">
+    <div class="panel">
+      <div class="q-head">
+        <span class="q-num">問題 ${S.qIdx+1}</span>
+        ${q.m?`<span class="q-type">複数選択</span>`:""}
+        <button class="flag-btn ${flagged?"on":""}" onclick="toggleFlag()">
+          <span class="f-ic">⚑</span>${flagged?"フラグを外す":"後で見直すためにフラグを付ける"}
+        </button>
+      </div>
+      <div class="q-text">${esc(q.q)}</div>
+      ${q.m?`<div class="multi-note">該当する選択肢を2つ選択してください。</div>`:""}
+      ${q.o.map((o,oi)=>`
+        <button class="opt ${picked.includes(oi)?"sel":""}" onclick="pick(${oi})">
+          <span class="box ${q.m?"c":"r"}">✓</span>
+          <span class="ol">${["A","B","C","D","E"][oi]}.</span>
+          <span>${esc(o)}</span>
+        </button>`).join("")}
+    </div>
+  </div>
+  <div class="exam-foot"><div class="inner">
+    <button class="nav-btn" onclick="go('palette')">レビュー画面</button>
+    <span class="kbd-hint">← → 移動 / 1-5 選択 / F フラグ</span>
+    <div class="foot-spacer"></div>
+    <button class="nav-btn" onclick="nav(-1)" ${S.qIdx===0?"disabled":""}>← 前へ</button>
+    ${S.qIdx===ex.questions.length-1
+      ? `<button class="nav-btn primary" onclick="askSubmit()">試験を終了する</button>`
+      : `<button class="nav-btn primary" onclick="nav(1)">次へ →</button>`}
+  </div></div>
+  ${dlgHtml()}`;
+}
+
+function vPalette(){
+  const ex = exam();
+  const answered = Object.keys(S.answers).length;
+  APP.innerHTML = `
+  <div class="exam-bar">
+    <div class="title">${esc(ex.title)} — レビュー画面</div>
+    <div class="spacer"></div>
+    <span class="timer" id="timer">残り ${fmtTime(remainMs())}</span>
+  </div>
+  <div class="wrap">
+    <div class="panel">
+      <h1>問題の見直し</h1>
+      <p class="soft">解答済み ${answered} / ${ex.questions.length} 問 ・ フラグ ${Object.keys(S.flags).length} 問。番号をクリックすると該当の問題へ移動します。</p>
+      <div class="legend">
+        <span><span class="lg ans"></span>解答済み</span>
+        <span><span class="lg"></span>未解答</span>
+        <span><span class="lg flg"></span>フラグ付き</span>
+      </div>
+      <div class="pal">
+        ${ex.questions.map((q,i)=>`
+          <button class="${S.answers[i]?"ans":""} ${S.flags[i]?"flg":""} ${i===S.qIdx?"cur":""}" onclick="jumpQ(${i})">${i+1}</button>`).join("")}
+      </div>
+      <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap">
+        <button class="nav-btn" onclick="go('exam')">← 問題に戻る</button>
+        <button class="nav-btn primary" onclick="askSubmit()">試験を終了して採点する</button>
+      </div>
+    </div>
+  </div>
+  ${dlgHtml()}`;
+}
+
+function dlgHtml(){
+  return `<dialog id="confirmDlg">
+    <h3>試験を終了しますか?</h3>
+    <div id="dlgBody"></div>
+    <div class="d-row">
+      <button class="nav-btn" onclick="el('confirmDlg').close()">試験に戻る</button>
+      <button class="nav-btn primary" onclick="submitExam(false)">終了して採点する</button>
+    </div>
+  </dialog>`;
+}
+
+function vResult(){
+  if(!S.lastResult){ S.view="home"; vHome(); return; }
+  const ex = exam();
+  const r = S.lastResult;
+  const pct = d => r.dom[d].t ? Math.round(r.dom[d].c/r.dom[d].t*100) : 0;
+  const qs = ex.questions.map((q,i)=>({q,i,ok:arrEq(S.answers[i],q.a)}));
+  const shown = qs.filter(x=>{
+    if(S.filter==="wrong") return !x.ok;
+    if(S.filter==="flag") return !!S.flags[x.i];
+    if(["1","2","3","4"].includes(S.filter)) return String(x.q.d)===S.filter;
+    return true;
+  });
+  APP.innerHTML = `
+  <div class="exam-bar"><div class="title">${esc(ex.title)} — スコアレポート</div></div>
+  <div class="wrap" style="padding-bottom:40px">
+    <div class="panel result-hero">
+      <div><span class="verdict ${r.pass?"pass":"fail"}">${r.pass?"合格":"不合格"}</span></div>
+      <div class="score-big">${r.scaled}<small> / 1000(合格ライン ${PASS_SCORE})</small></div>
+      <p class="soft" style="margin-top:8px">正答 ${r.correct} / ${r.total} 問${r.auto?" ・ 制限時間経過により自動採点されました":""}</p>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">分野別パフォーマンス</h2>
+      ${[1,2,3,4].map(d=>{
+        const p = pct(d), ok = p>=70;
+        return `<div class="dom-row">
+          <span class="dn">分野${d}: ${DOMAINS[d].name}<span class="soft">(${DOMAINS[d].w})</span></span>
+          <span class="dom-bar"><i class="${ok?"":"low"}" style="width:${p}%"></i></span>
+          <span class="dom-pct">${r.dom[d].c}/${r.dom[d].t} (${p}%)</span>
+          <span class="dom-judge ${ok?"ok":"ng"}">${ok?"十分な能力":"要復習"}</span>
+        </div>`;
+      }).join("")}
+      <p class="soft">※ 本試験のスコアレポートと同様に、分野別の達成度を表示しています(70%を目安に判定)。</p>
+    </div>
+    <div class="panel">
+      <h2 style="margin-top:0">全問解説レビュー <span class="soft" style="font-weight:400">(学習用機能 — 本試験では解答・解説は開示されません)</span></h2>
+      <div class="filter-row">
+        <button class="${S.filter==="all"?"on":""}" onclick="setFilter('all')">すべて (${qs.length})</button>
+        <button class="${S.filter==="wrong"?"on":""}" onclick="setFilter('wrong')">不正解のみ (${qs.filter(x=>!x.ok).length})</button>
+        <button class="${S.filter==="flag"?"on":""}" onclick="setFilter('flag')">フラグ付き (${Object.keys(S.flags).length})</button>
+        ${[1,2,3,4].map(d=>`<button class="${S.filter===String(d)?"on":""}" onclick="setFilter('${d}')">分野${d}</button>`).join("")}
+      </div>
+      ${shown.length===0?`<p class="soft">該当する問題はありません。</p>`:shown.map(x=>{
+        const q=x.q, my=S.answers[x.i]||[];
+        return `<div class="rv-q">
+          <p style="margin-bottom:8px">
+            <span class="rv-tag ${x.ok?"ok":"ng"}">${x.ok?"正解":"不正解"}</span>
+            <span class="rv-tag dm">分野${q.d}</span>
+            <b>問題 ${x.i+1}.</b>
+          </p>
+          <div class="q-text" style="margin-bottom:12px">${esc(q.q)}</div>
+          ${q.o.map((o,oi)=>{
+            const isAns=q.a.includes(oi), isMine=my.includes(oi);
+            return `<div class="opt ${isAns?"rv-correct":(isMine?"rv-wrong":"")}" style="cursor:default">
+              <span class="box ${q.m?"c":"r"}">${isAns?"✓":(isMine?"✕":"")}</span>
+              <span class="ol">${["A","B","C","D","E"][oi]}.</span>
+              <span>${esc(o)}${isMine&&!isAns?" <b style='color:var(--ng)'>← あなたの解答</b>":""}${isAns&&isMine?" <b style='color:var(--ok)'>← あなたの解答</b>":""}</span>
+            </div>`;
+          }).join("")}
+          <div class="exp"><b>解説:</b> ${esc(q.e)}</div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="nav-btn" onclick="go('home')">ホームへ戻る</button>
+      <button class="nav-btn primary" onclick="startExam()">同じ試験をもう一度受験する</button>
+    </div>
+  </div>`;
+}
+function setFilter(f){ S.filter=f; render(); }
+
+/* ---------- ルーター & キーボード ---------- */
+function render(){
+  if(S.view==="home") vHome();
+  else if(S.view==="intro") vIntro();
+  else if(S.view==="exam") vExam();
+  else if(S.view==="palette") vPalette();
+  else if(S.view==="result") vResult();
+}
+
+document.addEventListener("keydown", e=>{
+  if(S.view!=="exam") return;
+  const dlg = el("confirmDlg");
+  if(dlg && dlg.open) return;
+  if(e.key==="ArrowRight"){ nav(1); e.preventDefault(); }
+  else if(e.key==="ArrowLeft"){ nav(-1); e.preventDefault(); }
+  else if(e.key.toLowerCase()==="f"){ toggleFlag(); e.preventDefault(); }
+  else if(["1","2","3","4","5"].includes(e.key)){
+    const q = exam().questions[S.qIdx];
+    const oi = parseInt(e.key)-1;
+    if(oi < q.o.length){ pick(oi); e.preventDefault(); }
+  }
+});
+
+/* クラウドストア初期化後に起動（既存localStorageデータは自動移行） */
+CloudStore.init([HIST_KEY]).then(res=>{
+  render();
+  CloudStore.onChange(()=>{ if(S.view==="home") render(); });
+  if(!res.cloud && CloudStore.isConfigured()){
+    console.warn("クラウド接続に失敗。この端末のみの保存で動作します。");
+  }
+});
+</script>
+</body>
+</html>

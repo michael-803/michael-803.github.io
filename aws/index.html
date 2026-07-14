@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B1220">
+<title>AWS Study Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B1220;--bg2:#111A2E;--card:#17233C;--card2:#1E2C4A;
+  --orange:#FF9900;--orange-hi:#FFB84D;--blue:#38BDF8;
+  --text:#EDF2FB;--dim:#93A5C1;--line:#24314F;
+  --ok:#2DD4BF;--ng:#FF6B6B;
+  --r:16px;--rs:10px;
+  --disp:'Space Grotesk','Noto Sans JP',sans-serif;
+  --body:'Noto Sans JP',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;}
+button{font-family:var(--body);}
+:focus-visible{outline:2px solid var(--orange);outline-offset:2px;border-radius:4px;}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+
+.app{display:flex;flex-direction:column;min-height:100dvh;}
+header{background:var(--bg2);border-bottom:1px solid var(--line);padding:0 20px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--disp);font-weight:700;font-size:17px;display:flex;align-items:center;gap:10px;letter-spacing:.01em;}
+.logo-icon{width:30px;height:30px;background:linear-gradient(135deg,var(--orange),#E68A00);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(255,153,0,.3);}
+.logo span{color:var(--orange);}
+.header-right{display:flex;align-items:center;gap:8px;}
+.sync-indicator{font-size:11px;color:var(--dim);display:flex;align-items:center;gap:5px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);}
+.sync-dot.syncing{background:var(--orange);animation:pulse 1s infinite;}
+.sync-dot.error{background:var(--ng);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pop{0%{transform:scale(.96)}60%{transform:scale(1.02)}100%{transform:scale(1)}}
+
+.screen{display:none;flex:1;}
+.screen.active{display:flex;flex-direction:column;animation:fadeIn .25s ease;}
+
+#loading-screen{align-items:center;justify-content:center;}
+.loading-spinner{width:44px;height:44px;border:3px solid var(--line);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;}
+.loading-text{color:var(--dim);font-size:14px;text-align:center;}
+
+#config-screen{align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.config-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:32px;width:100%;max-width:560px;}
+.config-title{font-family:var(--disp);font-size:21px;font-weight:700;margin-bottom:6px;}
+.config-title span{color:var(--orange);}
+.config-sub{color:var(--dim);font-size:13px;margin-bottom:18px;}
+.config-step{background:var(--card);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px;font-size:13px;line-height:1.8;color:var(--dim);}
+.config-step strong{color:var(--text);}
+.config-step code{background:var(--card2);border-radius:4px;color:var(--orange);font-family:monospace;font-size:12px;padding:2px 6px;}
+.config-step a{color:var(--orange);}
+.code-block{background:var(--card);border-radius:var(--rs);padding:16px;font-family:monospace;font-size:12px;color:var(--orange);line-height:2;margin-top:14px;overflow-x:auto;}
+
+#setup-screen{align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.setup-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:38px;width:100%;max-width:560px;}
+.setup-title{font-family:var(--disp);font-size:25px;font-weight:700;margin-bottom:8px;}
+.setup-title span{color:var(--orange);}
+.setup-sub{color:var(--dim);font-size:14px;margin-bottom:26px;}
+
+.form-group{margin-bottom:18px;}
+label{display:block;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
+input[type="text"],textarea,select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);color:var(--text);font-family:var(--body);font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s;}
+input[type="text"]:focus,textarea:focus,select:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,153,0,.12);}
+select option{background:var(--card);}
+.quick-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+.tag-btn{background:var(--card);border:1px solid var(--line);border-radius:20px;color:var(--dim);cursor:pointer;font-size:13px;padding:6px 14px;transition:all .15s;}
+.tag-btn:hover{border-color:var(--orange);color:var(--text);}
+.tag-btn.selected{background:var(--orange);border-color:var(--orange);color:#161006;font-weight:700;}
+
+.btn{border:none;border-radius:var(--rs);cursor:pointer;font-family:var(--body);font-weight:700;font-size:14px;padding:12px 20px;transition:transform .15s,background .15s,border-color .15s,color .15s;}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--orange);color:#161006;width:100%;}
+.btn-primary:hover{background:var(--orange-hi);}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.btn-secondary{background:var(--card);border:1px solid var(--line);color:var(--text);}
+.btn-secondary:hover{border-color:var(--orange);color:var(--orange);}
+.btn-icon{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--text);cursor:pointer;font-size:15px;padding:8px 11px;transition:all .15s;}
+.btn-icon:hover{border-color:var(--orange);color:var(--orange);}
+
+#notebook-screen{flex-direction:column;}
+.tab-bar{background:var(--bg2);border-bottom:1px solid var(--line);display:flex;padding:0 16px;gap:2px;overflow-x:auto;}
+.tab-btn{background:none;border:none;border-bottom:3px solid transparent;color:var(--dim);cursor:pointer;font-size:14px;font-weight:700;padding:13px 16px;transition:all .2s;white-space:nowrap;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{border-bottom-color:var(--orange);color:var(--orange);}
+a.tab-link{display:inline-block;text-decoration:none;line-height:normal;margin-left:auto;}
+a.tab-link + a.tab-link{margin-left:0;}
+.tab-content{display:none;flex:1;overflow:hidden;}
+.tab-content.active{display:flex;flex:1;}
+
+.fc-layout{display:flex;flex:1;overflow:hidden;}
+.sidebar{background:var(--bg2);border-right:1px solid var(--line);width:236px;min-width:236px;display:flex;flex-direction:column;padding:16px 12px;overflow-y:auto;}
+.sidebar-title{font-family:var(--disp);font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px;}
+.notebook-info{background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:12px;}
+.nb-name{font-weight:700;color:var(--orange);font-size:13px;}
+.nb-sub{color:var(--dim);font-size:11px;margin-top:2px;}
+.deck-list{display:flex;flex-direction:column;gap:2px;flex:1;}
+.deck-item{align-items:center;background:transparent;border:none;border-radius:8px;color:var(--dim);cursor:pointer;display:flex;font-size:13px;gap:8px;padding:9px 10px;text-align:left;transition:all .15s;width:100%;}
+.deck-item:hover{background:var(--card);color:var(--text);}
+.deck-item.active{background:rgba(255,153,0,.12);color:var(--orange);font-weight:700;}
+.deck-count{background:var(--card2);border-radius:10px;font-size:11px;margin-left:auto;padding:1px 7px;font-family:var(--disp);}
+.deck-item.active .deck-count{background:rgba(255,153,0,.22);}
+.sidebar-footer{border-top:1px solid var(--line);margin-top:10px;padding-top:10px;}
+.btn-new-deck{align-items:center;background:transparent;border:1px dashed var(--line);border-radius:8px;color:var(--dim);cursor:pointer;display:flex;font-size:13px;gap:6px;justify-content:center;padding:9px;transition:all .15s;width:100%;}
+.btn-new-deck:hover{border-color:var(--orange);color:var(--orange);}
+
+.main-content{flex:1;overflow-y:auto;padding:22px;}
+.content-header{align-items:center;display:flex;gap:12px;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;}
+.content-title{font-family:var(--disp);font-size:19px;font-weight:700;}
+.content-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.search-box{position:relative;margin-bottom:16px;}
+.search-box input{padding-left:36px;font-size:14px;}
+.search-box::before{content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;opacity:.5;}
+
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:13px;}
+.flashcard{perspective:1000px;height:172px;cursor:pointer;}
+.flashcard-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,.2,.2,1);}
+.flashcard.flipped .flashcard-inner{transform:rotateY(180deg);}
+.card-front,.card-back{backface-visibility:hidden;border-radius:var(--rs);display:flex;flex-direction:column;height:100%;left:0;padding:16px;position:absolute;top:0;width:100%;}
+.card-front{background:var(--card);border:1px solid var(--line);}
+.flashcard:hover .card-front{border-color:#31456F;}
+.card-back{background:linear-gradient(150deg,#1B3050,#152640);border:1px solid #2A4A7A;transform:rotateY(180deg);}
+.card-label{font-family:var(--disp);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;}
+.card-front .card-label{color:var(--orange);}
+.card-back .card-label{color:var(--blue);}
+.card-term{font-family:var(--disp);font-size:17px;font-weight:700;flex:1;display:flex;align-items:center;line-height:1.3;}
+.card-definition{font-size:12.5px;line-height:1.65;flex:1;overflow-y:auto;}
+.card-hint{font-size:10px;color:var(--dim);text-align:right;margin-top:6px;}
+.card-actions-row{display:flex;gap:5px;margin-top:6px;justify-content:flex-end;opacity:0;transition:opacity .2s;}
+.card-front:hover .card-actions-row,.flashcard:focus-within .card-actions-row{opacity:1;}
+@media(hover:none){.card-actions-row{opacity:1;}}
+.card-action-btn{background:var(--card2);border:1px solid var(--line);border-radius:5px;color:var(--dim);cursor:pointer;font-size:11px;padding:3px 8px;transition:all .15s;}
+.card-action-btn:hover{color:var(--orange);border-color:var(--orange);}
+.card-action-btn.del:hover{color:var(--ng);border-color:var(--ng);}
+
+.add-card-form{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:16px;display:none;}
+.add-card-form.open{display:block;animation:fadeIn .2s ease;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+textarea{resize:vertical;min-height:88px;}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
+
+.quiz-layout{flex:1;overflow-y:auto;padding:22px;}
+.quiz-home{max-width:860px;margin:0 auto;}
+.quiz-home-title{font-family:var(--disp);font-size:21px;font-weight:700;margin-bottom:4px;}
+.quiz-home-sub{color:var(--dim);font-size:13px;margin-bottom:18px;}
+.overall-stats{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+.os-chip{background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:12px 18px;display:flex;flex-direction:column;min-width:110px;}
+.os-num{font-family:var(--disp);font-size:22px;font-weight:700;}
+.os-lbl{color:var(--dim);font-size:11px;margin-top:1px;}
+.quiz-start-bar{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin-bottom:18px;flex-wrap:wrap;}
+.quiz-start-bar .btn{width:auto;}
+.sel-cat-label{flex:1;font-size:13px;color:var(--dim);min-width:180px;}
+.sel-cat-label strong{color:var(--text);}
+.qcount-select{width:auto!important;padding:9px 12px!important;font-size:13px!important;}
+.review-bar{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(255,107,107,.08),rgba(255,153,0,.06));border:1px solid rgba(255,107,107,.35);border-radius:var(--r);padding:14px 18px;margin-bottom:18px;flex-wrap:wrap;}
+.review-bar .btn{width:auto;}
+.review-label{flex:1;font-size:13px;min-width:180px;}
+.review-label strong{color:var(--ng);}
+
+.category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
+.category-card{background:var(--card);border:1px solid var(--line);border-radius:var(--rs);cursor:pointer;padding:14px 16px;transition:all .2s;position:relative;overflow:hidden;}
+.category-card:hover{border-color:var(--orange);transform:translateY(-2px);}
+.category-card.active-cat{border-color:var(--orange);background:rgba(255,153,0,.08);}
+.cat-head{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.cat-icon{font-size:21px;}
+.cat-name{font-family:var(--disp);font-size:13.5px;font-weight:700;flex:1;line-height:1.3;}
+.cat-count{color:var(--dim);font-size:11px;}
+.cat-acc-bar{background:var(--bg);border-radius:3px;height:5px;overflow:hidden;margin-top:6px;}
+.cat-acc-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+.cat-acc-text{font-size:10.5px;color:var(--dim);margin-top:4px;font-family:var(--disp);}
+
+.quiz-session{max-width:680px;margin:0 auto;}
+.qsess-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.q-prog-bar{background:var(--card);border-radius:4px;height:6px;width:128px;overflow:hidden;}
+.q-prog-fill{background:var(--orange);border-radius:4px;height:100%;transition:width .4s;}
+.quiz-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:14px;animation:fadeIn .2s ease;}
+.quiz-cat-tag{font-family:var(--disp);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:9px;}
+.quiz-question{font-size:16px;font-weight:700;line-height:1.6;margin-bottom:18px;}
+.quiz-choices{display:flex;flex-direction:column;gap:8px;}
+.quiz-choice{background:var(--card);border:2px solid var(--line);border-radius:var(--rs);cursor:pointer;display:flex;align-items:flex-start;gap:11px;padding:12px 14px;transition:all .18s;text-align:left;width:100%;font-size:13.5px;color:var(--text);line-height:1.55;}
+.quiz-choice:hover:not(:disabled){border-color:var(--orange);background:rgba(255,153,0,.06);}
+.quiz-choice:disabled{cursor:default;}
+.quiz-choice.correct{border-color:var(--ok)!important;background:rgba(45,212,191,.1)!important;}
+.quiz-choice.wrong{border-color:var(--ng)!important;background:rgba(255,107,107,.1)!important;}
+.choice-letter{background:var(--card2);border-radius:6px;color:var(--dim);font-family:var(--disp);font-weight:700;font-size:12.5px;min-width:27px;height:27px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.quiz-choice.correct .choice-letter{background:var(--ok);color:#04211C;}
+.quiz-choice.wrong .choice-letter{background:var(--ng);color:#2B0808;}
+.quiz-choice.selected-multi{border-color:var(--orange);background:rgba(255,153,0,.08);}
+.quiz-choice.selected-multi .choice-letter{background:var(--orange);color:#161006;}
+.quiz-explain{background:var(--card);border-left:3px solid var(--blue);border-radius:var(--rs);font-size:13px;line-height:1.8;margin-top:13px;padding:12px 15px;display:none;animation:fadeIn .2s ease;}
+.quiz-explain.show{display:block;}
+.quiz-nav{display:flex;justify-content:flex-end;margin-top:12px;}
+.kbd-hint{color:var(--dim);font-size:11px;text-align:center;margin-top:12px;}
+.kbd-hint kbd{background:var(--card2);border:1px solid var(--line);border-radius:4px;font-family:var(--disp);font-size:10px;padding:1px 6px;margin:0 1px;}
+
+#study-screen{align-items:center;justify-content:flex-start;padding:22px 18px;overflow-y:auto;}
+.study-container{width:100%;max-width:640px;margin:0 auto;}
+.study-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.study-progress{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim);}
+.progress-bar{background:var(--card);border-radius:4px;height:6px;overflow:hidden;width:128px;}
+.progress-fill{background:var(--orange);border-radius:4px;height:100%;transition:width .4s;}
+.study-card-wrap{perspective:1400px;margin-bottom:20px;}
+.study-card{background:var(--card);border:1px solid var(--line);border-radius:20px;cursor:pointer;height:290px;padding:32px;position:relative;transition:transform .5s cubic-bezier(.4,.2,.2,1),box-shadow .3s;transform-style:preserve-3d;}
+.study-card:hover{box-shadow:0 14px 44px rgba(0,0,0,.45);}
+.study-card.flipped{transform:rotateY(180deg);}
+.study-face{align-items:center;backface-visibility:hidden;display:flex;flex-direction:column;height:100%;justify-content:center;position:absolute;text-align:center;width:calc(100% - 64px);}
+.study-back{background:linear-gradient(150deg,#1B3866,#152640);border-radius:20px;left:0;padding:32px;top:0;transform:rotateY(180deg);width:100%;}
+.study-label{font-family:var(--disp);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;}
+.study-front .study-label{color:var(--orange);}
+.study-back .study-label{color:var(--blue);}
+.study-term{font-family:var(--disp);font-size:26px;font-weight:700;line-height:1.25;}
+.study-definition{font-size:14px;line-height:1.75;}
+.study-tap-hint{color:var(--dim);font-size:11.5px;margin-top:14px;}
+.study-controls{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;}
+.btn-study{align-items:center;border:none;border-radius:12px;cursor:pointer;display:flex;font-family:var(--body);font-weight:700;font-size:14px;gap:7px;padding:12px 22px;transition:all .2s;}
+.btn-know{background:var(--ok);color:#04211C;}
+.btn-know:hover{filter:brightness(1.12);transform:translateY(-2px);}
+.btn-again{background:var(--card2);border:1px solid var(--line);color:var(--text);}
+.btn-again:hover{border-color:var(--orange);}
+.btn-prev{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:12px;cursor:pointer;font-size:16px;padding:11px 15px;}
+.study-stats{display:flex;gap:20px;justify-content:center;}
+.stat-item{text-align:center;}
+.stat-num{font-family:var(--disp);font-size:19px;font-weight:700;}
+.stat-lbl{color:var(--dim);font-size:10.5px;}
+
+#result-screen{align-items:center;justify-content:center;padding:40px 20px;}
+.result-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);max-width:400px;padding:38px;text-align:center;width:100%;animation:pop .4s ease;}
+.result-emoji{font-size:48px;margin-bottom:10px;}
+.result-title{font-family:var(--disp);font-size:23px;font-weight:700;margin-bottom:4px;}
+.result-sub{color:var(--dim);margin-bottom:22px;font-size:13.5px;}
+.result-ring{margin:0 auto 22px;position:relative;width:110px;height:110px;}
+.result-ring svg{transform:rotate(-90deg);}
+.result-pct{font-family:var(--disp);font-size:23px;font-weight:700;left:50%;top:50%;position:absolute;transform:translate(-50%,-50%);}
+.result-breakdown{display:flex;gap:20px;justify-content:center;margin-bottom:16px;}
+.rb-item{text-align:center;}
+.rb-num{font-family:var(--disp);font-size:21px;font-weight:700;}
+.rb-lbl{color:var(--dim);font-size:10.5px;}
+.result-actions{display:flex;flex-direction:column;gap:8px;}
+
+.modal-overlay{align-items:center;background:rgba(8,14,26,.85);display:none;inset:0;justify-content:center;position:fixed;z-index:200;backdrop-filter:blur(4px);padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:26px;width:100%;max-width:440px;animation:pop .25s ease;}
+.modal-title{font-family:var(--disp);font-size:17px;font-weight:700;margin-bottom:16px;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px 16px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;max-width:280px;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.success{border-color:var(--ok);color:var(--ok);}
+.toast.error{border-color:var(--ng);color:var(--ng);}
+
+.empty-state{align-items:center;display:flex;flex-direction:column;gap:9px;justify-content:center;min-height:230px;text-align:center;}
+.empty-icon{font-size:42px;opacity:.35;}
+.empty-title{font-family:var(--disp);font-size:17px;font-weight:700;}
+.empty-sub{color:var(--dim);font-size:13px;}
+
+@media(max-width:680px){
+  .fc-layout{flex-direction:column;}
+  .sidebar{border-right:none;border-bottom:1px solid var(--line);min-width:unset;width:100%;max-height:172px;}
+  .main-content{padding:14px;}
+  .form-row{grid-template-columns:1fr;}
+  .setup-card{padding:22px 16px;}
+  .study-card{height:245px;padding:22px;}
+  .study-term{font-size:21px;}
+  .cards-grid{grid-template-columns:1fr;}
+  .content-header{flex-direction:column;align-items:flex-start;}
+  .toast{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));}
+  .quiz-layout{padding:14px;}
+  .quiz-card{padding:16px;}
+  .quiz-question{font-size:15px;}
+  .tab-btn{font-size:13px;padding:12px 13px;}
+  .kbd-hint{display:none;}
+  .os-chip{flex:1;min-width:90px;padding:10px 12px;}
+  .os-num{font-size:18px;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo"><div class="logo-icon">☁️</div>AWS <span>Study Deck</span></div>
+  <div class="header-right">
+    <div class="sync-indicator" id="sync-indicator" style="display:none;">
+      <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
+    </div>
+    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="ホームへ">🏠</button>
+  </div>
+</header>
+
+<div class="screen active" id="loading-screen">
+  <div><div class="loading-spinner"></div><div class="loading-text">接続中...</div></div>
+</div>
+
+<div class="screen" id="config-screen">
+  <div class="config-card">
+    <div class="config-title">🔥 <span>Firebase</span> の設定が必要です</div>
+    <div class="config-sub">クラウド保存を有効にするため、設定情報を書き換えてください。</div>
+    <div class="config-step"><strong>① Firebase Console でプロジェクト作成</strong><br><a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a></div>
+    <div class="config-step"><strong>② Firestore Database を有効化</strong><br>本番環境モード → リージョン <code>asia-northeast1</code></div>
+    <div class="config-step"><strong>③ セキュリティルール：</strong><code>allow read, write: if true;</code> に変更して公開</div>
+    <div class="config-step"><strong>④ store.js 内の <code>REPLACE_ME</code> を書き換えてGitHubにアップ</strong><br>設定は store.js の1箇所だけ。模擬試験・道場のデータも同じ設定で保存されます。</div>
+    <div class="code-block">const firebaseConfig = {<br>&nbsp;&nbsp;apiKey: "REPLACE_ME",<br>&nbsp;&nbsp;authDomain: "REPLACE_ME",<br>&nbsp;&nbsp;projectId: "REPLACE_ME",<br>&nbsp;&nbsp;storageBucket: "REPLACE_ME",<br>&nbsp;&nbsp;messagingSenderId: "REPLACE_ME",<br>&nbsp;&nbsp;appId: "REPLACE_ME"<br>};</div>
+  </div>
+</div>
+
+<div class="screen" id="setup-screen">
+  <div class="setup-card">
+    <div class="setup-title">ようこそ、<span>AWS</span> 学習へ 🚀</div>
+    <div class="setup-sub">単語帳 + CLF-C02 過去問（4択）で効率的に学習できます</div>
+    <div class="form-group"><label>ノート名</label><input type="text" id="notebook-name" placeholder="例: AWS CLF 試験対策" value="AWS CLF-C02 試験対策"></div>
+    <div class="form-group">
+      <label>単語帳カテゴリ（複数選択可）</label>
+      <div class="quick-tags">
+        <button class="tag-btn selected" onclick="toggleTag(this)">コンピューティング</button>
+        <button class="tag-btn selected" onclick="toggleTag(this)">ストレージ</button>
+        <button class="tag-btn selected" onclick="toggleTag(this)">ネットワーク</button>
+        <button class="tag-btn" onclick="toggleTag(this)">データベース</button>
+        <button class="tag-btn" onclick="toggleTag(this)">セキュリティ</button>
+        <button class="tag-btn" onclick="toggleTag(this)">サーバーレス</button>
+        <button class="tag-btn" onclick="toggleTag(this)">AI / ML</button>
+        <button class="tag-btn" onclick="toggleTag(this)">監視・管理</button>
+        <button class="tag-btn" onclick="toggleTag(this)">料金・サポート</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>目標試験（任意）</label>
+      <select id="exam-target">
+        <option value="CLF-C02" selected>AWS CLF-C02（クラウドプラクティショナー）</option>
+        <option value="SAA-C03">AWS SAA-C03（ソリューションアーキテクト アソシエイト）</option>
+        <option value="SAP-C02">AWS SAP-C02（ソリューションアーキテクト プロフェッショナル）</option>
+        <option value="DVA-C02">AWS DVA-C02（デベロッパー アソシエイト）</option>
+        <option value="SOA-C02">AWS SOA-C02（SysOps アドミニストレーター）</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="createNotebook()">ノートを作成して始める →</button>
+  </div>
+</div>
+
+<div class="screen" id="notebook-screen">
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab">📇 単語帳</button>
+    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab">📝 過去問（4択）</button>
+    <a class="tab-btn tab-link" href="mock-exam.html">🎓 模擬試験</a>
+    <a class="tab-btn tab-link" href="dojo.html">🥋 ハンズオン道場</a>
+  </div>
+  <div class="tab-content active" id="tabcontent-fc">
+    <div class="fc-layout">
+      <div class="sidebar">
+        <div class="sidebar-title">デッキ一覧</div>
+        <div class="notebook-info"><div class="nb-name" id="sidebar-notebook-name">—</div><div class="nb-sub" id="sidebar-exam-target">—</div></div>
+        <div class="deck-list" id="deck-list"></div>
+        <div class="sidebar-footer"><button class="btn-new-deck" onclick="openNewDeckModal()">＋ 新しいデッキ</button></div>
+      </div>
+      <div class="main-content">
+        <div class="content-header">
+          <div class="content-title" id="deck-title">デッキを選択</div>
+          <div class="content-actions" id="deck-actions" style="display:none;">
+            <button class="btn btn-secondary" onclick="toggleAddForm()">＋ カード追加</button>
+            <button class="btn btn-primary" onclick="startStudy()" id="study-btn" style="width:auto">📖 学習開始</button>
+          </div>
+        </div>
+        <div class="search-box" id="search-box" style="display:none;">
+          <input type="text" id="card-search" placeholder="カードを検索..." oninput="renderCards()">
+        </div>
+        <div class="add-card-form" id="add-card-form">
+          <div class="form-row">
+            <div class="form-group"><label>用語</label><input type="text" id="new-term" placeholder="例: Amazon S3"></div>
+            <div class="form-group"><label>説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-secondary" onclick="toggleAddForm()">キャンセル</button>
+            <button class="btn btn-primary" onclick="addCard()" style="width:auto" id="add-card-btn">追加</button>
+          </div>
+        </div>
+        <div id="cards-container"></div>
+      </div>
+    </div>
+  </div>
+  <div class="tab-content" id="tabcontent-quiz">
+    <div class="quiz-layout" id="quiz-layout"></div>
+  </div>
+</div>
+
+<div class="screen" id="study-screen">
+  <div class="study-container">
+    <div class="study-header">
+      <div><div style="font-family:var(--disp);font-size:16px;font-weight:700;" id="study-deck-title">学習中</div><div style="color:var(--dim);font-size:12px;" id="study-subtitle"></div></div>
+      <div class="study-progress"><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div><span id="progress-text">0/0</span></div>
+    </div>
+    <div class="study-card-wrap">
+      <div class="study-card" id="study-card" onclick="flipStudyCard()" tabindex="0" role="button" aria-label="カードをめくる">
+        <div class="study-face study-front"><div class="study-label">用語</div><div class="study-term" id="study-term-text"></div><div class="study-tap-hint">タップ / Space で答えを見る</div></div>
+        <div class="study-face study-back"><div class="study-label">説明</div><div class="study-definition" id="study-def-text"></div></div>
+      </div>
+    </div>
+    <div class="study-controls" id="study-controls" style="display:none;">
+      <button class="btn-prev" onclick="prevCard()" aria-label="前のカードへ">←</button>
+      <button class="btn-study btn-again" onclick="markCard(false)">もう一度 🔄</button>
+      <button class="btn-study btn-know" onclick="markCard(true)">覚えた ✓</button>
+    </div>
+    <div class="study-stats">
+      <div class="stat-item"><div class="stat-num" id="stat-know" style="color:var(--ok)">0</div><div class="stat-lbl">覚えた</div></div>
+      <div class="stat-item"><div class="stat-num" id="stat-again" style="color:var(--orange)">0</div><div class="stat-lbl">要復習</div></div>
+      <div class="stat-item"><div class="stat-num" id="stat-remain" style="color:var(--dim)">0</div><div class="stat-lbl">残り</div></div>
+    </div>
+    <div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> もう一度 ・ <kbd>2</kbd> 覚えた</div>
+  </div>
+</div>
+
+<div class="screen" id="result-screen">
+  <div class="result-card">
+    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-title" id="result-title">完了！</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div class="result-ring">
+      <svg viewBox="0 0 110 110" width="110" height="110" aria-hidden="true">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--card)" stroke-width="9"/>
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--orange)" stroke-width="9" stroke-dasharray="289" id="result-circle" stroke-dashoffset="289" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+      </svg>
+      <div class="result-pct" id="result-pct">0%</div>
+    </div>
+    <div class="result-breakdown">
+      <div class="rb-item"><div class="rb-num" id="rb-correct" style="color:var(--ok)">0</div><div class="rb-lbl">正解</div></div>
+      <div class="rb-item"><div class="rb-num" id="rb-wrong" style="color:var(--ng)">0</div><div class="rb-lbl">不正解</div></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-primary" onclick="restartResult()">もう一度</button>
+      <button class="btn btn-secondary" id="review-wrong-btn" onclick="reviewWrongFromResult()" style="display:none;">間違えた問題だけ復習</button>
+      <button class="btn btn-secondary" onclick="backFromResult()">戻る</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="new-deck-modal">
+  <div class="modal">
+    <div class="modal-title">新しいデッキを作成</div>
+    <div class="form-group"><label>デッキ名</label><input type="text" id="new-deck-name" placeholder="例: EC2 基礎"></div>
+    <div class="form-group"><label>アイコン</label>
+      <div class="quick-tags" id="icon-picker">
+        <button class="tag-btn selected" onclick="selectIcon(this,'⚙️')">⚙️</button>
+        <button class="tag-btn" onclick="selectIcon(this,'💾')">💾</button>
+        <button class="tag-btn" onclick="selectIcon(this,'🌐')">🌐</button>
+        <button class="tag-btn" onclick="selectIcon(this,'🗄️')">🗄️</button>
+        <button class="tag-btn" onclick="selectIcon(this,'🔐')">🔐</button>
+        <button class="tag-btn" onclick="selectIcon(this,'⚡')">⚡</button>
+        <button class="tag-btn" onclick="selectIcon(this,'🤖')">🤖</button>
+        <button class="tag-btn" onclick="selectIcon(this,'📊')">📊</button>
+        <button class="tag-btn" onclick="selectIcon(this,'💰')">💰</button>
+        <button class="tag-btn" onclick="selectIcon(this,'📚')">📚</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeNewDeckModal()">キャンセル</button>
+      <button class="btn btn-primary" style="width:auto" onclick="createDeck()">作成</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="store.js"></script>
+<script type="module">
+const firebaseConfig=window.FIREBASE_CONFIG;
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getFirestore,doc,getDoc,setDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const fbok=Object.values(firebaseConfig).every(v=>v!=="REPLACE_ME");
+if(!fbok){showScreen('config-screen');}
+else{
+  const db=getFirestore(initializeApp(firebaseConfig));window._db=db;
+  try{await init(db);}catch(e){toast('Firebase接続エラー: '+e.message,'error');showScreen('setup-screen');}
+}
+async function init(db){
+  setSyncState('syncing');
+  const snap=await getDoc(doc(db,'app','notebook'));
+  if(!snap.exists()){showScreen('setup-screen');setSyncState('ok');return;}
+  const d=snap.data();
+  state.notebook=d.notebook||{name:'',exam:''};
+  state.decks=d.decks||[];
+  state.quizStats=d.quizStats||{answered:{},wrong:[]};
+  afterLoad();setSyncState('ok');
+  onSnapshot(doc(db,'app','notebook'),s=>{
+    if(!s.exists())return;const d2=s.data();
+    const same=JSON.stringify(d2.decks)===JSON.stringify(state.decks)&&JSON.stringify(d2.quizStats||{})===JSON.stringify(state.quizStats||{});
+    if(same)return;
+    state.decks=d2.decks||[];state.notebook=d2.notebook||state.notebook;
+    state.quizStats=d2.quizStats||state.quizStats;
+    afterLoad(true);setSyncState('ok');
+  });
+}
+async function saveFB(){
+  if(!window._db)return;setSyncState('syncing');
+  try{await setDoc(doc(window._db,'app','notebook'),{notebook:state.notebook,decks:state.decks,quizStats:state.quizStats,updatedAt:new Date().toISOString()});setSyncState('ok');}
+  catch(e){setSyncState('error');toast('保存エラー: '+e.message,'error');}
+}
+window._save=saveFB;
+</script>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

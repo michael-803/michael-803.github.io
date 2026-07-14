@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWSハンズオン道場 — コンソール操作を安全に体験して学ぶ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   AWSハンズオン道場 — デザイントークン
+   ink:#20262e / bg:#f2f1ec / accent:#d96c00 / navy:#161e2d
+   sim-blue:#0972d3 / success:#037f0c / error:#d91515
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#20262e;
+  --ink-soft:#5b6472;
+  --bg:#f2f1ec;
+  --panel:#ffffff;
+  --line:#e2e0d8;
+  --accent:#d96c00;
+  --accent-soft:#fdf1e3;
+  --navy:#161e2d;
+  --navy-2:#232f3e;
+  --sim-blue:#0972d3;
+  --sim-blue-dark:#065aa5;
+  --success:#037f0c;
+  --success-bg:#eafbe7;
+  --error:#d91515;
+  --error-bg:#fdf0f0;
+  --warn:#8a6116;
+  --warn-bg:#fff8e6;
+  --radius:10px;
+  --font-body:"Noto Sans JP",system-ui,-apple-system,sans-serif;
+  --font-display:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.75;
+  font-size:15px;
+}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:14px}
+:focus-visible{outline:3px solid #7aa7ff;outline-offset:2px;border-radius:4px}
+
+/* ---------- アプリヘッダー ---------- */
+.app-header{
+  background:var(--navy);
+  color:#fff;
+  padding:0 20px;
+  height:58px;
+  display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 10px rgba(10,15,25,.25);
+}
+.app-logo{
+  font-family:var(--font-display);font-weight:900;font-size:18px;
+  letter-spacing:.04em;display:flex;align-items:center;gap:10px;
+  background:none;border:none;color:#fff;padding:6px 4px;
+}
+.app-logo .mark{
+  width:30px;height:30px;border-radius:7px;
+  background:linear-gradient(135deg,var(--accent),#f1a33c);
+  display:grid;place-items:center;
+  font-size:16px;color:#fff;font-weight:900;
+  box-shadow:inset 0 -2px 0 rgba(0,0,0,.2);
+}
+.app-header .spacer{flex:1}
+.belt-chip{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;padding:5px 14px 5px 8px;
+  font-size:12.5px;font-weight:700;letter-spacing:.02em;
+}
+.belt-swatch{width:26px;height:10px;border-radius:3px;border:1px solid rgba(0,0,0,.25)}
+.progress-mini{font-size:12px;color:#c8cfda;white-space:nowrap}
+
+/* ---------- レイアウト ---------- */
+.layout{display:grid;grid-template-columns:288px 1fr;max-width:1240px;margin:0 auto;gap:26px;padding:26px 20px 90px}
+@media(max-width:880px){
+  .layout{grid-template-columns:1fr;padding:16px 12px 70px}
+  .sidebar{position:static !important}
+}
+
+/* ---------- サイドバー(カリキュラム) ---------- */
+.sidebar{position:sticky;top:84px;align-self:start}
+.sidebar h2{
+  font-family:var(--font-display);font-size:13px;font-weight:700;
+  color:var(--ink-soft);letter-spacing:.14em;margin:4px 0 10px 6px;
+}
+.lab-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.lab-item{
+  width:100%;text-align:left;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 14px;display:flex;gap:12px;align-items:center;
+  transition:border-color .15s, transform .15s, box-shadow .15s;
+}
+.lab-item:hover{border-color:var(--accent);transform:translateX(2px)}
+.lab-item.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft) inset, 0 4px 14px rgba(217,108,0,.12)}
+.lab-item .num{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--ink-soft);width:44px;flex-shrink:0;line-height:1.3;
+}
+.lab-item .num .svc{display:block;font-size:14px;color:var(--ink);font-weight:600}
+.lab-item .t{flex:1;font-size:13.5px;font-weight:600;line-height:1.45}
+.lab-item .t small{display:block;font-weight:400;color:var(--ink-soft);font-size:11.5px}
+.lab-status{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:12px;
+  border:2px solid var(--line);color:transparent}
+.lab-status.done{background:var(--success);border-color:var(--success);color:#fff}
+.lab-status.part{border-color:var(--accent);color:var(--accent);font-size:9px;font-weight:700}
+
+/* ---------- メイン ---------- */
+.main{min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 30px;margin-bottom:22px}
+@media(max-width:600px){.card{padding:20px 16px}}
+h1.page-title{font-family:var(--font-display);font-weight:900;font-size:26px;line-height:1.4;margin-bottom:6px}
+.eyebrow{
+  display:inline-block;font-family:var(--font-mono);font-size:11px;font-weight:600;
+  color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;
+}
+.lede{color:var(--ink-soft);font-size:14.5px;max-width:62ch}
+.domain-tag{
+  display:inline-block;background:var(--accent-soft);color:#9a4d00;
+  font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 10px;margin:2px 6px 2px 0;
+}
+
+/* 本文 */
+.prose h3{font-family:var(--font-display);font-weight:700;font-size:17px;margin:22px 0 8px;
+  padding-left:12px;border-left:4px solid var(--accent)}
+.prose p{margin:10px 0;max-width:68ch}
+.prose ul,.prose ol{margin:10px 0 10px 24px;max-width:66ch}
+.prose li{margin:5px 0}
+.prose code{font-family:var(--font-mono);font-size:12.5px;background:#eef1f6;border:1px solid #dde3ec;
+  border-radius:5px;padding:1px 6px;color:#1d3d63}
+.prose strong{font-weight:700;background:linear-gradient(transparent 68%, #ffe3c2 68%)}
+.point-box{background:var(--accent-soft);border:1px solid #f3d2a8;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px}
+.point-box .pb-t{font-weight:900;font-family:var(--font-display);color:#9a4d00;font-size:13px;margin-bottom:4px}
+table.cmp{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+table.cmp th,table.cmp td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
+
+/* ---------- ステップナビ ---------- */
+.stepper{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 4px}
+.step-dot{
+  border:1px solid var(--line);background:var(--panel);border-radius:999px;
+  font-size:12px;font-weight:600;padding:5px 13px;color:var(--ink-soft);
+  transition:all .15s;
+}
+.step-dot:hover{border-color:var(--accent)}
+.step-dot.cur{background:var(--navy);color:#fff;border-color:var(--navy)}
+.step-dot.ok{background:var(--success-bg);border-color:#bfe8bc;color:var(--success)}
+.step-dot.ok.cur{background:var(--success);color:#fff;border-color:var(--success)}
+.nav-row{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+.btn{
+  border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;
+  border:1px solid transparent;transition:transform .12s, box-shadow .12s, background .12s;
+}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 3px 10px rgba(217,108,0,.3)}
+.btn-primary:hover{background:#c05f00}
+.btn-primary:disabled{background:#d9cfc2;box-shadow:none;cursor:not-allowed}
+.btn-ghost{background:var(--panel);border-color:var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--ink-soft)}
+
+/* ---------- コンソールシミュレーター(このアプリの主役) ---------- */
+.sim{
+  border-radius:12px;overflow:hidden;margin:20px 0;
+  border:1px solid #2c3a4d;
+  box-shadow:0 14px 34px rgba(15,25,45,.22);
+  background:#fff;
+}
+.sim-label{
+  display:flex;align-items:center;gap:8px;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;
+  color:#f1b06a;background:#0d1420;padding:6px 14px;font-weight:600;
+}
+.sim-label::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 8px rgba(241,153,60,.9);animation:pulse 2.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sim-chrome{
+  background:var(--navy-2);color:#d5dbe4;height:44px;
+  display:flex;align-items:center;gap:12px;padding:0 14px;font-size:12.5px;
+}
+.sim-chrome .aws-mark{
+  font-family:var(--font-mono);font-weight:600;color:#ff9900;font-size:13px;letter-spacing:.02em;white-space:nowrap;
+}
+.sim-search{
+  flex:1;max-width:420px;background:#39485c;border:1px solid #52627a;border-radius:6px;
+  color:#fff;padding:6px 12px;font-size:12.5px;
+}
+.sim-search::placeholder{color:#9fb0c4}
+.sim-chrome .right{margin-left:auto;display:flex;align-items:center;gap:14px;white-space:nowrap}
+.sim-region{background:#39485c;color:#fff;border:1px solid #52627a;border-radius:6px;padding:5px 8px;font-size:12px}
+.sim-body{padding:22px 24px;background:#f8f9fb;min-height:120px}
+@media(max-width:600px){.sim-body{padding:16px 12px}}
+.sim-h{font-size:18px;font-weight:700;margin-bottom:4px;color:#0f1b2a}
+.sim-sub{font-size:12.5px;color:#5f6b7a;margin-bottom:16px}
+.sim-panel{background:#fff;border:1px solid #d5dbe0;border-radius:10px;padding:18px 20px;margin:14px 0}
+.sim-panel h4{font-size:14px;font-weight:700;margin-bottom:12px;color:#0f1b2a}
+.f-row{margin:14px 0}
+.f-row label{display:block;font-size:13px;font-weight:700;color:#0f1b2a;margin-bottom:4px}
+.f-row .hint{font-size:11.5px;color:#5f6b7a;margin-top:4px;line-height:1.5}
+.f-row input[type=text],.f-row input[type=email],.f-row input[type=number],.f-row select{
+  width:100%;max-width:420px;padding:8px 12px;border:1px solid #8c95a3;border-radius:7px;background:#fff;
+}
+.f-row input:focus,.f-row select:focus{border-color:var(--sim-blue);box-shadow:0 0 0 2px #cbe1f7;outline:none}
+.f-row input.bad{border-color:var(--error);box-shadow:0 0 0 2px #f7d2d2}
+.f-row input.good{border-color:var(--success)}
+.f-inline{display:flex;align-items:flex-start;gap:9px;margin:9px 0;font-size:13.5px}
+.f-inline input{margin-top:4px}
+.live-check{font-size:12px;margin-top:5px;font-weight:600;min-height:18px}
+.live-check.ok{color:var(--success)}
+.live-check.ng{color:var(--error)}
+.sim-btn{
+  background:var(--sim-blue);color:#fff;border:none;border-radius:20px;
+  padding:8px 22px;font-size:13.5px;font-weight:700;
+}
+.sim-btn:hover{background:var(--sim-blue-dark)}
+.sim-btn.sub{background:#fff;color:var(--sim-blue);border:2px solid var(--sim-blue);padding:6px 20px}
+.sim-btn.danger{background:#fff;color:var(--error);border:2px solid var(--error);padding:6px 20px}
+.sim-btn:disabled{background:#c3cdd8;cursor:not-allowed}
+
+/* 選択カード(AMI・インスタンスタイプ等) */
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin:10px 0}
+.pick{
+  text-align:left;background:#fff;border:2px solid #d5dbe0;border-radius:10px;padding:12px 14px;
+  transition:border-color .12s, box-shadow .12s;position:relative;
+}
+.pick:hover{border-color:#9db8d4}
+.pick.sel{border-color:var(--sim-blue);box-shadow:0 0 0 2px #cbe1f7}
+.pick .pt{font-weight:700;font-size:13.5px;margin-bottom:2px}
+.pick .pd{font-size:11.5px;color:#5f6b7a;line-height:1.5}
+.pick .free{position:absolute;top:8px;right:8px;background:var(--success-bg);color:var(--success);
+  font-size:10px;font-weight:800;border-radius:4px;padding:1px 7px}
+
+/* バナー */
+.banner{border-radius:9px;padding:12px 16px;margin:14px 0;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;line-height:1.65}
+.banner .ic{font-weight:900;flex-shrink:0}
+.banner.ok{background:var(--success-bg);border:1px solid #a8dfa3;color:#054f0b}
+.banner.ng{background:var(--error-bg);border:1px solid #efb8b8;color:#8f0f0f}
+.banner.warn{background:var(--warn-bg);border:1px solid #ecd695;color:#6e4d0e}
+.banner.info{background:#eef5fd;border:1px solid #bcd7f2;color:#0d4a80}
+
+/* リソーステーブル(EC2一覧など) */
+.res-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #d5dbe0;border-radius:8px;overflow:hidden}
+.res-table th{background:#f2f4f7;text-align:left;padding:9px 12px;font-size:11.5px;color:#414d5c;border-bottom:1px solid #d5dbe0}
+.res-table td{padding:10px 12px;border-bottom:1px solid #e9edf1}
+.state-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700}
+.state-pill::before{content:"";width:9px;height:9px;border-radius:50%}
+.state-pill.running{color:var(--success)}.state-pill.running::before{background:var(--success)}
+.state-pill.stopped{color:#b5590a}.state-pill.stopped::before{background:#b5590a}
+.state-pill.pending{color:#5f6b7a}.state-pill.pending::before{background:#8c95a3}
+.state-pill.terminated{color:#8c95a3}.state-pill.terminated::before{background:#c3cdd8}
+.code-block{font-family:var(--font-mono);font-size:12.5px;background:#101826;color:#d8e3f0;border-radius:9px;
+  padding:14px 18px;margin:12px 0;overflow-x:auto;line-height:1.7}
+.code-block .cm{color:#7d93ad}
+
+/* ---------- クイズ ---------- */
+.quiz-q{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;background:#fffdfa}
+.quiz-q .qn{font-family:var(--font-mono);font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.1em}
+.quiz-q .qt{font-weight:700;margin:6px 0 12px;font-size:14.5px}
+.quiz-opt{display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--line);border-radius:9px;
+  padding:10px 14px;margin:7px 0;font-size:13.5px;transition:all .12s}
+.quiz-opt:hover:not(:disabled){border-color:var(--accent)}
+.quiz-opt.picked-ok{border-color:var(--success);background:var(--success-bg);font-weight:700}
+.quiz-opt.picked-ng{border-color:var(--error);background:var(--error-bg)}
+.quiz-opt.reveal{border-color:var(--success);background:var(--success-bg)}
+.quiz-opt:disabled{cursor:default;opacity:.92}
+.quiz-exp{font-size:13px;background:#eef5fd;border:1px solid #bcd7f2;border-radius:8px;padding:10px 14px;margin-top:10px;color:#0d3f6e;display:none}
+.quiz-exp.show{display:block;animation:fadein .3s}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ---------- ホーム ---------- */
+.hero{
+  background:linear-gradient(140deg,#161e2d 0%, #1f2c42 55%, #35281a 100%);
+  color:#fff;border-radius:16px;padding:38px 36px;margin-bottom:24px;
+  position:relative;overflow:hidden;
+}
+@media(max-width:600px){.hero{padding:26px 20px}}
+.hero::after{
+  content:"道";position:absolute;right:-10px;bottom:-70px;
+  font-family:var(--font-display);font-weight:900;font-size:240px;color:rgba(241,153,60,.08);
+  line-height:1;pointer-events:none;user-select:none;
+}
+.hero .eyebrow{color:#f1a33c}
+.hero h1{font-family:var(--font-display);font-weight:900;font-size:30px;line-height:1.45;margin-bottom:10px}
+.hero p{color:#c4ccd8;max-width:56ch;font-size:14.5px}
+.belt-track{display:flex;gap:5px;margin-top:22px;align-items:center;flex-wrap:wrap}
+.belt-seg{height:12px;width:52px;border-radius:4px;border:1px solid rgba(255,255,255,.25);position:relative}
+.belt-seg .bl{position:absolute;top:16px;left:0;font-size:10px;color:#9aa6b6;white-space:nowrap}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.home-lab{
+  text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;
+  transition:all .15s;position:relative;
+}
+.home-lab:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 10px 24px rgba(30,25,15,.09)}
+.home-lab .svc-badge{
+  font-family:var(--font-mono);font-size:11px;font-weight:600;color:#fff;background:var(--navy-2);
+  border-radius:6px;padding:3px 10px;display:inline-block;margin-bottom:10px;
+}
+.home-lab h3{font-family:var(--font-display);font-weight:700;font-size:16px;margin-bottom:6px}
+.home-lab p{font-size:12.5px;color:var(--ink-soft);line-height:1.65}
+.home-lab .meta{display:flex;gap:10px;margin-top:12px;font-size:11.5px;color:var(--ink-soft);align-items:center}
+.done-ribbon{position:absolute;top:14px;right:14px;background:var(--success);color:#fff;font-size:11px;
+  font-weight:800;border-radius:6px;padding:2px 9px}
+
+/* 完了画面 */
+.complete-box{text-align:center;padding:36px 20px}
+.complete-box .big{font-size:56px;line-height:1;margin-bottom:12px}
+.complete-box h2{font-family:var(--font-display);font-weight:900;font-size:24px;margin-bottom:8px}
+.footer-note{max-width:1240px;margin:0 auto;padding:0 20px 40px;color:var(--ink-soft);font-size:12px;text-align:center}
+.deck-link{color:inherit;opacity:.7;font-size:12px;text-decoration:none;border:1px solid currentColor;border-radius:16px;padding:4px 12px;margin-right:10px;white-space:nowrap;transition:opacity .2s}
+.deck-link:hover{opacity:1}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <button class="app-logo" onclick="go({type:'home'})" aria-label="ホームへ戻る">
+    <span class="mark">道</span>AWSハンズオン道場
+  </button>
+  <div class="spacer"></div>
+  <a href="index.html" class="deck-link">⬅ Study Deck</a>
+  <div class="belt-chip" id="beltChip"></div>
+  <div class="progress-mini" id="progressMini"></div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar" id="sidebar" aria-label="カリキュラム"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<p class="footer-note">
+  このアプリは学習用のシミュレーターです。実際のAWSアカウントには一切接続せず、料金も発生しません。<br>
+  画面や仕様は学習目的で簡略化しています。本番のコンソールは随時更新されるため、細部が異なる場合があります。
+</p>
+
+<script src="store.js"></script>
+<script>
+/* ============================================================
+   状態管理(GitHub Pagesでは進捗を保存、保存不可の環境ではメモリ内で動作)
+   ============================================================ */
+const STORE_KEY = "awsDojoProgressV1";
+function loadProgress(){
+  return CloudStore.get(STORE_KEY) || {};
+}
+function saveProgress(){ CloudStore.set(STORE_KEY, state.progress); }
+
+const state = {
+  view: {type:"home"},
+  progress: loadProgress(),   // { labId: { steps:{stepIdx:true}, quiz:{qIdx:pickedIdx} } }
+  sim: {}                     // シミュレーター内の一時状態(Labごとにリセット)
+};
+
+function labProg(labId){
+  if(!state.progress[labId]) state.progress[labId] = {steps:{}, quiz:{}};
+  return state.progress[labId];
+}
+function stepDone(labId, idx){ return !!labProg(labId).steps[idx]; }
+function markStep(labId, idx){
+  labProg(labId).steps[idx] = true;
+  saveProgress();
+  renderHeader(); renderSidebar();
+}
+function labCompleted(lab){
+  return lab.steps.every((s,i)=>stepDone(lab.id,i));
+}
+function completedCount(){ return LABS.filter(labCompleted).length; }
+
+/* 帯システム */
+const BELTS = [
+  {n:0,name:"白帯",c:"#f5f5f0"},
+  {n:1,name:"黄帯",c:"#e8c928"},
+  {n:2,name:"橙帯",c:"#e08a2e"},
+  {n:3,name:"緑帯",c:"#3f9c46"},
+  {n:4,name:"紫帯",c:"#7a4fa8"},
+  {n:5,name:"茶帯",c:"#7a5230"},
+  {n:6,name:"赤帯",c:"#c23434"},
+  {n:7,name:"黒帯",c:"#1c1c1c"}
+];
+function currentBelt(){
+  const done = completedCount();
+  let b = BELTS[0];
+  for(const belt of BELTS){ if(done >= belt.n) b = belt; }
+  return b;
+}
+
+/* ============================================================
+   ユーティリティ
+   ============================================================ */
+function esc(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function el(id){ return document.getElementById(id); }
+function go(view){
+  state.view = view;
+  if(view.type==="lab"){ state.sim = {}; }
+  render();
+  window.scrollTo({top:0});
+}
+function goStep(labId, stepIdx){
+  state.view = {type:"lab", id:labId, step:stepIdx};
+  render();
+  const m = el("main"); if(m) m.scrollIntoView({block:"start"});
+  window.scrollTo({top:0});
+}
+
+/* コンソールシミュレーターの共通ガワ */
+function simShell(title, breadcrumb, inner, opts={}){
+  const region = opts.region || "アジアパシフィック (東京) ap-northeast-1";
+  return `
+  <div class="sim">
+    <div class="sim-label">CONSOLE SIMULATOR — 練習用の疑似コンソール(実際のAWSには接続していません)</div>
+    <div class="sim-chrome">
+      <span class="aws-mark">aws</span>
+      <input class="sim-search" placeholder="サービス、機能、ドキュメントなどを検索  [Alt+S]" ${opts.searchId?`id="${opts.searchId}" oninput="${opts.searchHandler}(this.value)"`:"readonly tabindex='-1'"}>
+      <div class="right">
+        ${opts.regionSelect ? opts.regionSelect : `<span class="sim-region">${esc(region)}</span>`}
+        <span>sakura@dojo</span>
+      </div>
+    </div>
+    <div class="sim-body">
+      ${breadcrumb?`<div style="font-size:11.5px;color:#5f6b7a;margin-bottom:10px">${breadcrumb}</div>`:""}
+      ${title?`<div class="sim-h">${title}</div>`:""}
+      ${inner}
+    </div>
+  </div>`;
+}
+function okBanner(msg){ return `<div class="banner ok"><span class="ic">✓</span><div>${msg}</div></div>`; }
+function ngBanner(msg){ return `<div class="banner ng"><span class="ic">✕</span><div>${msg}</div></div>`; }
+function warnBanner(msg){ return `<div class="banner warn"><span class="ic">⚠</span><div>${msg}</div></div>`; }
+function infoBanner(msg){ return `<div class="banner info"><span class="ic">ℹ</span><div>${msg}</div></div>`; }
+
+/* sim完了時の共通処理:バナー表示+ステップ完了マーク+次へボタン活性化 */
+function simSuccess(labId, stepIdx, areaId, msg){
+  markStep(labId, stepIdx);
+  const area = el(areaId);
+  if(area){ area.innerHTML = okBanner(msg); }
+  const btn = el("nextBtn");
+  if(btn){ btn.disabled = false; }
+  renderStepper();
+}
+
+/* ============================================================
+   Lab 0:コンソールの歩き方 — シミュレーター用ロジック
+   ============================================================ */
+const SVC_LIST = [
+  {n:"S3", d:"クラウド上のオブジェクトストレージ", cat:"ストレージ"},
+  {n:"EC2", d:"クラウド上の仮想サーバー", cat:"コンピューティング"},
+  {n:"IAM", d:"ユーザーとアクセス権限の管理", cat:"セキュリティ"},
+  {n:"Lambda", d:"サーバーレスでコードを実行", cat:"コンピューティング"},
+  {n:"RDS", d:"マネージドなリレーショナルデータベース", cat:"データベース"},
+  {n:"VPC", d:"仮想ネットワークの構築", cat:"ネットワーキング"},
+  {n:"CloudWatch", d:"リソースの監視とアラーム", cat:"管理"},
+  {n:"S3 Glacier", d:"長期アーカイブ用の低コストストレージ", cat:"ストレージ"}
+];
+function lab0Search(v){
+  const box = el("svcResults");
+  if(!box) return;
+  const q = v.trim().toLowerCase();
+  if(!q){ box.innerHTML = `<div class="sim-sub" style="margin:8px 0 0">検索ボックスにサービス名を入力してみましょう(例:S3)</div>`; return; }
+  const hits = SVC_LIST.filter(s=>s.n.toLowerCase().includes(q));
+  if(hits.length===0){ box.innerHTML = `<div class="sim-sub" style="margin:8px 0 0">「${esc(v)}」に一致するサービスは見つかりませんでした</div>`; return; }
+  box.innerHTML = `<div class="pick-grid" style="margin-top:10px">` + hits.map(s=>`
+    <button class="pick" onclick="lab0PickSvc('${esc(s.n)}')">
+      <div class="pt">${esc(s.n)}</div>
+      <div class="pd">${esc(s.d)}<br><span style="color:#8a94a3">${esc(s.cat)}</span></div>
+    </button>`).join("") + `</div>`;
+}
+function lab0PickSvc(name){
+  const area = el("lab0aResult");
+  if(name==="S3"){
+    simSuccess("basics",1,"lab0aResult","<b>S3のダッシュボードに移動しました。</b>これが基本の動線です。本物のコンソールでも、上部の検索ボックスから目的のサービスへ一発で飛べます。よく使うサービスは検索結果の星マークでお気に入り登録もできます。");
+  }else{
+    area.innerHTML = infoBanner(`<b>${esc(name)}</b> を開きました。今回は練習として <b>S3</b> を検索して開いてみましょう。`);
+  }
+}
+function lab0Region(v){
+  const area = el("lab0bResult");
+  if(v==="ap-northeast-1"){
+    simSuccess("basics",2,"lab0bResult","<b>東京リージョン(ap-northeast-1)に切り替わりました。</b>以降このリージョンでリソースを作成すると、データは東京のデータセンター群に置かれます。リージョンを間違えたまま作業して「作ったはずのリソースが見つからない!」というのは初心者が最初にハマる定番ポイントです。");
+  }else if(v==="us-east-1"){
+    area.innerHTML = infoBanner("バージニア北部のままです。今回は<b>東京リージョン</b>を選んでみましょう。");
+  }else{
+    area.innerHTML = infoBanner("そのリージョンも実在しますが、今回は<b>アジアパシフィック(東京)</b>を選んでみましょう。");
+  }
+}
+
+/* ============================================================
+   Lab 1:IAM — シミュレーター用ロジック
+   ============================================================ */
+function iamValidateName(v){
+  const lc = el("iamNameCheck"); const inp = el("iamUserName");
+  if(!lc) return false;
+  if(!v){ lc.textContent=""; inp.className=""; return false; }
+  if(!/^[A-Za-z0-9+=,.@_-]{1,64}$/.test(v)){
+    lc.textContent = "✕ 使用できるのは英数字と + = , . @ _ - のみです(スペース・日本語は不可)";
+    lc.className = "live-check ng"; inp.className="bad"; return false;
+  }
+  lc.textContent = "✓ 使用できるユーザー名です";
+  lc.className = "live-check ok"; inp.className="good"; return true;
+}
+function iamCreateUser(){
+  const name = el("iamUserName").value.trim();
+  const console_ = el("iamConsoleAccess").checked;
+  const reset = el("iamRequireReset").checked;
+  const area = el("lab1aResult");
+  if(!iamValidateName(name) || !name){
+    area.innerHTML = ngBanner("ユーザー名を正しく入力してください。"); return;
+  }
+  if(!console_){
+    area.innerHTML = ngBanner("今回は人間が使うユーザーを作るので、「マネジメントコンソールへのアクセスを提供する」にチェックを入れましょう。プログラムからのアクセスだけなら不要ですが、Taroさんはブラウザでログインして作業します。"); return;
+  }
+  if(!reset){
+    area.innerHTML = warnBanner("作成はできますが、<b>「次回サインイン時にパスワードの変更を必須にする」</b>にチェックを入れるのがベストプラクティスです。初期パスワードを配布した管理者すら本人のパスワードを知らない状態にできます。チェックを入れて再度作成してみましょう。"); return;
+  }
+  simSuccess("iam",1,"lab1aResult",`IAMユーザー <b>${esc(name)}</b> を作成しました。コンソールアクセス用の初期パスワードが発行され、初回サインイン時に本人が変更します。実務ではこのあと<b>MFA(多要素認証)の有効化</b>まで済ませるのが鉄則です。`);
+}
+function iamPickPolicy(key){
+  const area = el("lab1bResult");
+  const msgs = {
+    admin: ngBanner("<b>AdministratorAccess</b> はすべてのサービスへのフルアクセスです。S3のレポートを見るだけの人に渡すのは完全に過剰で、事故や漏洩時の被害が最大化します。<b>最小権限の原則</b>に立ち返りましょう。"),
+    power: ngBanner("<b>PowerUserAccess</b> はIAM以外のほぼ全操作が可能です。これも「閲覧するだけ」の要件には広すぎます。"),
+    s3full: warnBanner("<b>AmazonS3FullAccess</b> だと閲覧だけでなく<b>削除やアップロードもできてしまいます</b>。「読み取り専用」の要件にはまだ広すぎます。もう一段階絞れます。"),
+  };
+  if(key==="s3read"){
+    simSuccess("iam",2,"lab1bResult","<b>AmazonS3ReadOnlyAccess</b> をアタッチしました。Taroさんは S3 の閲覧(Get/List)だけができ、削除・変更・他サービスへのアクセスは一切できません。これが<b>最小権限の原則(Least Privilege)</b>です。CLF-C02でも頻出の考え方です。");
+  }else{
+    area.innerHTML = msgs[key];
+  }
+}
+
+/* ============================================================
+   Lab 2:S3 — シミュレーター用ロジック
+   ============================================================ */
+const TAKEN_BUCKETS = ["sakura","test","my-bucket","data","backup","images","sakura-bucket"];
+function s3ValidateName(v){
+  const lc = el("s3NameCheck"); const inp = el("s3BucketName");
+  if(!lc) return false;
+  if(!v){ lc.textContent=""; inp.className=""; return false; }
+  let err = null;
+  if(v.length < 3 || v.length > 63) err = "3〜63文字で入力してください";
+  else if(/[A-Z]/.test(v)) err = "大文字は使えません(すべて小文字)";
+  else if(/_/.test(v)) err = "アンダースコア(_)は使えません。ハイフン(-)を使いましょう";
+  else if(!/^[a-z0-9]/.test(v) || !/[a-z0-9]$/.test(v)) err = "先頭と末尾は英小文字か数字にしてください";
+  else if(!/^[a-z0-9.-]+$/.test(v)) err = "使用できるのは英小文字・数字・ハイフン・ドットのみです";
+  else if(/^\d+\.\d+\.\d+\.\d+$/.test(v)) err = "IPアドレス形式の名前は使えません";
+  else if(TAKEN_BUCKETS.includes(v)) err = "指定されたバケット名は既に存在します(バケット名は世界中で一意)。別の名前を試してください";
+  if(err){ lc.textContent = "✕ " + err; lc.className="live-check ng"; inp.className="bad"; return false; }
+  lc.textContent = "✓ 使用可能なバケット名です";
+  lc.className="live-check ok"; inp.className="good"; return true;
+}
+function s3CreateBucket(){
+  const name = el("s3BucketName").value.trim();
+  const bpaOff = el("s3BpaOff").checked;
+  const area = el("lab2aResult");
+  if(!name || !s3ValidateName(name)){
+    area.innerHTML = ngBanner("バケット名の要件を満たしていません。上のライブチェックを参考に修正しましょう。"); return;
+  }
+  if(bpaOff){
+    area.innerHTML = warnBanner("<b>「パブリックアクセスをすべてブロック」のチェックを外そうとしています。</b>これはバケットをインターネットに公開できる状態にする操作で、S3の情報漏洩事故の大半はこの設定ミスが原因です。今回は社内用データの置き場なので、<b>ブロックは有効のまま</b>作成しましょう。"); return;
+  }
+  state.sim.s3bucket = name;
+  simSuccess("s3",1,"lab2aResult",`バケット <b>${esc(name)}</b> を作成しました(リージョン: ap-northeast-1)。パブリックアクセスはすべてブロックされており、安全なデフォルト状態です。`);
+  const up = el("s3UploadPanel"); if(up) up.style.display="block";
+}
+function s3Upload(){
+  const bucket = state.sim.s3bucket || "my-bucket";
+  simSuccess("s3",2,"lab2bResult",`<b>report-2026-07.pdf</b>(1.2 MB)を <b>s3://${esc(bucket)}/</b> にアップロードしました。オブジェクトはキー(ファイル名)で管理され、耐久性は<b>イレブンナイン(99.999999999%)</b>。標準ストレージクラスに保存されています。`);
+}
+
+/* ============================================================
+   Lab 3:EC2 — シミュレーター用ロジック
+   ============================================================ */
+function ec2Pick(group, key, elBtn){
+  state.sim["ec2_"+group] = key;
+  document.querySelectorAll(`[data-g="${group}"]`).forEach(b=>b.classList.remove("sel"));
+  elBtn.classList.add("sel");
+  const fb = el("ec2Feedback");
+  if(!fb) return;
+  if(group==="type" && key!=="t2.micro"){
+    fb.innerHTML = warnBanner("そのインスタンスタイプも選べますが、<b>無料利用枠の対象は t2.micro / t3.micro</b> です(リージョンにより異なる)。学習用途ならまず無料枠を選びましょう。");
+  }else if(group==="sg" && key==="anywhere"){
+    fb.innerHTML = warnBanner("<b>SSH(ポート22)を 0.0.0.0/0(全世界)に開放</b>しようとしています。インターネット中からログイン試行を受ける状態で、実際に数分でブルートフォース攻撃が飛んできます。<b>「マイIP」</b>に絞るのが基本です。");
+  }else{
+    fb.innerHTML = "";
+  }
+}
+function ec2Launch(){
+  const area = el("lab3aResult");
+  const name = el("ec2Name").value.trim();
+  const ami = state.sim.ec2_ami, type = state.sim.ec2_type, sg = state.sim.ec2_sg;
+  const key = el("ec2KeyName").value.trim();
+  if(!name){ area.innerHTML = ngBanner("インスタンスに名前を付けましょう(例: dojo-web-server)。"); return; }
+  if(!ami){ area.innerHTML = ngBanner("AMI(OSイメージ)を選択してください。"); return; }
+  if(!type){ area.innerHTML = ngBanner("インスタンスタイプを選択してください。"); return; }
+  if(type!=="t2.micro"){ area.innerHTML = warnBanner("学習用なので<b>無料利用枠対象の t2.micro</b> を選び直しましょう。"); return; }
+  if(!key){ area.innerHTML = ngBanner("キーペア名を入力して作成してください。SSH接続に必要な秘密鍵で、<b>この画面でしかダウンロードできません</b>。"); return; }
+  if(!sg){ area.innerHTML = ngBanner("セキュリティグループのSSH許可元を選択してください。"); return; }
+  if(sg==="anywhere"){ area.innerHTML = ngBanner("SSHの許可元が <b>0.0.0.0/0(全世界)</b> のままです。<b>マイIP</b> に変更してから起動しましょう。"); return; }
+  state.sim.ec2inst = {name, state:"running"};
+  simSuccess("ec2",1,"lab3aResult",`インスタンス <b>${esc(name)}</b>(i-0a1b2c3d4e5f6dojo)を起動しました。状態は <b>pending → running</b> に遷移し、パブリックIPが割り当てられました。キーペア <b>${esc(key)}.pem</b> は安全な場所に保管してください。`);
+  const p2 = el("ec2StatePanel"); if(p2){ p2.style.display="block"; ec2RenderTable(); }
+}
+function ec2RenderTable(){
+  const t = el("ec2Table"); if(!t || !state.sim.ec2inst) return;
+  const i = state.sim.ec2inst;
+  t.innerHTML = `
+    <table class="res-table">
+      <tr><th>Name</th><th>インスタンスID</th><th>状態</th><th>タイプ</th><th>アクション</th></tr>
+      <tr>
+        <td>${esc(i.name)}</td>
+        <td style="font-family:var(--font-mono);font-size:12px">i-0a1b2c3d4e5f6dojo</td>
+        <td><span class="state-pill ${i.state}">${i.state}</span></td>
+        <td>t2.micro</td>
+        <td style="white-space:nowrap">
+          <button class="sim-btn sub" style="margin-right:6px" onclick="ec2Action('stopped')" ${i.state!=="running"?"disabled":""}>停止</button>
+          <button class="sim-btn danger" onclick="ec2Action('terminated')" ${i.state==="terminated"?"disabled":""}>終了</button>
+        </td>
+      </tr>
+    </table>`;
+}
+function ec2Action(next){
+  const area = el("lab3bResult");
+  const i = state.sim.ec2inst; if(!i) return;
+  if(next==="terminated"){
+    area.innerHTML = warnBanner("<b>「終了(Terminate)」はインスタンスの完全削除</b>です。二度と起動できず、EBSボリュームも(設定次第で)消えます。今回の課題は<b>「停止(Stop)」</b>。夜間や使わない時間はコンピューティング料金を止められます。");
+    return;
+  }
+  i.state = "stopped"; ec2RenderTable();
+  simSuccess("ec2",2,"lab3bResult","インスタンスを<b>停止(stopped)</b>しました。停止中は<b>インスタンスの時間課金は止まり</b>、EBSストレージ料金のみ発生します。再開すればデータはそのまま。これが「終了(Terminate=完全削除)」との決定的な違いで、試験でも実務でも超頻出です。");
+}
+
+/* ============================================================
+   Lab 4:VPC — シミュレーター用ロジック
+   ============================================================ */
+function cidrParse(v){
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/.exec(v.trim());
+  if(!m) return null;
+  const oct = m.slice(1,5).map(Number);
+  const pre = Number(m[5]);
+  if(oct.some(o=>o>255) || pre<0 || pre>32) return null;
+  const ip = ((oct[0]<<24)>>>0) + (oct[1]<<16) + (oct[2]<<8) + oct[3];
+  return {ip:ip>>>0, pre};
+}
+function cidrContains(outer, inner){
+  if(inner.pre < outer.pre) return false;
+  const mask = outer.pre===0 ? 0 : (~0 << (32-outer.pre)) >>> 0;
+  return (outer.ip & mask) === (inner.ip & mask);
+}
+function vpcCheckCidr(v){
+  const lc = el("vpcCidrCheck"); const inp = el("vpcCidr");
+  if(!lc) return;
+  if(!v){ lc.textContent=""; inp.className=""; return; }
+  const p = cidrParse(v);
+  if(!p){ lc.textContent="✕ CIDR形式で入力してください(例: 10.0.0.0/16)"; lc.className="live-check ng"; inp.className="bad"; return; }
+  if(p.pre<16 || p.pre>28){ lc.textContent="✕ VPCのCIDRブロックは /16 〜 /28 の範囲です"; lc.className="live-check ng"; inp.className="bad"; return; }
+  lc.textContent = `✓ 有効なCIDRです(利用可能IP数の目安: 約${Math.max(2**(32-p.pre)-5,0)}個)`;
+  lc.className="live-check ok"; inp.className="good";
+}
+function vpcCreate(){
+  const v = el("vpcCidr").value.trim();
+  const area = el("lab4aResult");
+  const p = cidrParse(v);
+  if(!p || p.pre<16 || p.pre>28){ area.innerHTML = ngBanner("有効なVPC CIDR(/16〜/28)を入力してください。おすすめは <b>10.0.0.0/16</b> です。"); return; }
+  state.sim.vpcCidr = v;
+  simSuccess("vpc",1,"lab4aResult",`VPC <b>dojo-vpc</b>(${esc(v)})を作成しました。この範囲の中にサブネットを切っていきます。プライベートIPの推奨レンジ(10.x / 172.16-31.x / 192.168.x)から選ぶのが定石です。`);
+  const p2 = el("vpcSubnetPanel"); if(p2){ p2.style.display="block"; el("vpcCidrShow").textContent = v; }
+}
+function vpcCreateSubnet(){
+  const v = el("subnetCidr").value.trim();
+  const area = el("lab4bResult");
+  const outer = cidrParse(state.sim.vpcCidr || "10.0.0.0/16");
+  const inner = cidrParse(v);
+  if(!inner){ area.innerHTML = ngBanner("CIDR形式で入力してください(例: 10.0.1.0/24)。"); return; }
+  if(!cidrContains(outer, inner)){
+    area.innerHTML = ngBanner(`サブネットのCIDRは<b>VPCのCIDR(${esc(state.sim.vpcCidr)})の内側</b>に収まっている必要があります。例えばVPCが 10.0.0.0/16 なら、10.0.1.0/24 のように「10.0.」で始まる、より小さい範囲を指定します。`);
+    return;
+  }
+  if(inner.pre <= outer.pre){
+    area.innerHTML = ngBanner("サブネットはVPCより小さい範囲(プレフィックス長が大きい)にしてください。/24 あたりが定番です。"); return;
+  }
+  simSuccess("vpc",2,"lab4bResult",`パブリックサブネット <b>dojo-public-1a</b>(${esc(v)}、AZ: ap-northeast-1a)を作成しました。各サブネットは<b>1つのAZの中</b>に作られます。本番では別AZにもう1つ作って冗長化するのが定石です(マルチAZ)。`);
+  const p3 = el("vpcIgwPanel"); if(p3) p3.style.display="block";
+}
+function vpcRoute(target){
+  const area = el("lab4cResult");
+  if(target==="local"){
+    area.innerHTML = infoBanner("<b>local</b> ルートはVPC内部の通信用で、最初から存在します。インターネットへ出るには別のターゲットが必要です。"); return;
+  }
+  if(target==="nat"){
+    area.innerHTML = warnBanner("<b>NATゲートウェイ</b>は「プライベートサブネットから外に出たい(でも外からは入られたくない)」時の出口です。今回はパブリックサブネットなので<b>インターネットゲートウェイ(IGW)</b>を選びましょう。"); return;
+  }
+  simSuccess("vpc",3,"lab4cResult","ルートテーブルに <b>0.0.0.0/0 → igw-dojo123(インターネットゲートウェイ)</b> を追加しました。これで「VPC宛以外の通信はすべてIGWへ」となり、このサブネットは晴れて<b>パブリックサブネット</b>になりました。VPC+サブネット+IGW+ルートテーブルの4点セット、これがAWSネットワークの基本形です。");
+}
+
+/* ============================================================
+   Lab 5:Lambda — シミュレーター用ロジック
+   ============================================================ */
+function lambdaCreate(){
+  const name = el("lamName").value.trim();
+  const rt = el("lamRuntime").value;
+  const area = el("lab5aResult");
+  if(!name || !/^[A-Za-z0-9_-]{1,64}$/.test(name)){
+    area.innerHTML = ngBanner("関数名は英数字・ハイフン・アンダースコアで入力してください(例: hello-dojo)。"); return;
+  }
+  if(!rt){ area.innerHTML = ngBanner("ランタイム(実行環境)を選択してください。"); return; }
+  state.sim.lamName = name;
+  simSuccess("lambda",1,"lab5aResult",`関数 <b>${esc(name)}</b>(ランタイム: ${esc(rt)})を作成しました。<b>サーバーの準備・OS管理・スケーリングは一切不要</b>。コードを置くだけで、実行された時間ぶんだけ課金されます(毎月100万リクエストの無料枠つき)。`);
+  const p2 = el("lamTestPanel"); if(p2) p2.style.display="block";
+}
+function lambdaTest(){
+  const out = el("lamOutput");
+  out.style.display = "block";
+  out.innerHTML = `<span class="cm"># 実行結果</span>
+Status: Succeeded
+Duration: 1.82 ms   課金対象時間: 2 ms   使用メモリ: 36 MB
+
+<span class="cm"># レスポンス</span>
+{
+  "statusCode": 200,
+  "body": "Hello from the AWS Dojo! 🥋"
+}`;
+  simSuccess("lambda",2,"lab5bResult","テスト実行に成功しました。実行時間は約2ミリ秒 — <b>この1回の実行コストは実質ゼロ円</b>です。「イベントが起きた時だけ動く小さな処理」(画像リサイズ、通知送信、定期バッチ等)がLambdaの得意分野です。");
+}
+
+/* ============================================================
+   Lab 6:料金とBudgets — シミュレーター用ロジック
+   ============================================================ */
+function budgetCreate(){
+  const amt = Number(el("bgAmount").value);
+  const th = Number(el("bgThreshold").value);
+  const email = el("bgEmail").value.trim();
+  const area = el("lab6aResult");
+  if(!amt || amt<=0){ area.innerHTML = ngBanner("予算額を入力してください(学習用なら 10 USD 程度が定番)。"); return; }
+  if(!th || th<=0 || th>100){ area.innerHTML = ngBanner("しきい値は1〜100(%)で入力してください。<b>80%</b>あたりが定番です。100%だと気づいた時には超えています。"); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ area.innerHTML = ngBanner("通知先のメールアドレスを正しい形式で入力してください。"); return; }
+  simSuccess("budgets",1,"lab6aResult",`月次予算 <b>${amt} USD</b> を作成しました。実際のコストが<b>${th}%(${(amt*th/100).toFixed(2)} USD)</b>に達すると <b>${esc(email)}</b> に警告メールが届きます。<b>AWSアカウントを作ったら最初にやるべき設定</b>がこれです。「気づいたら数万円」を防ぐ命綱になります。`);
+}
+
+/* ============================================================
+   カリキュラムデータ
+   ============================================================ */
+const LABS = [
+/* ---------------- Lab 0 ---------------- */
+{
+  id:"basics", svc:"Console", num:"Lab 0", time:"約10分",
+  title:"AWSの世界地図とコンソールの歩き方",
+  desc:"リージョン・AZの概念と、マネジメントコンソールの基本操作を体で覚える。",
+  domains:["クラウドのコンセプト","テクノロジーとサービス"],
+  steps:[
+  {kind:"learn", label:"予習", title:"AWSはどこで動いているのか", html:`
+    <p>AWSのサービスはすべて、世界中に置かれた物理的なデータセンターの上で動いています。この地理的な構造を表すのが<strong>リージョン</strong>と<strong>アベイラビリティーゾーン(AZ)</strong>です。</p>
+    <h3>リージョンとAZ</h3>
+    <ul>
+      <li><strong>リージョン</strong> … 世界各地の独立したエリア。東京(<code>ap-northeast-1</code>)、大阪(<code>ap-northeast-3</code>)、バージニア北部(<code>us-east-1</code>)など。</li>
+      <li><strong>アベイラビリティーゾーン(AZ)</strong> … 1つのリージョンの中にある、物理的に離れたデータセンター群。東京リージョンには複数のAZがあり(<code>ap-northeast-1a</code> など)、1つのAZが停電や災害で落ちても他のAZは生き残ります。</li>
+    </ul>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「リージョン ⊃ 複数のAZ ⊃ 1つ以上のデータセンター」という包含関係と、「複数AZに分散配置=高可用性」はCLF-C02の超頻出テーマです。</div>
+    <h3>リージョンを選ぶ4つの観点</h3>
+    <ol>
+      <li><strong>レイテンシー</strong> — 利用者に近いほど速い(日本向けなら東京・大阪)</li>
+      <li><strong>コスト</strong> — リージョンごとに料金が微妙に違う</li>
+      <li><strong>法規制・コンプライアンス</strong> — 「データを国内に置くこと」等の要件</li>
+      <li><strong>サービスの提供状況</strong> — 新サービスはまず us-east-1 から始まることが多い</li>
+    </ol>
+    <p>一方、<strong>IAMやRoute 53のようにリージョンを選ばない「グローバルサービス」</strong>も存在します。この違いは次のLabで体感します。</p>
+  `},
+  {kind:"sim", label:"サービス検索", title:"検索ボックスからS3を開く",
+   intro:`<p>コンソールには200以上のサービスが並んでいて、メニューから探すのは非効率です。プロは<strong>上部の検索ボックス</strong>一択。まずはS3を検索して開いてみましょう。</p>`,
+   render:()=> simShell("コンソールのホーム", null, `
+      <div class="sim-sub">上の検索ボックスに <b>S3</b> と入力し、検索結果からS3を開いてください。</div>
+      <div id="svcResults"><div class="sim-sub" style="margin:8px 0 0">検索ボックスにサービス名を入力してみましょう(例:S3)</div></div>
+      <div id="lab0aResult"></div>
+   `, {searchId:"svcSearch", searchHandler:"lab0Search"})
+  },
+  {kind:"sim", label:"リージョン切替", title:"リージョンを東京に切り替える",
+   intro:`<p>新規アカウントではリージョンが<strong>バージニア北部(us-east-1)</strong>になっていることがよくあります。日本向けの学習・開発なら、まず<strong>東京リージョン</strong>への切り替えが最初の儀式です。右上のリージョンメニューから切り替えてみましょう。</p>`,
+   render:()=> simShell("EC2 ダッシュボード", null, `
+      <div class="sim-sub">右上のリージョンメニュー(現在: バージニア北部)から <b>アジアパシフィック(東京)</b> を選択してください。</div>
+      ${infoBanner("リソースは<b>リージョンごとに独立</b>しています。東京で作ったEC2はバージニア北部の画面には表示されません。")}
+      <div id="lab0bResult"></div>
+   `, {regionSelect:`
+      <select class="sim-region" onchange="lab0Region(this.value)" aria-label="リージョンを選択">
+        <option value="us-east-1" selected>バージニア北部 us-east-1</option>
+        <option value="us-west-2">オレゴン us-west-2</option>
+        <option value="ap-northeast-1">アジアパシフィック (東京) ap-northeast-1</option>
+        <option value="ap-northeast-3">アジアパシフィック (大阪) ap-northeast-3</option>
+        <option value="eu-west-1">アイルランド eu-west-1</option>
+      </select>`})
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"リージョンとアベイラビリティーゾーン(AZ)の関係として正しいものはどれ?",
+     opts:["AZの中に複数のリージョンがある","リージョンの中に複数のAZがある","リージョンとAZは同じ意味","AZは仮想的な概念で物理的な実体はない"],
+     ans:1, exp:"リージョン ⊃ 複数のAZ ⊃ データセンター、という包含関係です。複数AZへの分散配置が高可用性の基本になります。"},
+    {q:"次のうち「グローバルサービス」(特定のリージョンに属さない)はどれ?",
+     opts:["EC2","IAM","RDS","Lambda"],
+     ans:1, exp:"IAM(とRoute 53、CloudFrontなど)はグローバルサービスです。IAMユーザーはリージョンをまたいで共通で使えます。EC2・RDS・Lambdaはリージョンごとのサービスです。"},
+    {q:"東京リージョンのリージョンコードはどれ?",
+     opts:["jp-tokyo-1","ap-northeast-1","ap-northeast-3","ap-east-1"],
+     ans:1, exp:"東京は ap-northeast-1、大阪は ap-northeast-3 です。試験というより実務の常識として覚えておくと便利です。"}
+  ]}
+]},
+/* ---------------- Lab 1 ---------------- */
+{
+  id:"iam", svc:"IAM", num:"Lab 1", time:"約15分",
+  title:"IAM — 「誰が・何を・できるか」を支配する",
+  desc:"IAMユーザーの作成とポリシーのアタッチを通じて、最小権限の原則を体得する。",
+  domains:["セキュリティとコンプライアンス"],
+  steps:[
+  {kind:"learn", label:"予習", title:"ルートユーザーを封印せよ", html:`
+    <p>AWSアカウントを作った直後のあなたは<strong>ルートユーザー</strong>です。請求情報の変更からアカウント解約まで、文字通り<strong>何でもできる神権限</strong>。だからこそ、日常作業に使ってはいけません。</p>
+    <h3>IAMの登場人物</h3>
+    <table class="cmp">
+      <tr><th>用語</th><th>役割</th></tr>
+      <tr><td><strong>IAMユーザー</strong></td><td>人やアプリに与える個別のID。日常作業はこれで行う</td></tr>
+      <tr><td><strong>IAMグループ</strong></td><td>ユーザーの束。「開発チーム」等にまとめて権限を付与</td></tr>
+      <tr><td><strong>IAMポリシー</strong></td><td>「何を許可/拒否するか」を書いたJSONの権限書</td></tr>
+      <tr><td><strong>IAMロール</strong></td><td>人ではなく<strong>サービスやリソースに</strong>一時的な権限を与える仕組み(例: EC2にS3へのアクセス権を持たせる)</td></tr>
+    </table>
+    <h3>2つの鉄則</h3>
+    <ul>
+      <li><strong>最小権限の原則(Least Privilege)</strong> — 仕事に必要な最小限の権限だけを与える。多めに渡しておくのは「事故の予約」。</li>
+      <li><strong>MFA(多要素認証)</strong> — パスワード+スマホアプリ等の2段階認証。ルートユーザーには必須、IAMユーザーにも推奨。</li>
+    </ul>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「ルートユーザーでの日常作業はNG」「最小権限」「ルートにMFA」はCLF-C02のセキュリティ分野で最頻出のセットです。この後のハンズオンで実際に手を動かして覚えましょう。</div>
+  `},
+  {kind:"sim", label:"ユーザー作成", title:"新メンバーTaroさんのIAMユーザーを作る",
+   intro:`<p><strong>シナリオ:</strong>経理部のTaroさんがチームに加わりました。ブラウザからコンソールにログインして作業できるよう、IAMユーザーを作成します。ベストプラクティスに沿った設定を選んでください。</p>`,
+   render:()=> simShell("ユーザーの作成", "IAM &rsaquo; ユーザー &rsaquo; ユーザーの作成", `
+      <div class="sim-panel">
+        <h4>ユーザーの詳細</h4>
+        <div class="f-row">
+          <label for="iamUserName">ユーザー名</label>
+          <input type="text" id="iamUserName" placeholder="例: taro.keiri" oninput="iamValidateName(this.value)" autocomplete="off">
+          <div id="iamNameCheck" class="live-check"></div>
+          <div class="hint">最大64文字。英数字と + = , . @ _ - が使用可能</div>
+        </div>
+        <label class="f-inline"><input type="checkbox" id="iamConsoleAccess">
+          <span><b>AWSマネジメントコンソールへのアクセスを提供する</b><br>
+          <span style="font-size:12px;color:#5f6b7a">ブラウザからサインインして操作する場合に有効化</span></span></label>
+        <label class="f-inline"><input type="checkbox" id="iamRequireReset">
+          <span><b>次回サインイン時に新しいパスワードの作成を必須にする</b>(推奨)</span></label>
+        <div style="margin-top:16px"><button class="sim-btn" onclick="iamCreateUser()">ユーザーの作成</button></div>
+      </div>
+      <div id="lab1aResult"></div>
+   `)
+  },
+  {kind:"sim", label:"ポリシー選択", title:"Taroさんに\"ちょうどいい\"権限を渡す",
+   intro:`<p><strong>シナリオ:</strong>Taroさんの仕事は<strong>「S3に置かれた月次レポートを閲覧すること」だけ</strong>です。最小権限の原則に従って、アタッチすべき管理ポリシーを1つ選んでください。</p>`,
+   render:()=> simShell("許可を設定", "IAM &rsaquo; ユーザー &rsaquo; taro.keiri &rsaquo; 許可を設定", `
+      <div class="sim-sub">許可ポリシーを選択(1つ)</div>
+      <div class="pick-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">
+        <button class="pick" onclick="iamPickPolicy('admin')"><div class="pt">AdministratorAccess</div><div class="pd">すべてのAWSサービスとリソースへのフルアクセスを提供します</div></button>
+        <button class="pick" onclick="iamPickPolicy('power')"><div class="pt">PowerUserAccess</div><div class="pd">IAM・Organizations の管理を除く、フルアクセスを提供します</div></button>
+        <button class="pick" onclick="iamPickPolicy('s3full')"><div class="pt">AmazonS3FullAccess</div><div class="pd">S3のすべてのバケットへの読み書き・削除を含むフルアクセス</div></button>
+        <button class="pick" onclick="iamPickPolicy('s3read')"><div class="pt">AmazonS3ReadOnlyAccess</div><div class="pd">S3のバケットとオブジェクトへの読み取り専用アクセス(Get/List)</div></button>
+      </div>
+      <div id="lab1bResult"></div>
+   `)
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"ルートユーザーの扱いとして最も適切なものはどれ?",
+     opts:["日常の運用作業もルートユーザーで行う","MFAを設定し、ルートでしかできない作業以外では使わない","パスワードをチームで共有して全員が使えるようにする","ルートユーザーは削除する"],
+     ans:1, exp:"ルートユーザーは削除できません。MFAで保護した上で封印し、日常作業はIAMユーザー(またはIAM Identity Center)で行うのがベストプラクティスです。"},
+    {q:"EC2インスタンス上のアプリからS3にアクセスさせたい。最も推奨される方法は?",
+     opts:["アクセスキーをコードに直接書き込む","IAMロールをEC2にアタッチする","ルートユーザーの認証情報を環境変数に入れる","S3を全世界に公開する"],
+     ans:1, exp:"サービスに権限を与えるときは「IAMロール」。キーの埋め込みは漏洩事故の典型パターンで、試験でも「ロールが正解」の構図が頻出します。"},
+    {q:"「最小権限の原則」の説明として正しいものは?",
+     opts:["全員に同じ権限を与えて管理を簡単にする","将来必要になりそうな権限も先に与えておく","業務に必要な最小限の権限だけを与える","権限は一度与えたら変更しない"],
+     ans:2, exp:"必要最小限だけ与え、必要になったら追加する。事故・漏洩時の被害範囲(ブラスト半径)を最小化する考え方です。"}
+  ]}
+]},
+/* ---------------- Lab 2 ---------------- */
+{
+  id:"s3", svc:"S3", num:"Lab 2", time:"約15分",
+  title:"S3 — 世界一有名な\"底なし\"ストレージ",
+  desc:"バケットの作成とオブジェクトのアップロード。命名規則とパブリックアクセスブロックを実地で学ぶ。",
+  domains:["テクノロジーとサービス"],
+  steps:[
+  {kind:"learn", label:"予習", title:"S3の3つのキーワード", html:`
+    <p>S3(Simple Storage Service)は、容量無制限の<strong>オブジェクトストレージ</strong>です。ファイルサーバーのようにフォルダ階層で管理するのではなく、「バケツにモノを放り込む」イメージで使います。</p>
+    <h3>基本用語</h3>
+    <ul>
+      <li><strong>バケット</strong> — オブジェクトの入れ物。名前は<strong>世界中の全AWSアカウントで一意</strong>である必要がある</li>
+      <li><strong>オブジェクト</strong> — 保存する1つ1つのファイル(最大5TB)</li>
+      <li><strong>キー</strong> — オブジェクトの名前(パスのように見えるが実は単なる文字列)</li>
+    </ul>
+    <h3>なぜS3が愛されるのか</h3>
+    <ul>
+      <li><strong>イレブンナイン(99.999999999%)の耐久性</strong> — 複数AZに自動複製され、まず消えない</li>
+      <li><strong>従量課金</strong> — 置いた分だけ。事前の容量設計が不要</li>
+      <li><strong>ストレージクラス</strong> — アクセス頻度に応じて Standard / Standard-IA / Glacier 系を使い分けてコスト最適化</li>
+    </ul>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「耐久性イレブンナイン」「バケット名はグローバルに一意」「アーカイブはGlacier」はCLF-C02頻出。そして実務での最重要事項が、次のハンズオンで登場する<strong>ブロックパブリックアクセス</strong>です。</div>
+  `},
+  {kind:"sim", label:"バケット作成", title:"命名規則と戦いながらバケットを作る",
+   intro:`<p><strong>シナリオ:</strong>社内レポートの置き場となるバケットを作ります。まずは試しに <code>sakura</code> や <code>Sakura_Bucket</code> など、いろいろな名前を入力してライブチェックの反応を見てみてください。<strong>わざと間違えるのが一番の近道</strong>です。</p>`,
+   render:()=> simShell("バケットを作成", "Amazon S3 &rsaquo; バケット &rsaquo; バケットを作成", `
+      <div class="sim-panel">
+        <h4>一般的な設定</h4>
+        <div class="f-row">
+          <label for="s3BucketName">バケット名</label>
+          <input type="text" id="s3BucketName" placeholder="例: sakura-dojo-reports-2026" oninput="s3ValidateName(this.value)" autocomplete="off">
+          <div id="s3NameCheck" class="live-check"></div>
+          <div class="hint">3〜63文字/英小文字・数字・ハイフン/世界中で一意であること</div>
+        </div>
+        <div class="f-row">
+          <label>AWSリージョン</label>
+          <select disabled><option>アジアパシフィック (東京) ap-northeast-1</option></select>
+        </div>
+      </div>
+      <div class="sim-panel">
+        <h4>このバケットのブロックパブリックアクセス設定</h4>
+        <label class="f-inline"><input type="checkbox" id="s3BpaOff">
+          <span><b>パブリックアクセスをすべてブロック — を解除する</b><br>
+          <span style="font-size:12px;color:#5f6b7a">チェックを外す(=ブロック有効のまま)ことが推奨されています</span></span></label>
+      </div>
+      <div style="margin-top:14px"><button class="sim-btn" onclick="s3CreateBucket()">バケットを作成</button></div>
+      <div id="lab2aResult"></div>
+      <div class="sim-panel" id="s3UploadPanel" style="display:none">
+        <h4>オブジェクトのアップロード</h4>
+        <div class="sim-sub">月次レポート <b>report-2026-07.pdf</b>(1.2 MB)を選択済み</div>
+        <button class="sim-btn" onclick="s3Upload()">アップロード</button>
+      </div>
+      <div id="lab2bResult"></div>
+   `)
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"S3バケット名の要件として正しいものはどれ?",
+     opts:["同じリージョン内で一意であればよい","同じアカウント内で一意であればよい","世界中のすべてのAWSアカウントで一意である必要がある","好きな名前を自由に付けられる"],
+     ans:2, exp:"バケット名はグローバル(全世界・全アカウント)で一意です。だから「test」や「sakura」のような短い名前はほぼ確実に取られています。"},
+    {q:"めったにアクセスしない監査ログを、最も低コストで長期保管したい。適切なストレージクラスは?",
+     opts:["S3 Standard","S3 Standard-IA","S3 Glacier Deep Archive","EBS"],
+     ans:2, exp:"長期アーカイブの最安はGlacier Deep Archive(取り出しに時間がかかる代わりに激安)。EBSはEC2用のブロックストレージでそもそも用途が違います。"},
+    {q:"S3の情報漏洩事故の最も典型的な原因は?",
+     opts:["AWSのデータセンターへの物理侵入","ブロックパブリックアクセスの誤った解除などの設定ミス","S3の耐久性の低さ","リージョン障害"],
+     ans:1, exp:"S3の漏洩事故のほとんどは利用者側の公開設定ミスです。これは責任共有モデルにおける「顧客側の責任」の典型例でもあります。"}
+  ]}
+]},
+/* ---------------- Lab 3 ---------------- */
+{
+  id:"ec2", svc:"EC2", num:"Lab 3", time:"約20分",
+  title:"EC2 — 自分だけの仮想サーバーを起動する",
+  desc:"起動ウィザードを一通り体験し、セキュリティグループと「停止 vs 終了」の違いを体得する。",
+  domains:["テクノロジーとサービス","請求と料金"],
+  steps:[
+  {kind:"learn", label:"予習", title:"EC2起動ウィザードの登場人物", html:`
+    <p>EC2(Elastic Compute Cloud)は、クリックひとつで手に入る仮想サーバーです。起動時に決めることは実質4つだけ。</p>
+    <table class="cmp">
+      <tr><th>決めること</th><th>意味</th><th>初心者の定石</th></tr>
+      <tr><td><strong>AMI</strong></td><td>OSと初期ソフトのイメージ</td><td>Amazon Linux 2023(無料枠対象)</td></tr>
+      <tr><td><strong>インスタンスタイプ</strong></td><td>CPU・メモリの性能</td><td>t2.micro / t3.micro(無料枠対象)</td></tr>
+      <tr><td><strong>キーペア</strong></td><td>SSH接続用の鍵。秘密鍵は<strong>作成時にしかダウンロードできない</strong></td><td>作って厳重保管</td></tr>
+      <tr><td><strong>セキュリティグループ</strong></td><td>インスタンス単位の仮想ファイアウォール</td><td>SSHは「マイIP」のみ許可</td></tr>
+    </table>
+    <h3>料金で絶対に覚えること</h3>
+    <ul>
+      <li><strong>停止(Stop)</strong> — インスタンスの時間課金が止まる。EBS(ディスク)代のみ発生。再開可能</li>
+      <li><strong>終了(Terminate)</strong> — 完全削除。復元不可</li>
+      <li>購入オプション:常時稼働なら<strong>リザーブド/Savings Plans</strong>、中断OKの処理なら激安の<strong>スポット</strong>、基本は<strong>オンデマンド</strong></li>
+    </ul>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    セキュリティグループは「ステートフルで、許可ルールのみ書ける」。似た存在のネットワークACLは「ステートレスで、拒否も書ける」。この対比はCLF-C02の定番です。</div>
+  `},
+  {kind:"sim", label:"インスタンス起動", title:"無料枠でWebサーバー用インスタンスを起動する",
+   intro:`<p><strong>シナリオ:</strong>練習用のWebサーバーを1台起動します。<strong>無料利用枠に収まる構成</strong>で、<strong>SSHを安全に</strong>設定するのが今回のミッション。わざと危険な選択肢を選んで警告を見るのもおすすめです。</p>`,
+   render:()=> simShell("インスタンスを起動", "EC2 &rsaquo; インスタンス &rsaquo; インスタンスを起動", `
+      <div class="sim-panel">
+        <h4>名前とタグ</h4>
+        <div class="f-row"><label for="ec2Name">名前</label>
+        <input type="text" id="ec2Name" placeholder="例: dojo-web-server" autocomplete="off"></div>
+      </div>
+      <div class="sim-panel">
+        <h4>アプリケーションおよびOSイメージ(AMI)</h4>
+        <div class="pick-grid">
+          <button class="pick" data-g="ami" onclick="ec2Pick('ami','al2023',this)"><span class="free">無料利用枠</span><div class="pt">Amazon Linux 2023</div><div class="pd">AWS公式の軽量Linux。学習の定番</div></button>
+          <button class="pick" data-g="ami" onclick="ec2Pick('ami','ubuntu',this)"><span class="free">無料利用枠</span><div class="pt">Ubuntu Server 24.04</div><div class="pd">世界的に人気のLinuxディストリビューション</div></button>
+          <button class="pick" data-g="ami" onclick="ec2Pick('ami','win',this)"><div class="pt">Windows Server 2025</div><div class="pd">ライセンス料が上乗せされ、やや高価</div></button>
+        </div>
+      </div>
+      <div class="sim-panel">
+        <h4>インスタンスタイプ</h4>
+        <div class="pick-grid">
+          <button class="pick" data-g="type" onclick="ec2Pick('type','t2.micro',this)"><span class="free">無料利用枠</span><div class="pt">t2.micro</div><div class="pd">1 vCPU / 1 GiB — 学習に十分</div></button>
+          <button class="pick" data-g="type" onclick="ec2Pick('type','m5.large',this)"><div class="pt">m5.large</div><div class="pd">2 vCPU / 8 GiB — 汎用の本番向け</div></button>
+          <button class="pick" data-g="type" onclick="ec2Pick('type','c5.4xlarge',this)"><div class="pt">c5.4xlarge</div><div class="pd">16 vCPU / 32 GiB — コンピューティング最適化。高額</div></button>
+        </div>
+      </div>
+      <div class="sim-panel">
+        <h4>キーペア(ログイン)</h4>
+        <div class="f-row"><label for="ec2KeyName">新しいキーペア名</label>
+        <input type="text" id="ec2KeyName" placeholder="例: dojo-key" autocomplete="off">
+        <div class="hint">秘密鍵(.pem)は作成時に一度だけダウンロードできます。紛失したら再発行不可</div></div>
+      </div>
+      <div class="sim-panel">
+        <h4>ネットワーク設定 — セキュリティグループ</h4>
+        <div class="sim-sub">SSH(ポート22)の接続許可元を選択</div>
+        <div class="pick-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+          <button class="pick" data-g="sg" onclick="ec2Pick('sg','myip',this)"><div class="pt">マイIP</div><div class="pd">自分の現在のIPアドレスのみ許可(推奨)</div></button>
+          <button class="pick" data-g="sg" onclick="ec2Pick('sg','anywhere',this)"><div class="pt">任意の場所 0.0.0.0/0</div><div class="pd">全世界からの接続を許可</div></button>
+        </div>
+      </div>
+      <div id="ec2Feedback"></div>
+      <div style="margin-top:8px"><button class="sim-btn" onclick="ec2Launch()">インスタンスを起動</button></div>
+      <div id="lab3aResult"></div>
+   `)
+  },
+  {kind:"sim", label:"停止と終了", title:"「今夜は使わない」— 正しい節約操作はどっち?",
+   intro:`<p><strong>シナリオ:</strong>今日の練習は終わり。<strong>明日また同じ環境を使いたい</strong>ので、コンピューティング料金だけ止めたい。一覧から正しいアクションを選んでください。(わざと「終了」も押してみましょう)</p>`,
+   render:()=>{
+     if(!state.sim.ec2inst){ state.sim.ec2inst = {name:"dojo-web-server", state:"running"}; }
+     return simShell("インスタンス", "EC2 &rsaquo; インスタンス", `
+      <div id="ec2Table"></div>
+      <div id="lab3bResult"></div>
+     `);
+   },
+   after:()=>ec2RenderTable()
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"EC2インスタンスを「停止(Stop)」した場合の課金はどうなる?",
+     opts:["すべての課金が完全に止まる","インスタンスの時間課金は止まるが、EBSボリュームの料金は発生し続ける","課金は変わらず続く","停止すると追加料金がかかる"],
+     ans:1, exp:"停止でコンピューティング課金は止まりますが、ディスク(EBS)は残っているのでストレージ料金は続きます。完全にゼロにするなら「終了」ですがデータも消えます。"},
+    {q:"中断されても問題ないバッチ処理を最も安く実行したい。適切な購入オプションは?",
+     opts:["オンデマンドインスタンス","リザーブドインスタンス","スポットインスタンス","Dedicated Hosts"],
+     ans:2, exp:"スポットはAWSの余剰キャパシティを最大約90%引きで使える代わりに、中断される可能性があります。「中断OK」がキーワードです。"},
+    {q:"セキュリティグループの特徴として正しいものは?",
+     opts:["サブネット単位で適用され、拒否ルールも書ける","インスタンス単位で適用されるステートフルなファイアウォールで、許可ルールのみ記述できる","リージョン全体に適用される","OSの中にインストールするソフトウェア"],
+     ans:1, exp:"セキュリティグループ=インスタンス単位・ステートフル・許可のみ。サブネット単位・ステートレス・拒否も書けるのはネットワークACLです。"}
+  ]}
+]},
+/* ---------------- Lab 4 ---------------- */
+{
+  id:"vpc", svc:"VPC", num:"Lab 4", time:"約20分",
+  title:"VPC — クラウドの中に\"自分の土地\"を作る",
+  desc:"VPC・サブネット・IGW・ルートテーブルの4点セットを、CIDR計算込みで組み立てる。",
+  domains:["テクノロジーとサービス"],
+  steps:[
+  {kind:"learn", label:"予習", title:"ネットワーク4点セット", html:`
+    <p>VPC(Virtual Private Cloud)は、AWSの中に作る<strong>あなた専用の仮想ネットワーク</strong>です。EC2もRDSも、基本的にこの「土地」の上に建てます。</p>
+    <h3>登場する4つの部品</h3>
+    <ol>
+      <li><strong>VPC</strong> — 土地全体。IPアドレスの範囲(CIDR)を決める。例: <code>10.0.0.0/16</code></li>
+      <li><strong>サブネット</strong> — 土地の区画。VPCの範囲の内側で切る。例: <code>10.0.1.0/24</code>。<strong>1つのAZに属する</strong></li>
+      <li><strong>インターネットゲートウェイ(IGW)</strong> — インターネットへの玄関。VPCに1つアタッチ</li>
+      <li><strong>ルートテーブル</strong> — 交通標識。「この宛先の通信はどこへ送るか」を決める</li>
+    </ol>
+    <h3>パブリック?プライベート?</h3>
+    <p>サブネット自体に「パブリック設定」があるわけではありません。<strong>ルートテーブルに <code>0.0.0.0/0 → IGW</code> の経路があるサブネット</strong>を慣習的にパブリックサブネットと呼びます。逆にIGWへの経路がなければプライベートサブネットです。</p>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「プライベートサブネットのサーバーが外部にアップデートを取りに行きたい(でも外からは入られたくない)」→ <strong>NATゲートウェイ</strong>。この構図は頻出です。</div>
+  `},
+  {kind:"sim", label:"VPC作成", title:"CIDRを決めてVPCを作る",
+   intro:`<p><strong>シナリオ:</strong>練習用VPCを作ります。CIDRブロックを入力してみましょう。定番は <code>10.0.0.0/16</code>(約65,000個のIPが使える広さ)。<code>/8</code> や <code>10.0.0.300/16</code> など無効な値も試して、バリデーションの反応を見てください。</p>`,
+   render:()=> simShell("VPCを作成", "VPC &rsaquo; お使いのVPC &rsaquo; VPCを作成", `
+      <div class="sim-panel">
+        <div class="f-row"><label>名前タグ</label><input type="text" value="dojo-vpc" disabled></div>
+        <div class="f-row">
+          <label for="vpcCidr">IPv4 CIDRブロック</label>
+          <input type="text" id="vpcCidr" placeholder="例: 10.0.0.0/16" oninput="vpcCheckCidr(this.value)" autocomplete="off">
+          <div id="vpcCidrCheck" class="live-check"></div>
+          <div class="hint">/16〜/28。プライベートIPレンジ(10.x.x.x など)を推奨</div>
+        </div>
+        <button class="sim-btn" onclick="vpcCreate()">VPCを作成</button>
+      </div>
+      <div id="lab4aResult"></div>
+      <div class="sim-panel" id="vpcSubnetPanel" style="display:none">
+        <h4>サブネットを作成(AZ: ap-northeast-1a)</h4>
+        <div class="sim-sub">VPC <b>dojo-vpc</b>(<span id="vpcCidrShow"></span>)の内側に収まるCIDRを指定してください。定番は <b>10.0.1.0/24</b>(254個のIP)</div>
+        <div class="f-row">
+          <label for="subnetCidr">サブネットのIPv4 CIDRブロック</label>
+          <input type="text" id="subnetCidr" placeholder="例: 10.0.1.0/24" autocomplete="off">
+        </div>
+        <button class="sim-btn" onclick="vpcCreateSubnet()">サブネットを作成</button>
+      </div>
+      <div id="lab4bResult"></div>
+      <div class="sim-panel" id="vpcIgwPanel" style="display:none">
+        <h4>ルートテーブルを編集 — インターネットへの経路を追加</h4>
+        <div class="sim-sub">IGW(igw-dojo123)は作成・アタッチ済み。<b>送信先 0.0.0.0/0</b>(インターネット宛すべて)のターゲットを選んでください</div>
+        <table class="res-table" style="margin-bottom:12px">
+          <tr><th>送信先</th><th>ターゲット</th><th>状態</th></tr>
+          <tr><td style="font-family:var(--font-mono);font-size:12px">10.0.0.0/16</td><td>local</td><td><span class="state-pill running">アクティブ</span></td></tr>
+          <tr><td style="font-family:var(--font-mono);font-size:12px">0.0.0.0/0</td><td><b>← これを選ぶ</b></td><td>—</td></tr>
+        </table>
+        <div class="pick-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+          <button class="pick" onclick="vpcRoute('local')"><div class="pt">local</div><div class="pd">VPC内部の通信</div></button>
+          <button class="pick" onclick="vpcRoute('igw')"><div class="pt">インターネットゲートウェイ</div><div class="pd">igw-dojo123</div></button>
+          <button class="pick" onclick="vpcRoute('nat')"><div class="pt">NATゲートウェイ</div><div class="pd">nat-dojo456</div></button>
+        </div>
+      </div>
+      <div id="lab4cResult"></div>
+   `)
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"「パブリックサブネット」と呼ばれる条件は?",
+     opts:["名前に public と付けたサブネット","ルートテーブルにインターネットゲートウェイへの経路(0.0.0.0/0 → IGW)があるサブネット","一番最初に作ったサブネット","パブリックIPを1つでも持つサブネット"],
+     ans:1, exp:"パブリック/プライベートを分けるのはルートテーブルの中身です。IGWへの経路があればパブリック、なければプライベート。"},
+    {q:"プライベートサブネット内のEC2が、外部リポジトリからソフトウェア更新を取得したい(外からの接続は受けたくない)。使うべきものは?",
+     opts:["インターネットゲートウェイ","NATゲートウェイ","VPCピアリング","Direct Connect"],
+     ans:1, exp:"NATゲートウェイは「内→外の片方向」を実現します。外から中への接続は通しません。"},
+    {q:"1つのサブネットが属する範囲として正しいものは?",
+     opts:["複数のリージョンにまたがれる","複数のAZにまたがれる","1つのAZの中に作られる","AZとは無関係"],
+     ans:2, exp:"サブネットは必ず1つのAZに属します。だからこそ「複数AZに複数サブネット」で冗長構成を作ります。"}
+  ]}
+]},
+/* ---------------- Lab 5 ---------------- */
+{
+  id:"lambda", svc:"Lambda", num:"Lab 5", time:"約10分",
+  title:"Lambda — サーバーを持たないという選択",
+  desc:"関数を作成してテスト実行。サーバーレスの「実行した分だけ課金」を体感する。",
+  domains:["テクノロジーとサービス","クラウドのコンセプト"],
+  steps:[
+  {kind:"learn", label:"予習", title:"サーバーレスとは何か", html:`
+    <p>Lambdaは<strong>「コードを置くだけで、イベントが起きた時に自動で実行してくれる」</strong>サービスです。EC2との最大の違いは、<strong>サーバーの存在を意識しなくていい</strong>こと。</p>
+    <table class="cmp">
+      <tr><th></th><th>EC2</th><th>Lambda</th></tr>
+      <tr><td><strong>管理するもの</strong></td><td>OS・パッチ・スケーリング</td><td>コードだけ</td></tr>
+      <tr><td><strong>課金</strong></td><td>起動している時間</td><td>実行された時間(ミリ秒単位)+回数</td></tr>
+      <tr><td><strong>常時稼働</strong></td><td>する</td><td>しない(イベント駆動)</td></tr>
+      <tr><td><strong>得意分野</strong></td><td>常時動くWebサーバー等</td><td>画像リサイズ・通知・定期バッチ等の短い処理</td></tr>
+    </table>
+    <p>典型パターン:「S3に画像がアップロードされた<strong>というイベント</strong>をトリガーに、Lambdaがサムネイルを自動生成する」。実行時間の上限は<strong>15分</strong>で、それを超える処理には向きません。</p>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「サーバー管理不要」「イベント駆動」「ミリ秒課金」がLambdaの3点セット。「サーバーレス」にはほかに Fargate(コンテナ)、DynamoDB、S3 なども含まれます。</div>
+  `},
+  {kind:"sim", label:"関数作成とテスト", title:"最初の関数を作って動かす",
+   intro:`<p><strong>シナリオ:</strong>あいさつを返すだけの小さな関数を作り、テスト実行してみます。関数名とランタイム(実行環境)を選んでください。</p>`,
+   render:()=> simShell("関数の作成", "Lambda &rsaquo; 関数 &rsaquo; 関数の作成", `
+      <div class="sim-panel">
+        <div class="f-row"><label for="lamName">関数名</label>
+          <input type="text" id="lamName" placeholder="例: hello-dojo" autocomplete="off"></div>
+        <div class="f-row"><label for="lamRuntime">ランタイム</label>
+          <select id="lamRuntime">
+            <option value="">選択してください</option>
+            <option>Python 3.12</option>
+            <option>Node.js 22.x</option>
+            <option>Java 21</option>
+          </select></div>
+        <button class="sim-btn" onclick="lambdaCreate()">関数の作成</button>
+      </div>
+      <div id="lab5aResult"></div>
+      <div class="sim-panel" id="lamTestPanel" style="display:none">
+        <h4>コードソース</h4>
+        <div class="code-block">def lambda_handler(event, context):
+    <span class="cm"># イベントを受け取って、あいさつを返すだけの関数</span>
+    return {
+        "statusCode": 200,
+        "body": "Hello from the AWS Dojo! 🥋"
+    }</div>
+        <button class="sim-btn" onclick="lambdaTest()">テスト</button>
+        <div class="code-block" id="lamOutput" style="display:none"></div>
+      </div>
+      <div id="lab5bResult"></div>
+   `)
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"Lambdaの課金モデルとして正しいものは?",
+     opts:["関数を作成した時点から月額固定","関数が実行された回数と実行時間に応じた従量課金","常時起動しているサーバーの時間課金","データ保存量に応じた課金"],
+     ans:1, exp:"リクエスト数+実行時間(GB-秒)の従量課金です。動いていない時間は0円。これがイベント駆動型の強みです。"},
+    {q:"次のうちLambdaに最も向いているワークロードは?",
+     opts:["24時間365日稼働するゲームサーバー","3時間かかる動画のエンコード処理","S3への画像アップロードをトリガーにしたサムネイル生成","オンプレミスのデータベース"],
+     ans:2, exp:"短時間・イベント駆動の処理がLambdaの得意分野。実行時間上限は15分なので長時間処理には不向きです。"},
+    {q:"「サーバーレス」の説明として最も適切なものは?",
+     opts:["サーバーが物理的に存在しない技術","利用者がサーバーの管理(プロビジョニング・パッチ・スケーリング)をする必要がないこと","無料で使えるサービスの総称","オンプレミスでのみ動く仕組み"],
+     ans:1, exp:"サーバー自体はAWS側に存在しますが、その管理責任から利用者が解放されるのが「サーバーレス」です。"}
+  ]}
+]},
+/* ---------------- Lab 6 ---------------- */
+{
+  id:"budgets", svc:"Billing", num:"Lab 6", time:"約10分",
+  title:"Budgets — 「気づいたら高額請求」を封じる",
+  desc:"予算アラートを設定して、コスト管理ツールの使い分けを学ぶ。黒帯への最終関門。",
+  domains:["請求と料金"],
+  steps:[
+  {kind:"learn", label:"予習", title:"コスト管理ツール四天王", html:`
+    <p>AWSは従量課金。便利な反面、消し忘れたリソースが静かに課金し続ける事故が後を絶ちません。<strong>防御の第一歩はアラート設定</strong>です。</p>
+    <table class="cmp">
+      <tr><th>ツール</th><th>役割</th><th>一言で</th></tr>
+      <tr><td><strong>AWS Budgets</strong></td><td>予算を決めて、超えそうになったら通知</td><td>見張り番</td></tr>
+      <tr><td><strong>Cost Explorer</strong></td><td>過去のコストをグラフで分析・将来を予測</td><td>分析ツール</td></tr>
+      <tr><td><strong>Pricing Calculator</strong></td><td>構成を入力して<strong>利用前に</strong>見積もり</td><td>見積書</td></tr>
+      <tr><td><strong>Cost and Usage Report</strong></td><td>最も詳細な明細データをS3に出力</td><td>全明細CSV</td></tr>
+    </table>
+    <div class="point-box"><div class="pb-t">試験ポイント</div>
+    「事前見積→Pricing Calculator」「事後分析→Cost Explorer」「しきい値通知→Budgets」の使い分けはCLF-C02で確実に出ると思って良いレベルの頻出問題です。</div>
+  `},
+  {kind:"sim", label:"予算アラート", title:"月10ドルの見張り番を立てる",
+   intro:`<p><strong>シナリオ:</strong>学習用アカウントに月次予算を設定します。<strong>実際のコストが予算の80%に達したらメール通知</strong>が来るようにしましょう。</p>`,
+   render:()=> simShell("予算を作成", "Billing and Cost Management &rsaquo; Budgets &rsaquo; 予算を作成", `
+      <div class="sim-panel">
+        <h4>予算の設定(月次・コスト予算)</h4>
+        <div class="f-row"><label for="bgAmount">予算額(USD/月)</label>
+          <input type="number" id="bgAmount" placeholder="例: 10" min="1" style="max-width:180px"></div>
+        <div class="f-row"><label for="bgThreshold">アラートのしきい値(予算に対する%)</label>
+          <input type="number" id="bgThreshold" placeholder="例: 80" min="1" max="100" style="max-width:180px">
+          <div class="hint">実際のコストがこの割合に達した時点で通知します</div></div>
+        <div class="f-row"><label for="bgEmail">通知先メールアドレス</label>
+          <input type="email" id="bgEmail" placeholder="例: sakura@example.com" autocomplete="off"></div>
+        <button class="sim-btn" onclick="budgetCreate()">予算を作成</button>
+      </div>
+      <div id="lab6aResult"></div>
+   `)
+  },
+  {kind:"quiz", label:"確認クイズ", questions:[
+    {q:"AWSを使い始める前に、想定構成の月額費用を見積もりたい。使うべきツールは?",
+     opts:["Cost Explorer","AWS Budgets","AWS Pricing Calculator","CloudWatch"],
+     ans:2, exp:"「利用前の見積もり」はPricing Calculator。Cost Explorerは「利用後の分析」、Budgetsは「しきい値通知」です。"},
+    {q:"先月からコストが急増した原因をサービス別のグラフで分析したい。使うべきツールは?",
+     opts:["AWS Pricing Calculator","Cost Explorer","AWS Artifact","Trusted Advisor"],
+     ans:1, exp:"過去コストの可視化・分析・予測はCost Explorerの担当です。"},
+    {q:"責任共有モデルにおいて「顧客側の責任」に該当するものは?",
+     opts:["データセンターの物理セキュリティ","ハイパーバイザーの管理","S3バケットのアクセス設定やIAMの権限管理","リージョン間のネットワーク基盤"],
+     ans:2, exp:"AWSは「クラウド“の”セキュリティ」(物理・基盤)、顧客は「クラウド“内の”セキュリティ」(データ・設定・権限)を担います。総仕上げの1問でした。"}
+  ]}
+]}
+];
+
+/* ============================================================
+   レンダリング
+   ============================================================ */
+function renderHeader(){
+  const belt = currentBelt();
+  el("beltChip").innerHTML = `<span class="belt-swatch" style="background:${belt.c}"></span>${belt.name}`;
+  el("progressMini").textContent = `修了 ${completedCount()} / ${LABS.length} Lab`;
+}
+
+function renderSidebar(){
+  const v = state.view;
+  el("sidebar").innerHTML = `
+    <h2>カリキュラム</h2>
+    <ul class="lab-list">
+      ${LABS.map(lab=>{
+        const doneSteps = lab.steps.filter((s,i)=>stepDone(lab.id,i)).length;
+        const total = lab.steps.length;
+        const complete = doneSteps===total;
+        const part = doneSteps>0 && !complete;
+        const active = v.type==="lab" && v.id===lab.id;
+        return `<li><button class="lab-item ${active?"active":""}" onclick="go({type:'lab',id:'${lab.id}',step:0})">
+          <span class="num">${lab.num}<span class="svc">${esc(lab.svc)}</span></span>
+          <span class="t">${esc(lab.title.split(" — ")[1]||lab.title)}<small>${esc(lab.time)}・${doneSteps}/${total}ステップ</small></span>
+          <span class="lab-status ${complete?"done":part?"part":""}">${complete?"✓":part?doneSteps+"/"+total:""}</span>
+        </button></li>`;
+      }).join("")}
+    </ul>`;
+}
+
+function renderHome(){
+  const belt = currentBelt();
+  const done = completedCount();
+  el("main").innerHTML = `
+    <div class="hero">
+      <span class="eyebrow">AWS HANDS-ON DOJO / CLF-C02対応</span>
+      <h1>コンソールは、触って覚える。</h1>
+      <p>本物のAWSアカウントも料金も不要。忠実に再現された疑似コンソールで、IAM・S3・EC2・VPC・Lambda・Budgetsを実際に操作しながら学ぶハンズオン道場です。<b>わざと間違えても安全</b> — むしろ間違えるたびに本物と同じ警告が出て、理解が深まります。</p>
+      <div class="belt-track" aria-label="帯の進捗">
+        ${BELTS.map(b=>`<span class="belt-seg" style="background:${done>=b.n?b.c:"rgba(255,255,255,.06)"};${done>=b.n?"":"opacity:.5"}"><span class="bl">${b.name}</span></span>`).join("")}
+      </div>
+      <p style="margin-top:34px;font-size:13px;color:#f1a33c;font-weight:700">現在の段位:${belt.name}(${done}/${LABS.length} Lab修了)${done===LABS.length?" — 免許皆伝!🥋":""}</p>
+    </div>
+    <div class="home-grid">
+      ${LABS.map(lab=>{
+        const complete = labCompleted(lab);
+        return `<button class="home-lab" onclick="go({type:'lab',id:'${lab.id}',step:0})">
+          ${complete?`<span class="done-ribbon">修了</span>`:""}
+          <span class="svc-badge">${esc(lab.num)} / ${esc(lab.svc)}</span>
+          <h3>${esc(lab.title)}</h3>
+          <p>${esc(lab.desc)}</p>
+          <div class="meta"><span>⏱ ${esc(lab.time)}</span><span>${lab.steps.length}ステップ</span></div>
+        </button>`;
+      }).join("")}
+    </div>`;
+}
+
+function renderStepper(){
+  const v = state.view;
+  if(v.type!=="lab") return;
+  const lab = LABS.find(l=>l.id===v.id);
+  const s = el("stepper");
+  if(!s) return;
+  s.innerHTML = lab.steps.map((st,i)=>`
+    <button class="step-dot ${i===v.step?"cur":""} ${stepDone(lab.id,i)?"ok":""}" onclick="goStep('${lab.id}',${i})">
+      ${stepDone(lab.id,i)?"✓ ":""}${i+1}. ${esc(st.label)}
+    </button>`).join("");
+}
+
+function renderLab(){
+  const v = state.view;
+  const lab = LABS.find(l=>l.id===v.id);
+  const step = lab.steps[v.step];
+  const isLast = v.step === lab.steps.length-1;
+  const done = stepDone(lab.id, v.step);
+
+  let body = "";
+  if(step.kind==="learn"){
+    body = `<div class="prose">${step.html}</div>`;
+  }else if(step.kind==="sim"){
+    body = `<div class="prose">${step.intro||""}</div>` + step.render();
+  }else if(step.kind==="quiz"){
+    body = renderQuiz(lab, v.step, step);
+  }
+
+  const nextDisabled = (step.kind!=="learn") && !done;
+
+  el("main").innerHTML = `
+    <div class="card">
+      <span class="eyebrow">${esc(lab.num)} — ${esc(lab.svc)}</span>
+      <h1 class="page-title">${esc(lab.title)}</h1>
+      <div>${lab.domains.map(d=>`<span class="domain-tag">試験範囲: ${esc(d)}</span>`).join("")}</div>
+      <div class="stepper" id="stepper"></div>
+    </div>
+    <div class="card">
+      <span class="eyebrow">STEP ${v.step+1} / ${lab.steps.length} — ${esc(step.label)}</span>
+      <h1 class="page-title" style="font-size:21px">${esc(step.title||"確認クイズ")}</h1>
+      ${body}
+      <div class="nav-row">
+        ${v.step>0?`<button class="btn btn-ghost" onclick="goStep('${lab.id}',${v.step-1})">← 前のステップ</button>`:`<button class="btn btn-ghost" onclick="go({type:'home'})">← ホーム</button>`}
+        ${isLast
+          ? `<button class="btn btn-primary" id="nextBtn" ${nextDisabled?"disabled":""} onclick="finishLab('${lab.id}')">このLabを修了する 🥋</button>`
+          : `<button class="btn btn-primary" id="nextBtn" ${nextDisabled?"disabled":""} onclick="advance('${lab.id}',${v.step})">次のステップへ →</button>`}
+      </div>
+      ${nextDisabled?`<p style="font-size:12px;color:var(--ink-soft);margin-top:10px">${step.kind==="quiz"?"すべての問題に解答すると先へ進めます。":"上のシミュレーターで課題をクリアすると先へ進めます。"}</p>`:""}
+    </div>`;
+  renderStepper();
+  if(step.after) step.after();
+}
+
+function advance(labId, stepIdx){
+  const lab = LABS.find(l=>l.id===labId);
+  if(lab.steps[stepIdx].kind==="learn") markStep(labId, stepIdx);
+  goStep(labId, stepIdx+1);
+}
+
+function finishLab(labId){
+  const lab = LABS.find(l=>l.id===labId);
+  const idx = LABS.indexOf(lab);
+  const next = LABS[idx+1];
+  const belt = currentBelt();
+  const allDone = completedCount()===LABS.length;
+  el("main").innerHTML = `
+    <div class="card complete-box">
+      <div class="big">${allDone?"🏆":"🥋"}</div>
+      <h2>${esc(lab.num)}「${esc(lab.svc)}」修了!</h2>
+      <p class="lede" style="margin:0 auto 6px">現在の段位:<b>${belt.name}</b>(${completedCount()}/${LABS.length} Lab)</p>
+      ${allDone
+        ? `<p class="lede" style="margin:0 auto">全Lab制覇、<b>免許皆伝</b>です!ここまでの操作感覚はCLF-C02の得点に直結します。次は無料利用枠で<b>本物のコンソール</b>に挑戦してみましょう。最初の一手はもちろん、Lab 6で学んだ予算アラートの設定から。</p>`
+        : `<p class="lede" style="margin:0 auto">この調子で次のLabへ進みましょう。</p>`}
+      <div class="nav-row" style="justify-content:center;margin-top:26px">
+        <button class="btn btn-ghost" onclick="go({type:'home'})">ホームへ</button>
+        ${next?`<button class="btn btn-primary" onclick="go({type:'lab',id:'${next.id}',step:0})">次へ:${esc(next.num)} ${esc(next.svc)} →</button>`:""}
+      </div>
+    </div>`;
+  window.scrollTo({top:0});
+}
+
+/* ---------- クイズエンジン ---------- */
+function renderQuiz(lab, stepIdx, step){
+  const answered = labProg(lab.id).quiz;
+  return step.questions.map((q,qi)=>{
+    const picked = answered[stepIdx+"_"+qi];
+    return `<div class="quiz-q">
+      <span class="qn">QUESTION ${qi+1} / ${step.questions.length}</span>
+      <div class="qt">${esc(q.q)}</div>
+      ${q.opts.map((o,oi)=>{
+        let cls = "quiz-opt";
+        if(picked!==undefined){
+          if(oi===q.ans) cls += (picked===oi?" picked-ok":" reveal");
+          else if(oi===picked) cls += " picked-ng";
+        }
+        return `<button class="${cls}" ${picked!==undefined?"disabled":""} onclick="answerQuiz('${lab.id}',${stepIdx},${qi},${oi})">${["A","B","C","D"][oi]}. ${esc(o)}</button>`;
+      }).join("")}
+      <div class="quiz-exp ${picked!==undefined?"show":""}">${picked!==undefined?(picked===q.ans?"🎉 <b>正解!</b> ":"<b>正解は "+["A","B","C","D"][q.ans]+"</b>。 ")+esc(q.exp):""}</div>
+    </div>`;
+  }).join("");
+}
+function answerQuiz(labId, stepIdx, qi, oi){
+  labProg(labId).quiz[stepIdx+"_"+qi] = oi;
+  saveProgress();
+  const lab = LABS.find(l=>l.id===labId);
+  const step = lab.steps[stepIdx];
+  const allAnswered = step.questions.every((q,i)=>labProg(labId).quiz[stepIdx+"_"+i]!==undefined);
+  if(allAnswered) markStep(labId, stepIdx);
+  renderLab();
+}
+
+/* ---------- ルート ---------- */
+function render(){
+  renderHeader();
+  renderSidebar();
+  if(state.view.type==="home") renderHome();
+  else renderLab();
+}
+/* クラウドストア初期化後に起動（既存localStorageデータは自動移行） */
+CloudStore.init([STORE_KEY]).then(()=>{
+  state.progress = loadProgress();
+  render();
+  CloudStore.onChange(()=>{
+    state.progress = loadProgress();
+    render();
+  });
+});
+</script>
+</body>
+</html>

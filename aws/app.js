@@ -1,7 +1,9 @@
 // ─── STATE ────────────────────────────────────────────────
 let state = {
-  notebook: {name:'', exam:''},
-  decks: [],
+  notebooks: [],            // [{id, name, exam, decks:[...]}]
+  currentNbId: null,
+  notebook: {name:'', exam:''},   // 現在開いているノートの表示用エイリアス
+  decks: [],                      // 現在開いているノートの decks への参照
   currentDeckId: null,
   editingCardId: null,
   study: {queue:[], index:0, history:[], isFlipped:false},
@@ -38,11 +40,23 @@ function escAttr(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;')
 // ─── SETUP ────────────────────────────────────────────────
 function toggleTag(btn){ btn.classList.toggle('selected'); }
 
+function currentNb(){
+  return state.notebooks.find(n => String(n.id) === String(state.currentNbId));
+}
+
 function afterLoad(silent){
-  document.getElementById('sidebar-notebook-name').textContent = state.notebook.name;
-  document.getElementById('sidebar-exam-target').textContent = state.notebook.exam;
   document.getElementById('btn-home').style.display = 'block';
   document.getElementById('sync-indicator').style.display = 'flex';
+  if(!state.notebooks.length){
+    if(!silent){ showScreen('setup-screen'); renderNotebookList(); }
+    return;
+  }
+  if(!currentNb()) state.currentNbId = state.notebooks[0].id;
+  const nb = currentNb();
+  state.notebook = {name: nb.name, exam: nb.exam};
+  state.decks = nb.decks;
+  document.getElementById('sidebar-notebook-name').textContent = nb.name;
+  document.getElementById('sidebar-exam-target').textContent = nb.exam;
   renderSidebar();
   // Don't yank the user out of quiz/study mid-session on background sync
   if(!silent){
@@ -56,23 +70,84 @@ function afterLoad(silent){
   if(!state.quiz.session) renderQuizHome();
 }
 
+function renderNotebookList(){
+  const slot = document.getElementById('existing-notes');
+  if(!slot) return;
+  if(!state.notebooks.length){ slot.innerHTML = ''; return; }
+  slot.innerHTML = `
+    <div class="note-list">
+      <div class="note-list-title">保存済みのノート</div>
+      ${state.notebooks.map(nb => `
+        <div class="note-item">
+          <button class="note-open" onclick="openNotebook('${escAttr(nb.id)}')">
+            <div class="nm">📓 ${escHtml(nb.name)}</div>
+            <div class="sub">${escHtml(nb.exam || '')}　デッキ ${nb.decks.length} 個・カード ${nb.decks.reduce((s,d)=>s+d.cards.length,0)} 枚</div>
+          </button>
+          <button class="note-del" onclick="deleteNotebook('${escAttr(nb.id)}')">削除</button>
+        </div>`).join('')}
+    </div>
+    <div class="setup-divider">または新しく作成</div>`;
+}
+
+function openNotebook(id){
+  state.currentNbId = String(id);
+  save();
+  afterLoad();
+  toast(`「${currentNb().name}」を開きました`);
+}
+
+function deleteNotebook(id){
+  const nb = state.notebooks.find(n => String(n.id) === String(id));
+  if(!nb) return;
+  const cards = nb.decks.reduce((s,d)=>s+d.cards.length,0);
+  if(!confirm(`ノート「${nb.name}」を削除しますか？\n（デッキ ${nb.decks.length} 個・カード ${cards} 枚が完全に消えます）`)) return;
+  state.notebooks = state.notebooks.filter(n => String(n.id) !== String(id));
+  if(String(state.currentNbId) === String(id)){
+    state.currentNbId = state.notebooks.length ? state.notebooks[0].id : null;
+    state.decks = [];
+    state.currentDeckId = null;
+  }
+  save();
+  renderNotebookList();
+  toast('ノートを削除しました');
+}
+
+function startWithoutNotebook(){
+  if(state.notebooks.length){
+    openNotebook(state.notebooks[0].id);
+    switchTab('quiz');
+    return;
+  }
+  let idc = Date.now();
+  const nb = {id:String(idc++), name:'クイック学習', exam:'', decks:[{id:String(idc++), name:'未分類', icon:'📚', cards:[]}]};
+  state.notebooks.push(nb);
+  state.currentNbId = nb.id;
+  save();
+  afterLoad();
+  switchTab('quiz');
+  toast('過去問モードで開始しました');
+}
+
 function createNotebook(){
   const name = document.getElementById('notebook-name').value.trim();
   if(!name){ toast('ノート名を入力してください','error'); return; }
   const examEl = document.getElementById('exam-target');
-  state.notebook = {name, exam: examEl.options[examEl.selectedIndex].text};
-  state.decks = [];
   let idCounter = Date.now();
+  const decks = [];
   const tags = [...document.querySelectorAll('#setup-screen .quick-tags .tag-btn.selected')].map(b=>b.textContent);
   tags.forEach(tag=>{
-    state.decks.push({
+    decks.push({
       id: String(idCounter++),
       name: tag,
       icon: iconFor(tag),
       cards: (SAMPLE[tag]||[]).map(c=>({id:String(idCounter++), term:c.term, def:c.def}))
     });
   });
-  if(!state.decks.length) state.decks.push({id:String(idCounter++), name:'未分類', icon:'📚', cards:[]});
+  if(!decks.length) decks.push({id:String(idCounter++), name:'未分類', icon:'📚', cards:[]});
+  const nb = {id:String(idCounter++), name, exam: examEl.options[examEl.selectedIndex].text, decks};
+  state.notebooks.push(nb);           // 既存ノートは消さずに追加
+  state.currentNbId = nb.id;
+  state.currentDeckId = null;
   afterLoad();
   save();
   toast('ノートを作成しました ☁️');
@@ -87,6 +162,7 @@ function goHome(){
   if(state.quiz.session && !confirm('クイズを中断してホームに戻りますか？')) return;
   state.quiz.session = null;
   showScreen('setup-screen');
+  renderNotebookList();
 }
 
 // ─── TABS ─────────────────────────────────────────────────

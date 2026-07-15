@@ -150,6 +150,7 @@ h2{font-size:16px;font-weight:700;margin:18px 0 8px}
 .start-btn:hover{background:var(--blue-dark)}
 .rule-list{margin:10px 0 10px 24px;font-size:14px}
 .rule-list li{margin:7px 0}
+.review-banner{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:#fff4e5;border:1px solid #f0c27a;border-radius:12px;padding:16px 20px;margin:0 0 16px}
 .notice{background:#fff8e6;border:1px solid #ecd695;border-radius:9px;padding:12px 16px;font-size:13px;color:#6e4d0e;margin:14px 0}
 
 /* ===== 結果画面 ===== */
@@ -188,6 +189,12 @@ dialog .d-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 .home-link{position:fixed;bottom:14px;left:14px;z-index:60;background:#22334f;color:#c6d0de;border:1px solid #3a4d6d;border-radius:20px;padding:6px 14px;font-size:12px;text-decoration:none;opacity:.85;transition:opacity .2s}
 .home-link:hover{opacity:1;color:#fff}
 @media print{.home-link{display:none}}
+.rv-correct{border-color:#1f9d6f !important;background:rgba(31,157,111,.12) !important}
+.rv-wrong{border-color:#d64550 !important;background:rgba(214,69,80,.12) !important}
+.rv-verdict{margin-top:14px;font-weight:700;padding:10px 14px;border-radius:8px}
+.rv-verdict.ok{background:rgba(31,157,111,.12);color:#25b57f}
+.rv-verdict.ng{background:rgba(214,69,80,.12);color:#e0616b}
+.rv-explain{margin-top:10px;padding:12px 14px;border-left:3px solid #4a90d9;background:rgba(74,144,217,.08);font-size:13.5px;line-height:1.8;border-radius:6px}
 </style>
 </head>
 <body>
@@ -846,6 +853,20 @@ function loadHist(){
   return CloudStore.get(HIST_KEY) || [];
 }
 function saveHist(h){ CloudStore.set(HIST_KEY, h); }
+const WRONG_KEY = "clfMockWrongV1";
+function loadWrong(){ return CloudStore.get(WRONG_KEY) || {}; }
+function saveWrong(w){ CloudStore.set(WRONG_KEY, w); }
+function wrongList(){
+  const w = loadWrong();
+  return Object.keys(w).map(k=>{
+    const [exId, qi] = k.split(":");
+    const ex = EXAMS.find(e=>String(e.id)===exId);
+    if(!ex) return null;
+    const q = ex.questions[Number(qi)];
+    if(!q) return null;
+    return {key:k, exId, qi:Number(qi), exTitle:ex.title, q};
+  }).filter(Boolean);
+}
 
 function exam(){ return EXAMS.find(e=>e.id===S.examId); }
 function esc(s){ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
@@ -940,6 +961,14 @@ function submitExam(auto){
   const hist = loadHist();
   hist.unshift({examId:ex.id, title:ex.title, date:new Date().toLocaleString("ja-JP"), scaled, pass, correct, total:ex.questions.length});
   saveHist(hist.slice(0,50));
+  // 誤答プールを更新（間違えたら追加・正解したら削除）
+  const wrongPool = loadWrong();
+  ex.questions.forEach((q,i)=>{
+    const key = ex.id + ":" + i;
+    if(arrEq(S.answers[i], q.a)) delete wrongPool[key];
+    else wrongPool[key] = true;
+  });
+  saveWrong(wrongPool);
   S.filter="all";
   const dlg = el("confirmDlg"); if(dlg && dlg.open) dlg.close();
   go("result");
@@ -953,6 +982,100 @@ function askSubmit(){
     (fl>0?`<p>フラグ付きの問題が ${fl} 問あります。</p>`:"")+
     `<p>試験を終了すると、解答の変更はできません。採点してよろしいですか?</p>`;
   el("confirmDlg").showModal();
+}
+
+/* ============================================================
+   誤答復習モード
+   ============================================================ */
+function startReview(){
+  const items = wrongList().sort(()=>Math.random()-.5);
+  if(!items.length) return;
+  S.review = {items, idx:0, picked:[], answered:false, cleared:0, kept:0};
+  go("review");
+}
+function rvPick(oi){
+  const R = S.review;
+  if(R.answered) return;
+  const q = R.items[R.idx].q;
+  if(q.m){
+    const p = R.picked.indexOf(oi);
+    if(p===-1) R.picked.push(oi); else R.picked.splice(p,1);
+    vReview();
+  }else{
+    R.picked = [oi];
+    rvJudge();
+  }
+}
+function rvJudge(){
+  const R = S.review;
+  if(R.answered || !R.picked.length) return;
+  R.answered = true;
+  const item = R.items[R.idx];
+  const ok = arrEq(R.picked.slice().sort((a,b)=>a-b), item.q.a.slice().sort((a,b)=>a-b));
+  R.lastOk = ok;
+  if(ok){
+    const pool = loadWrong();
+    delete pool[item.key];
+    saveWrong(pool);
+    R.cleared++;
+  }else{
+    R.kept++;
+  }
+  vReview();
+}
+function rvNext(){
+  const R = S.review;
+  R.idx++;
+  R.picked = []; R.answered = false; R.lastOk = undefined;
+  if(R.idx >= R.items.length){
+    S.review = null;
+    go("home");
+  }else{
+    vReview();
+  }
+}
+function vReview(){
+  const R = S.review;
+  if(!R){ go("home"); return; }
+  const item = R.items[R.idx];
+  const q = item.q;
+  const answered = R.answered;
+  APP.innerHTML = `
+  <div class="exam-bar">
+    <div class="title">🔥 誤答復習モード<small>過去の模擬試験で間違えた問題</small></div>
+    <div class="spacer"></div>
+    <span class="qcount">${R.idx+1} / ${R.items.length}</span>
+  </div>
+  <div class="wrap" style="padding-bottom:40px">
+    <div class="panel">
+      <div class="q-head">
+        <span class="q-num">${esc(item.exTitle)}・問題 ${item.qi+1}</span>
+        ${q.m?`<span class="q-type">複数選択</span>`:""}
+        <span style="margin-left:auto;font-size:12px;color:var(--soft,#8aa)">正解するとリストから消えます（克服 ${R.cleared} / 継続 ${R.kept}）</span>
+      </div>
+      <div class="q-text">${esc(q.q)}</div>
+      ${q.m?`<div class="multi-note">該当する選択肢を2つ選択してください。</div>`:""}
+      ${q.o.map((o,oi)=>{
+        let cls = "opt";
+        if(answered){
+          if(q.a.includes(oi)) cls += " rv-correct";
+          else if(R.picked.includes(oi)) cls += " rv-wrong";
+        }else if(R.picked.includes(oi)) cls += " sel";
+        return `<button class="${cls}" onclick="rvPick(${oi})" ${answered?"disabled":""}>
+          <span class="box ${q.m?"c":"r"}">✓</span>
+          <span class="ol">${["A","B","C","D","E"][oi]}.</span>
+          <span>${esc(o)}</span>
+        </button>`;
+      }).join("")}
+      ${q.m && !answered ? `<div style="margin-top:12px;text-align:right"><button class="nav-btn primary" onclick="rvJudge()" ${R.picked.length?"":"disabled"}>回答する</button></div>`:""}
+      ${answered?`
+        <div class="rv-verdict ${R.lastOk?"ok":"ng"}">${R.lastOk?"✓ 正解！この問題はリストから消えました":"✗ 不正解。次回また出題されます"}</div>
+        <div class="rv-explain">${esc(q.e||"")}</div>
+        <div style="margin-top:14px;text-align:right"><button class="nav-btn primary" onclick="rvNext()">${R.idx+1>=R.items.length?"復習を終了":"次の問題 →"}</button></div>
+      `:""}
+    </div>
+    <div style="margin-top:14px"><button class="nav-btn" onclick="S.review=null;go('home')">← 中断してホームへ</button></div>
+  </div>`;
 }
 
 /* ============================================================
@@ -974,6 +1097,14 @@ function vHome(){
       <p>本試験と同じ 65問 / 90分 / 1000点満点(合格ライン700点)/ 分野別出題比率で構成したオリジナル模擬試験です。実際の過去問はNDAにより非公開のため、本試験の出題形式・傾向・難易度を忠実に再現した問題を収録しています。</p>
       <p style="margin-top:8px">出題比率(本番準拠):クラウドのコンセプト 24%(16問)/ セキュリティとコンプライアンス 30%(19問)/ クラウドテクノロジーとサービス 34%(22問)/ 請求、料金、サポート 12%(8問)</p>
     </div>
+    ${(function(){
+      const wl = wrongList();
+      if(!wl.length) return "";
+      return `<div class="review-banner">
+        <div style="flex:1;min-width:220px"><b>🔥 誤答復習：${wl.length} 問</b><br><span style="font-size:12.5px;color:#6e4d0e">過去の試験で間違えた問題です。正解するとリストから消えます。</span></div>
+        <button class="start-btn" style="background:#d97706" onclick="startReview()">復習を開始</button>
+      </div>`;
+    })()}
     ${EXAMS.map(ex=>{
       const b = bestOf(ex.id);
       return `<div class="exam-card">
@@ -1186,6 +1317,7 @@ function render(){
   else if(S.view==="exam") vExam();
   else if(S.view==="palette") vPalette();
   else if(S.view==="result") vResult();
+  else if(S.view==="review") vReview();
 }
 
 document.addEventListener("keydown", e=>{

@@ -1,19 +1,28 @@
 // ─── STATE ────────────────────────────────────────────────
 let state = {
-  notebooks: [],            // [{id, name, exam, decks:[...]}]
-  currentNbId: null,
-  notebook: {name:'', exam:''},   // 現在開いているノートの表示用エイリアス
-  decks: [],                      // 現在開いているノートの decks への参照
-  currentDeckId: null,
+  customCards: {},          // {カテゴリ名: [{id,term,def}]}
+  cardStats: {},            // {cardKey: 'k'(覚えた) | 'a'(もう一度)}
+  currentCat: null,         // 表示中のカテゴリ
   editingCardId: null,
-  study: {queue:[], index:0, history:[], isFlipped:false},
-  selectedIcon: '⚙️',
+  study: {queue:[], index:0, history:[], isFlipped:false, reversed:false, cat:null, mode:'all'},
   quiz: {selectedCatId:null, session:null},
-  quizStats: {answered:{}, wrong:[]},   // answered: {qid:{r,w}}, wrong: [qid,...]
+  quizStats: {answered:{}, wrong:[]},
   resultCtx: null,
 };
 
-// Each question gets a stable id = its index in QQ (data.js is static).
+const FC_CATS = Object.keys(SAMPLE);   // 単語帳カテゴリ一覧（data.jsのキー）
+
+// カードキー：組み込みは「カテゴリ::b::連番」、カスタムは「カテゴリ::c::id」
+function cardKey(cat, card){
+  return card._builtin !== undefined
+    ? `${cat}::b::${card._builtin}`
+    : `${cat}::c::${card.id}`;
+}
+function catCards(cat){
+  const builtin = (SAMPLE[cat]||[]).map((c,i)=>({term:c.term, def:c.def, _builtin:i}));
+  const custom  = (state.customCards[cat]||[]).map(c=>({id:c.id, term:c.term, def:c.def}));
+  return builtin.concat(custom);
+}
 function qid(q){ return QQ.indexOf(q); }
 
 // ─── HELPERS ──────────────────────────────────────────────
@@ -35,134 +44,33 @@ function toast(msg, type='success'){
 }
 function save(){ if(window._save) window._save(); }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function escAttr(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
-
-// ─── SETUP ────────────────────────────────────────────────
-function toggleTag(btn){ btn.classList.toggle('selected'); }
-
-function currentNb(){
-  return state.notebooks.find(n => String(n.id) === String(state.currentNbId));
+function escAttr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function fcIcon(cat){
+  return {'コンピューティング':'⚙️','ストレージ':'💾','ネットワーク':'🌐','データベース':'🗄️','セキュリティ':'🔐','サーバーレス':'⚡','AI / ML':'🤖','監視・管理':'📊','料金・サポート':'💰'}[cat]||'📚';
 }
 
+// ─── BOOT ─────────────────────────────────────────────────
 function afterLoad(silent){
   document.getElementById('btn-home').style.display = 'block';
   document.getElementById('sync-indicator').style.display = 'flex';
-  if(!state.notebooks.length){
-    if(!silent){ showScreen('setup-screen'); renderNotebookList(); }
-    return;
-  }
-  if(!currentNb()) state.currentNbId = state.notebooks[0].id;
-  const nb = currentNb();
-  state.notebook = {name: nb.name, exam: nb.exam};
-  state.decks = nb.decks;
-  document.getElementById('sidebar-notebook-name').textContent = nb.name;
-  document.getElementById('sidebar-exam-target').textContent = nb.exam;
-  renderSidebar();
-  // Don't yank the user out of quiz/study mid-session on background sync
   if(!silent){
     showScreen('notebook-screen');
-    if(state.decks.length > 0) selectDeck(state.decks[0].id);
+    renderFcHome();
   } else {
+    // バックグラウンド同期：表示中の画面だけ静かに更新
     if(document.getElementById('notebook-screen').classList.contains('active')){
-      if(state.currentDeckId && getDeck()) renderCards();
+      if(state.currentCat) renderCatView(); else renderFcHome();
     }
   }
   if(!state.quiz.session) renderQuizHome();
 }
-
-function renderNotebookList(){
-  const slot = document.getElementById('existing-notes');
-  if(!slot) return;
-  if(!state.notebooks.length){ slot.innerHTML = ''; return; }
-  slot.innerHTML = `
-    <div class="note-list">
-      <div class="note-list-title">保存済みのノート</div>
-      ${state.notebooks.map(nb => `
-        <div class="note-item">
-          <button class="note-open" onclick="openNotebook('${escAttr(nb.id)}')">
-            <div class="nm">📓 ${escHtml(nb.name)}</div>
-            <div class="sub">${escHtml(nb.exam || '')}　デッキ ${nb.decks.length} 個・カード ${nb.decks.reduce((s,d)=>s+d.cards.length,0)} 枚</div>
-          </button>
-          <button class="note-del" onclick="deleteNotebook('${escAttr(nb.id)}')">削除</button>
-        </div>`).join('')}
-    </div>
-    <div class="setup-divider">または新しく作成</div>`;
-}
-
-function openNotebook(id){
-  state.currentNbId = String(id);
-  save();
-  afterLoad();
-  toast(`「${currentNb().name}」を開きました`);
-}
-
-function deleteNotebook(id){
-  const nb = state.notebooks.find(n => String(n.id) === String(id));
-  if(!nb) return;
-  const cards = nb.decks.reduce((s,d)=>s+d.cards.length,0);
-  if(!confirm(`ノート「${nb.name}」を削除しますか？\n（デッキ ${nb.decks.length} 個・カード ${cards} 枚が完全に消えます）`)) return;
-  state.notebooks = state.notebooks.filter(n => String(n.id) !== String(id));
-  if(String(state.currentNbId) === String(id)){
-    state.currentNbId = state.notebooks.length ? state.notebooks[0].id : null;
-    state.decks = [];
-    state.currentDeckId = null;
-  }
-  save();
-  renderNotebookList();
-  toast('ノートを削除しました');
-}
-
-function startWithoutNotebook(){
-  if(state.notebooks.length){
-    openNotebook(state.notebooks[0].id);
-    switchTab('quiz');
-    return;
-  }
-  let idc = Date.now();
-  const nb = {id:String(idc++), name:'クイック学習', exam:'', decks:[{id:String(idc++), name:'未分類', icon:'📚', cards:[]}]};
-  state.notebooks.push(nb);
-  state.currentNbId = nb.id;
-  save();
-  afterLoad();
-  switchTab('quiz');
-  toast('過去問モードで開始しました');
-}
-
-function createNotebook(){
-  const name = document.getElementById('notebook-name').value.trim();
-  if(!name){ toast('ノート名を入力してください','error'); return; }
-  const examEl = document.getElementById('exam-target');
-  let idCounter = Date.now();
-  const decks = [];
-  const tags = [...document.querySelectorAll('#setup-screen .quick-tags .tag-btn.selected')].map(b=>b.textContent);
-  tags.forEach(tag=>{
-    decks.push({
-      id: String(idCounter++),
-      name: tag,
-      icon: iconFor(tag),
-      cards: (SAMPLE[tag]||[]).map(c=>({id:String(idCounter++), term:c.term, def:c.def}))
-    });
-  });
-  if(!decks.length) decks.push({id:String(idCounter++), name:'未分類', icon:'📚', cards:[]});
-  const nb = {id:String(idCounter++), name, exam: examEl.options[examEl.selectedIndex].text, decks};
-  state.notebooks.push(nb);           // 既存ノートは消さずに追加
-  state.currentNbId = nb.id;
-  state.currentDeckId = null;
-  afterLoad();
-  save();
-  toast('ノートを作成しました ☁️');
-}
-
-function iconFor(tag){
-  const map = {'コンピューティング':'⚙️','ストレージ':'💾','ネットワーク':'🌐','データベース':'🗄️','セキュリティ':'🔐','サーバーレス':'⚡','AI / ML':'🤖','監視・管理':'📊','料金・サポート':'💰'};
-  return map[tag] || '📚';
-}
-
 function goHome(){
-  if(state.quiz.session && !confirm('クイズを中断してホームに戻りますか？')) return;
+  if(state.quiz.session && !confirm('クイズを中断してトップに戻りますか？')) return;
   state.quiz.session = null;
-  showScreen('setup-screen');
-  renderNotebookList();
+  state.currentCat = null;
+  showScreen('notebook-screen');
+  switchTab('fc');
+  renderFcHome();
 }
 
 // ─── TABS ─────────────────────────────────────────────────
@@ -172,167 +80,237 @@ function switchTab(t){
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('tabcontent-'+t).classList.add('active');
   if(t==='quiz' && !state.quiz.session) renderQuizHome();
+  if(t==='fc'){ if(state.currentCat) renderCatView(); else renderFcHome(); }
 }
 
-// ─── SIDEBAR / DECKS ──────────────────────────────────────
-function renderSidebar(){
-  document.getElementById('deck-list').innerHTML = state.decks.map(d=>`
-    <button class="deck-item${d.id===state.currentDeckId?' active':''}" onclick="selectDeck('${escAttr(d.id)}')">
-      <span>${d.icon}</span>
-      <span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(d.name)}</span>
-      <span class="deck-count">${d.cards.length}</span>
-    </button>`).join('');
+// ─── 単語帳：カテゴリホーム ───────────────────────────────
+function catMastery(cat){
+  const cards = catCards(cat);
+  let k=0, a=0;
+  cards.forEach(c=>{
+    const st = state.cardStats[cardKey(cat,c)];
+    if(st==='k') k++; else if(st==='a') a++;
+  });
+  return {total:cards.length, known:k, again:a, unseen:cards.length-k-a};
 }
-function getDeck(id){ return state.decks.find(d=>String(d.id)===String(id||state.currentDeckId)); }
-function selectDeck(id){
-  state.currentDeckId = String(id);
-  const deck = getDeck();
-  if(!deck) return;
-  document.getElementById('deck-title').textContent = `${deck.icon} ${deck.name}`;
-  document.getElementById('deck-actions').style.display = 'flex';
-  document.getElementById('study-btn').disabled = deck.cards.length===0;
-  document.getElementById('search-box').style.display = deck.cards.length>5 ? 'block' : 'none';
-  document.getElementById('card-search').value = '';
+function fcOverall(){
+  let total=0, known=0, again=0;
+  FC_CATS.forEach(cat=>{
+    const m = catMastery(cat);
+    total+=m.total; known+=m.known; again+=m.again;
+  });
+  return {total, known, again, review: total-known};
+}
+function renderFcHome(){
+  state.currentCat = null;
+  const el = document.getElementById('fc-container');
+  const ov = fcOverall();
+  const reviewCount = ov.again;   // 「もう一度」マークが付いたカード
+
+  const cats = FC_CATS.map(cat=>{
+    const m = catMastery(cat);
+    const pct = m.total ? Math.round(m.known/m.total*100) : 0;
+    const color = pct>=80?'var(--ok)':pct>=40?'var(--orange)':'var(--dim)';
+    return `<div class="category-card" onclick="openCat('${escAttr(cat)}')" role="button" tabindex="0">
+      <div class="cat-head"><span class="cat-icon">${fcIcon(cat)}</span><span class="cat-name">${escHtml(cat)}</span><span class="cat-count">${m.total}枚</span></div>
+      <div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${pct}%;background:${color}"></div></div>
+      <div class="cat-acc-text">習得 ${m.known} / ${m.total}${m.again?`　<span style="color:var(--ng)">要復習 ${m.again}</span>`:''}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">📇 単語帳</div>
+      <div class="quiz-home-sub">カテゴリを選んで学習を開始。「覚えた」の記録は端末をまたいで保存されます。全 ${ov.total} 枚収録。</div>
+      <div class="overall-stats">
+        <div class="os-chip"><span class="os-num" style="color:var(--ok)">${ov.known}</span><span class="os-lbl">覚えた</span></div>
+        <div class="os-chip"><span class="os-num" style="color:var(--ng)">${ov.again}</span><span class="os-lbl">要復習</span></div>
+        <div class="os-chip"><span class="os-num" style="color:var(--dim)">${ov.total-ov.known-ov.again}</span><span class="os-lbl">未学習</span></div>
+      </div>
+      ${reviewCount>0?`
+      <div class="review-bar">
+        <div class="review-label"><strong>${reviewCount} 枚</strong>の「もう一度」カードがあります。覚えたらリストから消えます。</div>
+        <button class="btn btn-secondary" onclick="startReviewStudy()">🔥 覚えてないカードだけ復習</button>
+      </div>`:''}
+      <div class="category-grid">${cats}</div>
+    </div>`;
+}
+
+// ─── 単語帳：カテゴリ内ビュー ─────────────────────────────
+function openCat(cat){
+  state.currentCat = cat;
   cancelEdit();
-  renderSidebar();
-  renderCards();
+  renderCatView();
 }
-function openNewDeckModal(){
-  document.getElementById('new-deck-modal').classList.add('open');
-  const inp = document.getElementById('new-deck-name');
-  inp.value = '';
-  setTimeout(()=>inp.focus(), 50);
-}
-function closeNewDeckModal(){ document.getElementById('new-deck-modal').classList.remove('open'); }
-function selectIcon(btn, icon){
-  document.querySelectorAll('#icon-picker .tag-btn').forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
-  state.selectedIcon = icon;
-}
-function createDeck(){
-  const name = document.getElementById('new-deck-name').value.trim();
-  if(!name){ toast('デッキ名を入力してください','error'); return; }
-  const deck = {id:String(Date.now()), name, icon:state.selectedIcon, cards:[]};
-  state.decks.push(deck);
-  closeNewDeckModal();
-  renderSidebar();
-  selectDeck(deck.id);
-  save();
-  toast(`「${name}」を作成しました`);
-}
+function renderCatView(){
+  const cat = state.currentCat;
+  const el = document.getElementById('fc-container');
+  const m = catMastery(cat);
+  const kw = (state._fcSearch||'').toLowerCase();
+  let cards = catCards(cat);
+  if(kw) cards = cards.filter(c=>c.term.toLowerCase().includes(kw)||c.def.toLowerCase().includes(kw));
 
-// ─── FLASHCARDS (add / edit / delete / search) ────────────
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="content-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn-icon" onclick="renderFcHome()" aria-label="カテゴリ一覧へ">←</button>
+          <div class="content-title">${fcIcon(cat)} ${escHtml(cat)}</div>
+        </div>
+        <div class="content-actions">
+          <button class="btn btn-secondary" onclick="toggleAddForm()">＋ カード追加</button>
+          ${m.again>0?`<button class="btn btn-secondary" onclick="startStudy('again')">🔥 要復習のみ（${m.again}）</button>`:''}
+          <button class="btn btn-primary" style="width:auto" onclick="startStudy('all')">📖 学習開始（${m.total}枚）</button>
+        </div>
+      </div>
+      <div class="search-box">
+        <input type="text" id="card-search" placeholder="カードを検索..." value="${escHtml(state._fcSearch||'')}" oninput="state._fcSearch=this.value;renderCatView();">
+      </div>
+      <div class="add-card-form" id="add-card-form">
+        <div class="form-row">
+          <div class="form-group"><label>用語</label><input type="text" id="new-term" placeholder="例: Amazon S3"></div>
+          <div class="form-group"><label>説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-secondary" onclick="cancelEdit()">キャンセル</button>
+          <button class="btn btn-primary" onclick="addCard()" style="width:auto" id="add-card-btn">追加</button>
+        </div>
+      </div>
+      ${cards.length ? `<div class="cards-grid">${cards.map(c=>{
+        const key = cardKey(cat, c);
+        const st = state.cardStats[key];
+        const badge = st==='k'?'<span style="color:var(--ok);font-size:10px;">✓ 覚えた</span>':st==='a'?'<span style="color:var(--ng);font-size:10px;">🔥 要復習</span>':'';
+        const isCustom = c._builtin===undefined;
+        return `
+        <div class="flashcard" id="fc-${escHtml(key).replace(/[^a-zA-Z0-9_-]/g,'_')}" onclick="flipCardByKey(this)">
+          <div class="flashcard-inner">
+            <div class="card-front">
+              <div class="card-label">用語 ${badge}</div>
+              <div class="card-term">${escHtml(c.term)}</div>
+              <div class="card-actions-row" onclick="event.stopPropagation()">
+                ${isCustom?`<button class="card-action-btn" onclick="editCard('${escAttr(c.id)}')">編集</button>
+                <button class="card-action-btn del" onclick="deleteCard('${escAttr(c.id)}')">削除</button>`:'<span style="font-size:10px;color:var(--dim)">標準カード</span>'}
+              </div>
+            </div>
+            <div class="card-back">
+              <div class="card-label">説明</div>
+              <div class="card-definition">${escHtml(c.def)}</div>
+              <div class="card-hint">タップで戻る</div>
+            </div>
+          </div>
+        </div>`;}).join('')}</div>`
+      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">一致するカードがありません</div></div>`}
+    </div>`;
+}
+function flipCardByKey(el){ el.classList.toggle('flipped'); }
+
+// ─── カスタムカード（追加/編集/削除） ─────────────────────
 function toggleAddForm(){
   const f = document.getElementById('add-card-form');
-  const opening = !f.classList.contains('open');
-  if(opening) cancelEdit();
   f.classList.toggle('open');
   if(f.classList.contains('open')) document.getElementById('new-term').focus();
 }
 function cancelEdit(){
   state.editingCardId = null;
-  document.getElementById('add-card-btn').textContent = '追加';
-  document.getElementById('new-term').value = '';
-  document.getElementById('new-def').value = '';
-  document.getElementById('add-card-form').classList.remove('open');
+  const f = document.getElementById('add-card-form');
+  if(f){
+    f.classList.remove('open');
+    const btn = document.getElementById('add-card-btn');
+    if(btn) btn.textContent = '追加';
+  }
 }
 function addCard(){
   const term = document.getElementById('new-term').value.trim();
   const def = document.getElementById('new-def').value.trim();
   if(!term||!def){ toast('用語と説明を入力してください','error'); return; }
-  const deck = getDeck();
+  const cat = state.currentCat;
+  if(!state.customCards[cat]) state.customCards[cat] = [];
   if(state.editingCardId){
-    const card = deck.cards.find(c=>String(c.id)===String(state.editingCardId));
-    if(card){ card.term = term; card.def = def; toast('カードを更新しました ✓'); }
-    cancelEdit();
+    const card = state.customCards[cat].find(c=>String(c.id)===String(state.editingCardId));
+    if(card){ card.term=term; card.def=def; toast('カードを更新しました ✓'); }
+    state.editingCardId = null;
   } else {
-    deck.cards.push({id:String(Date.now()), term, def});
-    document.getElementById('new-term').value='';
-    document.getElementById('new-def').value='';
-    document.getElementById('new-term').focus();
+    state.customCards[cat].push({id:String(Date.now()), term, def});
     toast('カードを追加しました ✓');
   }
-  renderCards();
-  renderSidebar();
-  document.getElementById('study-btn').disabled = deck.cards.length===0;
   save();
+  renderCatView();
 }
-function editCard(cardId){
-  const deck = getDeck();
-  const card = deck.cards.find(c=>String(c.id)===String(cardId));
+function editCard(id){
+  const cat = state.currentCat;
+  const card = (state.customCards[cat]||[]).find(c=>String(c.id)===String(id));
   if(!card) return;
-  state.editingCardId = String(cardId);
+  state.editingCardId = String(id);
+  renderCatView();
+  const f = document.getElementById('add-card-form');
+  f.classList.add('open');
   document.getElementById('new-term').value = card.term;
   document.getElementById('new-def').value = card.def;
   document.getElementById('add-card-btn').textContent = '更新';
-  document.getElementById('add-card-form').classList.add('open');
   document.getElementById('new-term').focus();
-  window.scrollTo({top:0, behavior:'smooth'});
 }
-function deleteCard(cardId){
+function deleteCard(id){
   if(!confirm('このカードを削除しますか？')) return;
-  const deck = getDeck();
-  deck.cards = deck.cards.filter(c=>String(c.id)!==String(cardId));
-  renderCards();
-  renderSidebar();
-  document.getElementById('study-btn').disabled = deck.cards.length===0;
+  const cat = state.currentCat;
+  state.customCards[cat] = (state.customCards[cat]||[]).filter(c=>String(c.id)!==String(id));
+  delete state.cardStats[`${cat}::c::${id}`];
   save();
+  renderCatView();
   toast('削除しました');
 }
-function renderCards(){
-  const deck = getDeck();
-  const el = document.getElementById('cards-container');
-  if(!deck || !deck.cards.length){
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">カードがありません</div><div class="empty-sub">「＋ カード追加」から作成してください</div></div>`;
-    return;
-  }
-  const kw = (document.getElementById('card-search').value||'').trim().toLowerCase();
-  const cards = kw ? deck.cards.filter(c=>c.term.toLowerCase().includes(kw)||c.def.toLowerCase().includes(kw)) : deck.cards;
-  if(!cards.length){
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">一致するカードがありません</div><div class="empty-sub">別のキーワードで検索してください</div></div>`;
-    return;
-  }
-  el.innerHTML = `<div class="cards-grid">${cards.map(c=>`
-    <div class="flashcard" id="fc-${c.id}" onclick="flipCard('${escAttr(c.id)}')">
-      <div class="flashcard-inner">
-        <div class="card-front">
-          <div class="card-label">用語</div>
-          <div class="card-term">${escHtml(c.term)}</div>
-          <div class="card-actions-row" onclick="event.stopPropagation()">
-            <button class="card-action-btn" onclick="editCard('${escAttr(c.id)}')">編集</button>
-            <button class="card-action-btn del" onclick="deleteCard('${escAttr(c.id)}')">削除</button>
-          </div>
-        </div>
-        <div class="card-back">
-          <div class="card-label">説明</div>
-          <div class="card-definition">${escHtml(c.def)}</div>
-          <div class="card-hint">タップで戻る</div>
-        </div>
-      </div>
-    </div>`).join('')}</div>`;
-}
-function flipCard(id){ const el = document.getElementById('fc-'+id); if(el) el.classList.toggle('flipped'); }
 
-// ─── STUDY (flashcard practice) ───────────────────────────
-function startStudy(){
-  const deck = getDeck();
-  if(!deck || !deck.cards.length) return;
-  state.study = {queue:[...deck.cards].sort(()=>Math.random()-.5), index:0, history:[], isFlipped:false};
-  document.getElementById('study-deck-title').textContent = `${deck.icon} ${deck.name}`;
-  document.getElementById('study-subtitle').textContent = `${deck.cards.length} 枚`;
+// ─── STUDY（学習モード） ──────────────────────────────────
+function startStudy(mode){
+  const cat = state.currentCat;
+  let cards = catCards(cat);
+  if(mode==='again'){
+    cards = cards.filter(c=>state.cardStats[cardKey(cat,c)]==='a');
+  }
+  if(!cards.length){ toast('対象のカードがありません','error'); return; }
+  launchStudy(cards.map(c=>({...c, _cat:cat})), `${fcIcon(cat)} ${cat}`, mode);
+}
+function startReviewStudy(){
+  // 全カテゴリ横断の「もう一度」カード
+  let pool = [];
+  FC_CATS.forEach(cat=>{
+    catCards(cat).forEach(c=>{
+      if(state.cardStats[cardKey(cat,c)]==='a') pool.push({...c, _cat:cat});
+    });
+  });
+  if(!pool.length){ toast('復習するカードはありません 🎉'); return; }
+  launchStudy(pool, '🔥 苦手カード復習', 'review');
+}
+function launchStudy(cards, title, mode){
+  state.study = {
+    queue: cards.sort(()=>Math.random()-.5),
+    index: 0, history: [], isFlipped: false,
+    reversed: state.study.reversed || false,   // 反転設定は維持
+    cat: state.currentCat, mode
+  };
+  document.getElementById('study-deck-title').textContent = title;
+  document.getElementById('study-subtitle').textContent = `${cards.length} 枚`;
   state.resultCtx = 'study';
   showScreen('study-screen');
+  updateReverseBtn();
   renderStudyCard();
 }
 function studyCounts(){
   const h = state.study.history;
-  return { known: h.filter(x=>x).length, again: h.filter(x=>!x).length };
+  return { known: h.filter(x=>x).length, again: h.filter(x=>x===false).length };
 }
 function renderStudyCard(){
   const s = state.study, c = s.queue[s.index], n = s.queue.length;
   const {known, again} = studyCounts();
-  document.getElementById('study-term-text').textContent = c.term;
-  document.getElementById('study-def-text').textContent = c.def;
+  const front = s.reversed ? c.def : c.term;
+  const back  = s.reversed ? c.term : c.def;
+  document.getElementById('study-front-label').textContent = s.reversed ? '説明' : '用語';
+  document.getElementById('study-back-label').textContent  = s.reversed ? '用語' : '説明';
+  document.getElementById('study-term-text').textContent = front;
+  document.getElementById('study-def-text').textContent = back;
+  // 説明が表なら文字を小さく
+  document.getElementById('study-term-text').style.fontSize = s.reversed ? '15px' : '';
+  document.getElementById('study-term-text').style.lineHeight = s.reversed ? '1.7' : '';
+  document.getElementById('study-def-text').style.fontSize = s.reversed ? '24px' : '';
   document.getElementById('study-card').classList.remove('flipped');
   document.getElementById('study-controls').style.display = 'none';
   s.isFlipped = false;
@@ -341,6 +319,26 @@ function renderStudyCard(){
   document.getElementById('stat-know').textContent = known;
   document.getElementById('stat-again').textContent = again;
   document.getElementById('stat-remain').textContent = n - s.index;
+}
+function toggleReverse(){
+  state.study.reversed = !state.study.reversed;
+  updateReverseBtn();
+  renderStudyCard();
+  toast(state.study.reversed ? '説明 → 用語 モード' : '用語 → 説明 モード');
+}
+function updateReverseBtn(){
+  const b = document.getElementById('reverse-btn');
+  if(b) b.classList.toggle('rev-on', state.study.reversed);
+}
+function quitStudy(){
+  const s = state.study;
+  if(s.index > 0 && !confirm('学習を終了しますか？（ここまでの「覚えた/もう一度」は保存済みです）')) return;
+  backToFc();
+}
+function backToFc(){
+  showScreen('notebook-screen');
+  switchTab('fc');
+  if(state.currentCat) renderCatView(); else renderFcHome();
 }
 function flipStudyCard(){
   const s = state.study;
@@ -351,6 +349,10 @@ function flipStudyCard(){
 function markCard(known){
   const s = state.study;
   s.history[s.index] = known;
+  const c = s.queue[s.index];
+  const key = cardKey(c._cat, c);
+  state.cardStats[key] = known ? 'k' : 'a';
+  save();
   s.index++;
   if(s.index >= s.queue.length){
     const {known:k} = studyCounts();
@@ -361,7 +363,7 @@ function prevCard(){
   const s = state.study;
   if(s.index > 0){
     s.index--;
-    s.history.length = s.index; // roll back the judgement too
+    s.history.length = s.index;
     renderStudyCard();
   }
 }
@@ -404,7 +406,7 @@ function renderQuizHome(){
   const selCat = state.quiz.selectedCatId;
   const os = overallStats();
 
-  const catCards = QCAT.map(cat=>{
+  const catCardsHtml = QCAT.map(cat=>{
     const n = QQ.filter(q=>q.c===cat.id).length;
     const acc = catAccuracy(cat.id);
     const accHtml = acc
@@ -450,7 +452,7 @@ function renderQuizHome(){
         <button class="btn btn-secondary" onclick="startQuiz('${selCat||'all'}',false)">📖 順番に</button>
         <button class="btn btn-primary" onclick="startQuiz('${selCat||'all'}',true)">🔀 ランダム</button>
       </div>
-      <div class="category-grid">${catCards}</div>
+      <div class="category-grid">${catCardsHtml}</div>
     </div>`;
 }
 function selectQuizCat(catId){
@@ -477,8 +479,6 @@ function launchQuizSession(qs, meta){
   state.resultCtx = 'quiz';
   renderQuizSession();
 }
-
-// ─── QUIZ SESSION ─────────────────────────────────────────
 function quitQuiz(){
   const sess = state.quiz.session;
   if(sess && sess.index > 0 && !confirm('クイズを終了しますか？（途中の成績も記録されています）')) return;
@@ -598,12 +598,15 @@ function showResultScreen(correct, total, ctx){
   const pct = total>0 ? Math.round(correct/total*100) : 0;
   document.getElementById('result-emoji').textContent = pct>=80?'🎉':pct>=60?'👍':'💪';
   document.getElementById('result-title').textContent = pct>=80?'素晴らしい！':pct>=60?'よく頑張りました！':'もう少し！';
-  document.getElementById('result-sub').textContent = ctx==='quiz' ? `${correct} / ${total} 問正解（${pct}%）` : `${correct} / ${total} 枚を正解（${pct}%）`;
+  document.getElementById('result-sub').textContent = ctx==='quiz' ? `${correct} / ${total} 問正解（${pct}%）` : `${correct} / ${total} 枚を「覚えた」（${pct}%）`;
   document.getElementById('rb-correct').textContent = correct;
   document.getElementById('rb-wrong').textContent = total - correct;
   document.getElementById('result-pct').textContent = pct+'%';
-  const hasWrong = ctx==='quiz' && state.lastQuizRun && state.lastQuizRun.wrongThisRun.length > 0;
-  document.getElementById('review-wrong-btn').style.display = hasWrong ? 'block' : 'none';
+  const hasWrongQuiz = ctx==='quiz' && state.lastQuizRun && state.lastQuizRun.wrongThisRun.length > 0;
+  const hasWrongStudy = ctx==='study' && (total-correct) > 0;
+  const btn = document.getElementById('review-wrong-btn');
+  btn.style.display = (hasWrongQuiz||hasWrongStudy) ? 'block' : 'none';
+  btn.textContent = ctx==='quiz' ? '間違えた問題だけ復習' : '覚えてないカードだけ復習';
   const c = document.getElementById('result-circle');
   c.style.strokeDashoffset = 289;
   showScreen('result-screen');
@@ -615,45 +618,52 @@ function restartResult(){
     showScreen('notebook-screen'); switchTab('quiz');
     if(run){
       if(run.mode==='review') startWrongReview();
-      else {
-        renderQuizHome();
-        startQuiz(run.catId||'all', run.shuffle);
-      }
+      else { renderQuizHome(); startQuiz(run.catId||'all', run.shuffle); }
     } else renderQuizHome();
-  } else startStudy();
+  } else {
+    // 直前と同じ範囲で再スタート
+    const s = state.study;
+    showScreen('notebook-screen'); switchTab('fc');
+    if(s.mode==='review') startReviewStudy();
+    else if(s.cat){ state.currentCat = s.cat; startStudy(s.mode||'all'); }
+    else renderFcHome();
+  }
 }
 function reviewWrongFromResult(){
-  const run = state.lastQuizRun;
-  if(!run || !run.wrongThisRun.length) return;
-  showScreen('notebook-screen'); switchTab('quiz');
-  const set = new Set(run.wrongThisRun.map(String));
-  const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
-  launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+  if(state.resultCtx==='quiz'){
+    const run = state.lastQuizRun;
+    if(!run || !run.wrongThisRun.length) return;
+    showScreen('notebook-screen'); switchTab('quiz');
+    const set = new Set(run.wrongThisRun.map(String));
+    const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
+    launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+  } else {
+    showScreen('notebook-screen'); switchTab('fc');
+    startReviewStudy();
+  }
 }
 function backFromResult(){
   if(state.resultCtx==='quiz'){
     showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
   } else {
-    showScreen('notebook-screen'); switchTab('fc');
+    backToFc();
   }
 }
 
 // ─── KEYBOARD SHORTCUTS ───────────────────────────────────
 document.addEventListener('keydown', e=>{
-  // ignore while typing in inputs
   const tag = (e.target.tagName||'').toLowerCase();
   if(tag==='input' || tag==='textarea' || tag==='select') return;
 
-  // Study mode
   if(document.getElementById('study-screen').classList.contains('active')){
     if(e.code==='Space'){ e.preventDefault(); flipStudyCard(); }
     else if(e.key==='1' && state.study.isFlipped) markCard(false);
     else if(e.key==='2' && state.study.isFlipped) markCard(true);
     else if(e.key==='ArrowLeft') prevCard();
+    else if(e.key.toLowerCase()==='r') toggleReverse();
     return;
   }
 
-  // Quiz mode
   if(state.quiz.session && document.getElementById('tabcontent-quiz').classList.contains('active')){
     if(e.key==='Enter' && window._quizAnswered){ e.preventDefault(); nextQuestion(); return; }
     const map = {'a':0,'b':1,'c':2,'d':3,'e':4,'1':0,'2':1,'3':2,'4':3,'5':4};
@@ -664,11 +674,4 @@ document.addEventListener('keydown', e=>{
     }
   }
 });
-
-// Close modal on Escape / overlay click
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape') closeNewDeckModal();
-});
-document.getElementById('new-deck-modal').addEventListener('click', e=>{
-  if(e.target.id==='new-deck-modal') closeNewDeckModal();
-});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') cancelEdit(); });

@@ -322,6 +322,49 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
 .footer-note{max-width:1240px;margin:0 auto;padding:0 20px 40px;color:var(--ink-soft);font-size:12px;text-align:center}
 .deck-link{color:inherit;opacity:.7;font-size:12px;text-decoration:none;border:1px solid currentColor;border-radius:16px;padding:4px 12px;margin-right:10px;white-space:nowrap;transition:opacity .2s}
 .deck-link:hover{opacity:1}
+
+/* ===== モバイルUI改善パック ===== */
+@media(max-width:680px){
+  /* ヘッダー：折返し・タップ領域確保 */
+  .app-header{flex-wrap:wrap;row-gap:8px;padding:10px 14px}
+  .belt-chip{font-size:11px}
+  .deck-link{padding:6px 12px;font-size:11px}
+  /* ボタン全般：44pxタッチターゲット */
+  .btn,.sim-btn,.nav-row button{min-height:44px;font-size:14px}
+  .nav-row{display:flex;flex-direction:column;gap:10px}
+  .nav-row button{width:100%}
+  /* ラボ一覧：1カラム・カード全面タップ */
+  .home-grid{grid-template-columns:1fr !important;gap:12px}
+  .home-lab{padding:16px 14px}
+  /* シミュレーター画面：はみ出し防止 */
+  .sim-chrome{border-radius:10px;overflow:hidden}
+  .sim-body{padding:14px 10px;overflow-x:auto}
+  .sim-h{flex-wrap:wrap;gap:6px;font-size:12px;padding:8px 10px}
+  .code-block{font-size:11.5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:12px 10px}
+  /* フォーム行：縦積み */
+  .f-row{flex-direction:column;align-items:stretch;gap:6px}
+  .f-inline{flex-wrap:wrap}
+  .pick-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .pick{min-height:52px;font-size:13px}
+  /* クイズ選択肢：タップしやすく */
+  .quiz-opt{min-height:52px;padding:12px 14px;font-size:14px;line-height:1.55}
+  .quiz-q{font-size:15px}
+  /* 結果テーブル：横スクロール可能に */
+  .res-table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap}
+  /* 見出し・余白の圧縮 */
+  .page-title{font-size:19px}
+  .hero h1{font-size:21px}
+  .card{padding:16px 13px}
+  .point-box,.complete-box{padding:14px 12px;font-size:13.5px}
+  /* サイドバー(進捗リスト)は折りたたみ風にコンパクト化 */
+  .sidebar{max-height:none;margin-bottom:6px}
+  .lab-list{display:flex;overflow-x:auto;gap:8px;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .lab-item{min-width:190px;flex-shrink:0}
+}
+@media(max-width:400px){
+  .pick-grid{grid-template-columns:1fr}
+  .sim-btn{width:100%}
+}
 </style>
 </head>
 <body>

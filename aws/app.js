@@ -1,29 +1,358 @@
+// ═══════════════════════════════════════════════════════════
+//  AWS Study Hub — app.js v6
+//  単語帳：移植仕様（flip / reverse / shuffle / 苦手のみ /
+//  その場除去 / タブ状態のID保存復元）+ Firestore同期
+// ═══════════════════════════════════════════════════════════
+
 // ─── STATE ────────────────────────────────────────────────
 let state = {
-  customCards: {},          // {カテゴリ名: [{id,term,def}]}
-  cardStats: {},            // {cardKey: 'k'(覚えた) | 'a'(もう一度)}
-  currentCat: null,         // 表示中のカテゴリ
-  editingCardId: null,
-  study: {queue:[], index:0, history:[], isFlipped:false, reversed:false, cat:null, mode:'all'},
+  customCards: {},                 // {カテゴリ: [{id,term,def}]}
+  fcStats: {},                     // { cardId: {ok, ng} }
+  fcTabState: {},                  // { datasetKey: {activeCat, weakOnly, reverseMode, orderIds, pos} }
   quiz: {selectedCatId:null, session:null},
   quizStats: {answered:{}, wrong:[]},
   resultCtx: null,
 };
 
-const FC_CATS = Object.keys(SAMPLE);   // 単語帳カテゴリ一覧（data.jsのキー）
+const FC_CATS = Object.keys(SAMPLE);
 
-// カードキー：組み込みは「カテゴリ::b::連番」、カスタムは「カテゴリ::c::id」
-function cardKey(cat, card){
-  return card._builtin !== undefined
-    ? `${cat}::b::${card._builtin}`
-    : `${cat}::c::${card.id}`;
+// ─── 単語カード：データセット ──────────────────────────────
+// カード: {id, cat, term, meaning}
+function buildCards(){
+  const cards = [];
+  FC_CATS.forEach(cat=>{
+    (SAMPLE[cat]||[]).forEach((c,i)=>{
+      cards.push({id:`b::${cat}::${i}`, cat, term:c.term, meaning:c.def, builtin:true});
+    });
+    (state.customCards[cat]||[]).forEach(c=>{
+      cards.push({id:`c::${c.id}`, cat, term:c.term, meaning:c.def, builtin:false, rawId:c.id});
+    });
+  });
+  return cards;
 }
-function catCards(cat){
-  const builtin = (SAMPLE[cat]||[]).map((c,i)=>({term:c.term, def:c.def, _builtin:i}));
-  const custom  = (state.customCards[cat]||[]).map(c=>({id:c.id, term:c.term, def:c.def}));
-  return builtin.concat(custom);
+const DATASETS = { aws: { label:'AWS 用語', get cards(){ return buildCards(); } } };
+
+// ─── 単語カード：セッション状態（仕様書準拠） ─────────────
+let datasetKey = 'aws';
+let activeCat = '全カテゴリ';
+let weakOnly = false;
+let reverseMode = false;
+let deck = [];
+let order = [];
+let pos = 0;
+let flipped = false;
+
+const stats = new Proxy({}, {   // stats[card.id] → state.fcStats へ透過
+  get(_, k){ return state.fcStats[k]; },
+  set(_, k, v){ state.fcStats[k] = v; return true; },
+  has(_, k){ return k in state.fcStats; },
+});
+
+function currentCards(){ return DATASETS[datasetKey].cards; }
+function isWeak(card){
+  const s = stats[card.id];
+  return s && s.ng > s.ok;
 }
-function qid(q){ return QQ.indexOf(q); }
+function weakCount(){
+  return currentCards().filter(isWeak).length;
+}
+
+// ─── デッキ計算（仕様書準拠） ─────────────────────────────
+function computeDeck(){
+  let base = currentCards();
+  if(!weakOnly && activeCat !== '全カテゴリ'){
+    base = base.filter(c => c.cat === activeCat);
+  }
+  if(weakOnly){
+    base = base.filter(isWeak);
+  }
+  return base;
+}
+function applyFilter(){
+  deck = computeDeck();
+  order = deck.map((_, i) => i);
+  pos = 0; flipped = false;
+  persistTabState();
+  renderFc();
+}
+
+// ─── タブごとの続き再開（IDベース保存・仕様書準拠） ───────
+function persistTabState(){
+  state.fcTabState[datasetKey] = {
+    activeCat,
+    weakOnly,
+    reverseMode,
+    orderIds: order.map(i => deck[i] ? deck[i].id : null).filter(Boolean),
+    pos
+  };
+  save();
+}
+function enterTab(key){
+  datasetKey = key;
+  const saved = state.fcTabState[key];
+  activeCat   = saved ? saved.activeCat : '全カテゴリ';
+  weakOnly    = saved ? !!saved.weakOnly : false;
+  reverseMode = saved ? !!saved.reverseMode : false;
+  deck = computeDeck();
+
+  if(saved && saved.orderIds && saved.orderIds.length){
+    const idToIndex = {};
+    deck.forEach((c, i) => { idToIndex[c.id] = i; });
+    let restored = saved.orderIds.map(id => idToIndex[id]).filter(i => i !== undefined);
+    const already = new Set(restored);
+    deck.forEach((c, i) => { if(!already.has(i)) restored.push(i); });  // 新規カードは末尾へ
+    order = restored;
+    pos = Math.min(saved.pos || 0, Math.max(order.length - 1, 0));
+  } else {
+    order = deck.map((_, i) => i);
+    pos = 0;
+  }
+  flipped = false;
+  renderFc();
+}
+
+// ─── シャッフル（Fisher-Yates・仕様書準拠） ───────────────
+function shuffleOrder(){
+  for(let i = order.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  pos = 0; flipped = false;
+  persistTabState();
+  renderFc();
+  toast('シャッフルしました 🔀');
+}
+
+// ─── ナビゲーション ───────────────────────────────────────
+function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistTabState(); renderFc(); }
+function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistTabState(); renderFc(); }
+function fcFlip(){
+  if(deck.length === 0) return;
+  flipped = !flipped;
+  const cardEl = document.getElementById('fc-card');
+  if(cardEl) cardEl.classList.toggle('flipped', flipped);
+  syncKnowButtons();
+}
+function syncKnowButtons(){
+  const ok = document.getElementById('btn-know-ok');
+  const ng = document.getElementById('btn-know-ng');
+  if(ok) ok.disabled = !flipped;
+  if(ng) ng.disabled = !flipped;
+}
+
+// ─── 苦手克服時：1枚だけその場で取り除く（仕様書準拠） ───
+function removeCurrentCardFromDeck(){
+  if(deck.length === 0) return;
+  const oldDeck = deck;
+  const removedId = oldDeck[order[pos]].id;
+
+  const newDeck = oldDeck.filter(c => c.id !== removedId);
+  const idToNewIndex = {};
+  newDeck.forEach((c, i) => { idToNewIndex[c.id] = i; });
+
+  const newOrder = order
+    .filter((_, i) => i !== pos)
+    .map(deckIdx => idToNewIndex[oldDeck[deckIdx].id]);
+
+  deck = newDeck;
+  order = newOrder;
+  if(order.length === 0){ pos = 0; }
+  else if(pos >= order.length){ pos = 0; }
+  // それ以外は pos を変えない → 次のカードが繰り上がって同じ位置に来る
+}
+
+// ─── わかる / わからない（仕様書準拠） ────────────────────
+function markKnow(didKnow){
+  if(deck.length === 0 || !flipped) return;
+  const card = deck[order[pos]];
+  if(!stats[card.id]) stats[card.id] = { ok:0, ng:0 };
+  if(didKnow) stats[card.id].ok++; else stats[card.id].ng++;
+
+  const stillWeak = stats[card.id].ng > stats[card.id].ok;
+  if(weakOnly && didKnow && !stillWeak){
+    removeCurrentCardFromDeck();
+    flipped = false;
+    persistTabState();
+    renderFc();
+    toast('🎉 苦手を克服！リストから外れました');
+  } else {
+    fcNext();
+  }
+}
+
+// ─── 出題方向トグル ───────────────────────────────────────
+function toggleReverse(){
+  reverseMode = !reverseMode;
+  flipped = false;
+  persistTabState();
+  renderFc();
+  toast(reverseMode ? '意味 → 用語 モード' : '用語 → 意味 モード');
+}
+function toggleWeakOnly(){
+  weakOnly = !weakOnly;
+  applyFilter();
+}
+function setCat(cat){
+  activeCat = cat;
+  weakOnly = false;
+  applyFilter();
+}
+
+// ─── 単語帳レンダリング ───────────────────────────────────
+function renderFc(){
+  const el = document.getElementById('fc-container');
+  if(!el) return;
+  const wc = weakCount();
+  const total = deck.length;
+  const card = total ? deck[order[pos]] : null;
+  const s = card ? (stats[card.id] || {ok:0, ng:0}) : null;
+
+  const chips = ['全カテゴリ', ...FC_CATS].map(cat=>{
+    const active = !weakOnly && activeCat === cat;
+    return `<button class="tag-btn${active?' selected':''}" onclick="setCat('${escAttr(cat)}')">${escHtml(cat)}</button>`;
+  }).join('');
+
+  const front = card ? (reverseMode ? card.meaning : card.term) : '';
+  const back  = card ? (reverseMode ? card.term : card.meaning) : '';
+  const frontIsLong = reverseMode;
+
+  el.innerHTML = `
+  <div class="fc-player">
+    <div class="fc-chips quick-tags">${chips}</div>
+
+    <div class="fc-toolbar">
+      <button class="btn-icon" onclick="shuffleOrder()" title="シャッフル">🔀 シャッフル</button>
+      <button class="btn-icon${reverseMode?' rev-on':''}" onclick="toggleReverse()" title="出題方向を反転">🔃 ${reverseMode?'意味→用語':'用語→意味'}</button>
+      <button class="btn-icon${weakOnly?' weak-on':''}" onclick="toggleWeakOnly()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
+      <button class="btn-icon" onclick="openAddForm()" title="カードを追加">＋ 追加</button>
+    </div>
+
+    ${total === 0 ? `
+      <div class="empty-state">
+        <div class="empty-icon">${weakOnly ? '🎉' : '📭'}</div>
+        <div class="empty-title">${weakOnly ? '苦手カードはありません！' : 'カードがありません'}</div>
+        <div class="empty-sub">${weakOnly ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
+        ${weakOnly ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakOnly()">全カードに戻る</button>' : ''}
+      </div>
+    ` : `
+      <div class="fc-meta">
+        <span class="fc-counter">${pos+1} / ${total}</span>
+        <span class="fc-cat-label">${escHtml(card.cat)}${card.builtin?'':' ・独自カード'}</span>
+        <span class="fc-stats">
+          <span style="color:var(--ok)">✓ ${s.ok}</span>
+          <span style="color:var(--ng)">✗ ${s.ng}</span>
+          ${isWeak(card)?'<span style="color:var(--ng);font-weight:700">🔥 苦手</span>':''}
+        </span>
+      </div>
+
+      <div class="study-card-wrap">
+        <div class="study-card${flipped?' flipped':''}" id="fc-card" onclick="fcFlip()" tabindex="0" role="button" aria-label="カードをめくる">
+          <div class="study-face study-front">
+            <div class="study-label">${reverseMode?'意味':'用語'}</div>
+            <div class="study-term" style="${frontIsLong?'font-size:15px;line-height:1.7;':''}">${escHtml(front)}</div>
+            <div class="study-tap-hint">タップ / Space でめくる</div>
+          </div>
+          <div class="study-face study-back">
+            <div class="study-label">${reverseMode?'用語':'意味'}</div>
+            <div class="study-definition" style="${frontIsLong?'font-size:24px;font-weight:700;font-family:var(--disp);':''}">${escHtml(back)}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fc-controls">
+        <button class="btn-prev" onclick="fcPrev()" aria-label="前のカード">←</button>
+        <button class="btn-study btn-again" id="btn-know-ng" onclick="markKnow(false)" ${flipped?'':'disabled'}>わからない ✗</button>
+        <button class="btn-study btn-know" id="btn-know-ok" onclick="markKnow(true)" ${flipped?'':'disabled'}>わかる ✓</button>
+        <button class="btn-prev" onclick="fcNext()" aria-label="次のカード">→</button>
+      </div>
+      ${card.builtin ? '' : `
+      <div style="text-align:center;margin-top:10px;">
+        <button class="card-action-btn" onclick="editCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">✏️ 編集</button>
+        <button class="card-action-btn del" onclick="deleteCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">🗑 削除</button>
+      </div>`}
+      <div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>
+    `}
+
+    <div class="add-card-form" id="add-card-form">
+      <div class="form-row">
+        <div class="form-group"><label>用語</label><input type="text" id="new-term" placeholder="例: Amazon S3"></div>
+        <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
+      </div>
+      <div class="form-group"><label>カテゴリ</label>
+        <select id="new-cat">${FC_CATS.map(c=>`<option value="${escHtml(c)}"${(!weakOnly&&activeCat===c)?' selected':''}>${escHtml(c)}</option>`).join('')}</select>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeAddForm()">キャンセル</button>
+        <button class="btn btn-primary" onclick="submitCard()" style="width:auto" id="add-card-btn">追加</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── カスタムカード ───────────────────────────────────────
+let editingCard = null;   // {rawId, cat}
+function openAddForm(){
+  editingCard = null;
+  const f = document.getElementById('add-card-form');
+  f.classList.add('open');
+  document.getElementById('add-card-btn').textContent = '追加';
+  document.getElementById('new-term').focus();
+}
+function closeAddForm(){
+  editingCard = null;
+  const f = document.getElementById('add-card-form');
+  if(f) f.classList.remove('open');
+}
+function submitCard(){
+  const term = document.getElementById('new-term').value.trim();
+  const def  = document.getElementById('new-def').value.trim();
+  const cat  = document.getElementById('new-cat').value;
+  if(!term||!def){ toast('用語と意味を入力してください','error'); return; }
+  if(editingCard){
+    const list = state.customCards[editingCard.cat]||[];
+    const c = list.find(x=>String(x.id)===String(editingCard.rawId));
+    if(c){
+      if(cat !== editingCard.cat){
+        // カテゴリ変更：移動
+        state.customCards[editingCard.cat] = list.filter(x=>String(x.id)!==String(editingCard.rawId));
+        if(!state.customCards[cat]) state.customCards[cat]=[];
+        state.customCards[cat].push({id:c.id, term, def});
+      }else{
+        c.term = term; c.def = def;
+      }
+      toast('カードを更新しました ✓');
+    }
+    editingCard = null;
+  }else{
+    if(!state.customCards[cat]) state.customCards[cat]=[];
+    state.customCards[cat].push({id:String(Date.now()), term, def});
+    toast('カードを追加しました ✓');
+  }
+  save();
+  deck = computeDeck();
+  // 新規カードを末尾に追加した状態でorderを再構成（既存順は維持）
+  enterTab(datasetKey);
+}
+function editCustomCard(rawId, cat){
+  const c = (state.customCards[cat]||[]).find(x=>String(x.id)===String(rawId));
+  if(!c) return;
+  editingCard = {rawId, cat};
+  const f = document.getElementById('add-card-form');
+  f.classList.add('open');
+  document.getElementById('new-term').value = c.term;
+  document.getElementById('new-def').value = c.def;
+  document.getElementById('new-cat').value = cat;
+  document.getElementById('add-card-btn').textContent = '更新';
+  document.getElementById('new-term').focus();
+}
+function deleteCustomCard(rawId, cat){
+  if(!confirm('このカードを削除しますか？')) return;
+  state.customCards[cat] = (state.customCards[cat]||[]).filter(x=>String(x.id)!==String(rawId));
+  delete state.fcStats['c::'+rawId];
+  save();
+  enterTab(datasetKey);
+  toast('削除しました');
+}
 
 // ─── HELPERS ──────────────────────────────────────────────
 function showScreen(id){
@@ -42,12 +371,14 @@ function toast(msg, type='success'){
   e.textContent=msg; e.className='toast show '+type;
   clearTimeout(_tt); _tt=setTimeout(()=>{e.className='toast';},2600);
 }
-function save(){ if(window._save) window._save(); }
+let _saveTimer;
+function save(){
+  // 連打時の書き込みを軽くまとめる
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(()=>{ if(window._save) window._save(); }, 400);
+}
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
-function fcIcon(cat){
-  return {'コンピューティング':'⚙️','ストレージ':'💾','ネットワーク':'🌐','データベース':'🗄️','セキュリティ':'🔐','サーバーレス':'⚡','AI / ML':'🤖','監視・管理':'📊','料金・サポート':'💰'}[cat]||'📚';
-}
 
 // ─── BOOT ─────────────────────────────────────────────────
 function afterLoad(silent){
@@ -55,11 +386,12 @@ function afterLoad(silent){
   document.getElementById('sync-indicator').style.display = 'flex';
   if(!silent){
     showScreen('notebook-screen');
-    renderFcHome();
+    enterTab('aws');   // 保存された続きから再開
   } else {
-    // バックグラウンド同期：表示中の画面だけ静かに更新
-    if(document.getElementById('notebook-screen').classList.contains('active')){
-      if(state.currentCat) renderCatView(); else renderFcHome();
+    if(document.getElementById('notebook-screen').classList.contains('active')
+       && document.getElementById('tabcontent-fc').classList.contains('active')){
+      // バックグラウンド同期：進行中の並びを壊さないため件数系のみ更新
+      renderFc();
     }
   }
   if(!state.quiz.session) renderQuizHome();
@@ -67,10 +399,8 @@ function afterLoad(silent){
 function goHome(){
   if(state.quiz.session && !confirm('クイズを中断してトップに戻りますか？')) return;
   state.quiz.session = null;
-  state.currentCat = null;
   showScreen('notebook-screen');
   switchTab('fc');
-  renderFcHome();
 }
 
 // ─── TABS ─────────────────────────────────────────────────
@@ -80,295 +410,11 @@ function switchTab(t){
   document.getElementById('tab-'+t).classList.add('active');
   document.getElementById('tabcontent-'+t).classList.add('active');
   if(t==='quiz' && !state.quiz.session) renderQuizHome();
-  if(t==='fc'){ if(state.currentCat) renderCatView(); else renderFcHome(); }
-}
-
-// ─── 単語帳：カテゴリホーム ───────────────────────────────
-function catMastery(cat){
-  const cards = catCards(cat);
-  let k=0, a=0;
-  cards.forEach(c=>{
-    const st = state.cardStats[cardKey(cat,c)];
-    if(st==='k') k++; else if(st==='a') a++;
-  });
-  return {total:cards.length, known:k, again:a, unseen:cards.length-k-a};
-}
-function fcOverall(){
-  let total=0, known=0, again=0;
-  FC_CATS.forEach(cat=>{
-    const m = catMastery(cat);
-    total+=m.total; known+=m.known; again+=m.again;
-  });
-  return {total, known, again, review: total-known};
-}
-function renderFcHome(){
-  state.currentCat = null;
-  const el = document.getElementById('fc-container');
-  const ov = fcOverall();
-  const reviewCount = ov.again;   // 「もう一度」マークが付いたカード
-
-  const cats = FC_CATS.map(cat=>{
-    const m = catMastery(cat);
-    const pct = m.total ? Math.round(m.known/m.total*100) : 0;
-    const color = pct>=80?'var(--ok)':pct>=40?'var(--orange)':'var(--dim)';
-    return `<div class="category-card" onclick="openCat('${escAttr(cat)}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${fcIcon(cat)}</span><span class="cat-name">${escHtml(cat)}</span><span class="cat-count">${m.total}枚</span></div>
-      <div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${pct}%;background:${color}"></div></div>
-      <div class="cat-acc-text">習得 ${m.known} / ${m.total}${m.again?`　<span style="color:var(--ng)">要復習 ${m.again}</span>`:''}</div>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="quiz-home">
-      <div class="quiz-home-title">📇 単語帳</div>
-      <div class="quiz-home-sub">カテゴリを選んで学習を開始。「覚えた」の記録は端末をまたいで保存されます。全 ${ov.total} 枚収録。</div>
-      <div class="overall-stats">
-        <div class="os-chip"><span class="os-num" style="color:var(--ok)">${ov.known}</span><span class="os-lbl">覚えた</span></div>
-        <div class="os-chip"><span class="os-num" style="color:var(--ng)">${ov.again}</span><span class="os-lbl">要復習</span></div>
-        <div class="os-chip"><span class="os-num" style="color:var(--dim)">${ov.total-ov.known-ov.again}</span><span class="os-lbl">未学習</span></div>
-      </div>
-      ${reviewCount>0?`
-      <div class="review-bar">
-        <div class="review-label"><strong>${reviewCount} 枚</strong>の「もう一度」カードがあります。覚えたらリストから消えます。</div>
-        <button class="btn btn-secondary" onclick="startReviewStudy()">🔥 覚えてないカードだけ復習</button>
-      </div>`:''}
-      <div class="category-grid">${cats}</div>
-    </div>`;
-}
-
-// ─── 単語帳：カテゴリ内ビュー ─────────────────────────────
-function openCat(cat){
-  state.currentCat = cat;
-  cancelEdit();
-  renderCatView();
-}
-function renderCatView(){
-  const cat = state.currentCat;
-  const el = document.getElementById('fc-container');
-  const m = catMastery(cat);
-  const kw = (state._fcSearch||'').toLowerCase();
-  let cards = catCards(cat);
-  if(kw) cards = cards.filter(c=>c.term.toLowerCase().includes(kw)||c.def.toLowerCase().includes(kw));
-
-  el.innerHTML = `
-    <div class="quiz-home">
-      <div class="content-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button class="btn-icon" onclick="renderFcHome()" aria-label="カテゴリ一覧へ">←</button>
-          <div class="content-title">${fcIcon(cat)} ${escHtml(cat)}</div>
-        </div>
-        <div class="content-actions">
-          <button class="btn btn-secondary" onclick="toggleAddForm()">＋ カード追加</button>
-          ${m.again>0?`<button class="btn btn-secondary" onclick="startStudy('again')">🔥 要復習のみ（${m.again}）</button>`:''}
-          <button class="btn btn-primary" style="width:auto" onclick="startStudy('all')">📖 学習開始（${m.total}枚）</button>
-        </div>
-      </div>
-      <div class="search-box">
-        <input type="text" id="card-search" placeholder="カードを検索..." value="${escHtml(state._fcSearch||'')}" oninput="state._fcSearch=this.value;renderCatView();">
-      </div>
-      <div class="add-card-form" id="add-card-form">
-        <div class="form-row">
-          <div class="form-group"><label>用語</label><input type="text" id="new-term" placeholder="例: Amazon S3"></div>
-          <div class="form-group"><label>説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-secondary" onclick="cancelEdit()">キャンセル</button>
-          <button class="btn btn-primary" onclick="addCard()" style="width:auto" id="add-card-btn">追加</button>
-        </div>
-      </div>
-      ${cards.length ? `<div class="cards-grid">${cards.map(c=>{
-        const key = cardKey(cat, c);
-        const st = state.cardStats[key];
-        const badge = st==='k'?'<span style="color:var(--ok);font-size:10px;">✓ 覚えた</span>':st==='a'?'<span style="color:var(--ng);font-size:10px;">🔥 要復習</span>':'';
-        const isCustom = c._builtin===undefined;
-        return `
-        <div class="flashcard" id="fc-${escHtml(key).replace(/[^a-zA-Z0-9_-]/g,'_')}" onclick="flipCardByKey(this)">
-          <div class="flashcard-inner">
-            <div class="card-front">
-              <div class="card-label">用語 ${badge}</div>
-              <div class="card-term">${escHtml(c.term)}</div>
-              <div class="card-actions-row" onclick="event.stopPropagation()">
-                ${isCustom?`<button class="card-action-btn" onclick="editCard('${escAttr(c.id)}')">編集</button>
-                <button class="card-action-btn del" onclick="deleteCard('${escAttr(c.id)}')">削除</button>`:'<span style="font-size:10px;color:var(--dim)">標準カード</span>'}
-              </div>
-            </div>
-            <div class="card-back">
-              <div class="card-label">説明</div>
-              <div class="card-definition">${escHtml(c.def)}</div>
-              <div class="card-hint">タップで戻る</div>
-            </div>
-          </div>
-        </div>`;}).join('')}</div>`
-      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">一致するカードがありません</div></div>`}
-    </div>`;
-}
-function flipCardByKey(el){ el.classList.toggle('flipped'); }
-
-// ─── カスタムカード（追加/編集/削除） ─────────────────────
-function toggleAddForm(){
-  const f = document.getElementById('add-card-form');
-  f.classList.toggle('open');
-  if(f.classList.contains('open')) document.getElementById('new-term').focus();
-}
-function cancelEdit(){
-  state.editingCardId = null;
-  const f = document.getElementById('add-card-form');
-  if(f){
-    f.classList.remove('open');
-    const btn = document.getElementById('add-card-btn');
-    if(btn) btn.textContent = '追加';
-  }
-}
-function addCard(){
-  const term = document.getElementById('new-term').value.trim();
-  const def = document.getElementById('new-def').value.trim();
-  if(!term||!def){ toast('用語と説明を入力してください','error'); return; }
-  const cat = state.currentCat;
-  if(!state.customCards[cat]) state.customCards[cat] = [];
-  if(state.editingCardId){
-    const card = state.customCards[cat].find(c=>String(c.id)===String(state.editingCardId));
-    if(card){ card.term=term; card.def=def; toast('カードを更新しました ✓'); }
-    state.editingCardId = null;
-  } else {
-    state.customCards[cat].push({id:String(Date.now()), term, def});
-    toast('カードを追加しました ✓');
-  }
-  save();
-  renderCatView();
-}
-function editCard(id){
-  const cat = state.currentCat;
-  const card = (state.customCards[cat]||[]).find(c=>String(c.id)===String(id));
-  if(!card) return;
-  state.editingCardId = String(id);
-  renderCatView();
-  const f = document.getElementById('add-card-form');
-  f.classList.add('open');
-  document.getElementById('new-term').value = card.term;
-  document.getElementById('new-def').value = card.def;
-  document.getElementById('add-card-btn').textContent = '更新';
-  document.getElementById('new-term').focus();
-}
-function deleteCard(id){
-  if(!confirm('このカードを削除しますか？')) return;
-  const cat = state.currentCat;
-  state.customCards[cat] = (state.customCards[cat]||[]).filter(c=>String(c.id)!==String(id));
-  delete state.cardStats[`${cat}::c::${id}`];
-  save();
-  renderCatView();
-  toast('削除しました');
-}
-
-// ─── STUDY（学習モード） ──────────────────────────────────
-function startStudy(mode){
-  const cat = state.currentCat;
-  let cards = catCards(cat);
-  if(mode==='again'){
-    cards = cards.filter(c=>state.cardStats[cardKey(cat,c)]==='a');
-  }
-  if(!cards.length){ toast('対象のカードがありません','error'); return; }
-  launchStudy(cards.map(c=>({...c, _cat:cat})), `${fcIcon(cat)} ${cat}`, mode);
-}
-function startReviewStudy(){
-  // 全カテゴリ横断の「もう一度」カード
-  let pool = [];
-  FC_CATS.forEach(cat=>{
-    catCards(cat).forEach(c=>{
-      if(state.cardStats[cardKey(cat,c)]==='a') pool.push({...c, _cat:cat});
-    });
-  });
-  if(!pool.length){ toast('復習するカードはありません 🎉'); return; }
-  launchStudy(pool, '🔥 苦手カード復習', 'review');
-}
-function launchStudy(cards, title, mode){
-  state.study = {
-    queue: cards.sort(()=>Math.random()-.5),
-    index: 0, history: [], isFlipped: false,
-    reversed: state.study.reversed || false,   // 反転設定は維持
-    cat: state.currentCat, mode
-  };
-  document.getElementById('study-deck-title').textContent = title;
-  document.getElementById('study-subtitle').textContent = `${cards.length} 枚`;
-  state.resultCtx = 'study';
-  showScreen('study-screen');
-  updateReverseBtn();
-  renderStudyCard();
-}
-function studyCounts(){
-  const h = state.study.history;
-  return { known: h.filter(x=>x).length, again: h.filter(x=>x===false).length };
-}
-function renderStudyCard(){
-  const s = state.study, c = s.queue[s.index], n = s.queue.length;
-  const {known, again} = studyCounts();
-  const front = s.reversed ? c.def : c.term;
-  const back  = s.reversed ? c.term : c.def;
-  document.getElementById('study-front-label').textContent = s.reversed ? '説明' : '用語';
-  document.getElementById('study-back-label').textContent  = s.reversed ? '用語' : '説明';
-  document.getElementById('study-term-text').textContent = front;
-  document.getElementById('study-def-text').textContent = back;
-  // 説明が表なら文字を小さく
-  document.getElementById('study-term-text').style.fontSize = s.reversed ? '15px' : '';
-  document.getElementById('study-term-text').style.lineHeight = s.reversed ? '1.7' : '';
-  document.getElementById('study-def-text').style.fontSize = s.reversed ? '24px' : '';
-  document.getElementById('study-card').classList.remove('flipped');
-  document.getElementById('study-controls').style.display = 'none';
-  s.isFlipped = false;
-  document.getElementById('progress-fill').style.width = Math.round(s.index/n*100)+'%';
-  document.getElementById('progress-text').textContent = `${s.index+1}/${n}`;
-  document.getElementById('stat-know').textContent = known;
-  document.getElementById('stat-again').textContent = again;
-  document.getElementById('stat-remain').textContent = n - s.index;
-}
-function toggleReverse(){
-  state.study.reversed = !state.study.reversed;
-  updateReverseBtn();
-  renderStudyCard();
-  toast(state.study.reversed ? '説明 → 用語 モード' : '用語 → 説明 モード');
-}
-function updateReverseBtn(){
-  const b = document.getElementById('reverse-btn');
-  if(b) b.classList.toggle('rev-on', state.study.reversed);
-}
-function quitStudy(){
-  const s = state.study;
-  if(s.index > 0 && !confirm('学習を終了しますか？（ここまでの「覚えた/もう一度」は保存済みです）')) return;
-  backToFc();
-}
-function backToFc(){
-  showScreen('notebook-screen');
-  switchTab('fc');
-  if(state.currentCat) renderCatView(); else renderFcHome();
-}
-function flipStudyCard(){
-  const s = state.study;
-  document.getElementById('study-card').classList.toggle('flipped');
-  s.isFlipped = !s.isFlipped;
-  if(s.isFlipped) document.getElementById('study-controls').style.display = 'flex';
-}
-function markCard(known){
-  const s = state.study;
-  s.history[s.index] = known;
-  const c = s.queue[s.index];
-  const key = cardKey(c._cat, c);
-  state.cardStats[key] = known ? 'k' : 'a';
-  save();
-  s.index++;
-  if(s.index >= s.queue.length){
-    const {known:k} = studyCounts();
-    showResultScreen(k, s.queue.length, 'study');
-  } else renderStudyCard();
-}
-function prevCard(){
-  const s = state.study;
-  if(s.index > 0){
-    s.index--;
-    s.history.length = s.index;
-    renderStudyCard();
-  }
+  if(t==='fc') renderFc();
 }
 
 // ─── QUIZ STATS ───────────────────────────────────────────
+function qid(q){ return QQ.indexOf(q); }
 function recordAnswer(q, isCorrect){
   const id = String(qid(q));
   const st = state.quizStats;
@@ -540,9 +586,9 @@ function selectAnswer(idx){
   if(!btn || btn.disabled) return;
 
   if(isMulti){
-    const pos = window._multiSelected.indexOf(idx);
-    if(pos===-1){ window._multiSelected.push(idx); btn.classList.add('selected-multi'); }
-    else{ window._multiSelected.splice(pos,1); btn.classList.remove('selected-multi'); }
+    const pos2 = window._multiSelected.indexOf(idx);
+    if(pos2===-1){ window._multiSelected.push(idx); btn.classList.add('selected-multi'); }
+    else{ window._multiSelected.splice(pos2,1); btn.classList.remove('selected-multi'); }
     const submitBtn = document.getElementById('multi-submit');
     if(submitBtn) submitBtn.style.display = window._multiSelected.length>0 ? 'block' : 'none';
     return;
@@ -587,84 +633,70 @@ function nextQuestion(){
   sess.index++;
   if(sess.index >= sess.questions.length){
     state.lastQuizRun = {catId:sess.catId, shuffle:sess.shuffle, mode:sess.mode, wrongThisRun:sess.wrongThisRun.slice()};
-    showResultScreen(sess.correct, sess.correct+sess.wrong, 'quiz');
+    showResultScreen(sess.correct, sess.correct+sess.wrong);
     state.quiz.session = null;
   } else renderQuizSession();
 }
 
-// ─── RESULT ───────────────────────────────────────────────
-function showResultScreen(correct, total, ctx){
-  state.resultCtx = ctx;
+// ─── RESULT（クイズ用） ───────────────────────────────────
+function showResultScreen(correct, total){
   const pct = total>0 ? Math.round(correct/total*100) : 0;
   document.getElementById('result-emoji').textContent = pct>=80?'🎉':pct>=60?'👍':'💪';
   document.getElementById('result-title').textContent = pct>=80?'素晴らしい！':pct>=60?'よく頑張りました！':'もう少し！';
-  document.getElementById('result-sub').textContent = ctx==='quiz' ? `${correct} / ${total} 問正解（${pct}%）` : `${correct} / ${total} 枚を「覚えた」（${pct}%）`;
+  document.getElementById('result-sub').textContent = `${correct} / ${total} 問正解（${pct}%）`;
   document.getElementById('rb-correct').textContent = correct;
   document.getElementById('rb-wrong').textContent = total - correct;
   document.getElementById('result-pct').textContent = pct+'%';
-  const hasWrongQuiz = ctx==='quiz' && state.lastQuizRun && state.lastQuizRun.wrongThisRun.length > 0;
-  const hasWrongStudy = ctx==='study' && (total-correct) > 0;
+  const hasWrong = state.lastQuizRun && state.lastQuizRun.wrongThisRun.length > 0;
   const btn = document.getElementById('review-wrong-btn');
-  btn.style.display = (hasWrongQuiz||hasWrongStudy) ? 'block' : 'none';
-  btn.textContent = ctx==='quiz' ? '間違えた問題だけ復習' : '覚えてないカードだけ復習';
+  btn.style.display = hasWrong ? 'block' : 'none';
+  btn.textContent = '間違えた問題だけ復習';
   const c = document.getElementById('result-circle');
   c.style.strokeDashoffset = 289;
   showScreen('result-screen');
   setTimeout(()=>{ c.style.strokeDashoffset = 289 - (289*pct/100); }, 120);
 }
 function restartResult(){
-  if(state.resultCtx==='quiz'){
-    const run = state.lastQuizRun;
-    showScreen('notebook-screen'); switchTab('quiz');
-    if(run){
-      if(run.mode==='review') startWrongReview();
-      else { renderQuizHome(); startQuiz(run.catId||'all', run.shuffle); }
-    } else renderQuizHome();
-  } else {
-    // 直前と同じ範囲で再スタート
-    const s = state.study;
-    showScreen('notebook-screen'); switchTab('fc');
-    if(s.mode==='review') startReviewStudy();
-    else if(s.cat){ state.currentCat = s.cat; startStudy(s.mode||'all'); }
-    else renderFcHome();
-  }
+  const run = state.lastQuizRun;
+  showScreen('notebook-screen'); switchTab('quiz');
+  if(run){
+    if(run.mode==='review') startWrongReview();
+    else { renderQuizHome(); startQuiz(run.catId||'all', run.shuffle); }
+  } else renderQuizHome();
 }
 function reviewWrongFromResult(){
-  if(state.resultCtx==='quiz'){
-    const run = state.lastQuizRun;
-    if(!run || !run.wrongThisRun.length) return;
-    showScreen('notebook-screen'); switchTab('quiz');
-    const set = new Set(run.wrongThisRun.map(String));
-    const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
-    launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
-  } else {
-    showScreen('notebook-screen'); switchTab('fc');
-    startReviewStudy();
-  }
+  const run = state.lastQuizRun;
+  if(!run || !run.wrongThisRun.length) return;
+  showScreen('notebook-screen'); switchTab('quiz');
+  const set = new Set(run.wrongThisRun.map(String));
+  const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
+  launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
 function backFromResult(){
-  if(state.resultCtx==='quiz'){
-    showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
-  } else {
-    backToFc();
-  }
+  showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
 }
 
 // ─── KEYBOARD SHORTCUTS ───────────────────────────────────
 document.addEventListener('keydown', e=>{
   const tag = (e.target.tagName||'').toLowerCase();
   if(tag==='input' || tag==='textarea' || tag==='select') return;
+  if(!document.getElementById('notebook-screen').classList.contains('active')) return;
 
-  if(document.getElementById('study-screen').classList.contains('active')){
-    if(e.code==='Space'){ e.preventDefault(); flipStudyCard(); }
-    else if(e.key==='1' && state.study.isFlipped) markCard(false);
-    else if(e.key==='2' && state.study.isFlipped) markCard(true);
-    else if(e.key==='ArrowLeft') prevCard();
+  const fcActive = document.getElementById('tabcontent-fc').classList.contains('active');
+  const quizActive = document.getElementById('tabcontent-quiz').classList.contains('active');
+
+  if(fcActive){
+    if(e.code==='Space'){ e.preventDefault(); fcFlip(); }
+    else if(e.key==='1' && flipped) markKnow(false);
+    else if(e.key==='2' && flipped) markKnow(true);
+    else if(e.key==='ArrowLeft') fcPrev();
+    else if(e.key==='ArrowRight') fcNext();
     else if(e.key.toLowerCase()==='r') toggleReverse();
+    else if(e.key.toLowerCase()==='s') shuffleOrder();
     return;
   }
 
-  if(state.quiz.session && document.getElementById('tabcontent-quiz').classList.contains('active')){
+  if(quizActive && state.quiz.session){
     if(e.key==='Enter' && window._quizAnswered){ e.preventDefault(); nextQuestion(); return; }
     const map = {'a':0,'b':1,'c':2,'d':3,'e':4,'1':0,'2':1,'3':2,'4':3,'5':4};
     const idx = map[e.key.toLowerCase()];
@@ -674,4 +706,4 @@ document.addEventListener('keydown', e=>{
     }
   }
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') cancelEdit(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAddForm(); });

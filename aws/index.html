@@ -291,6 +291,17 @@ textarea{resize:vertical;min-height:88px;}
   .os-chip{flex:1;min-width:90px;padding:10px 12px;}
   .os-num{font-size:18px;}
 }
+.fc-player{max-width:680px;margin:0 auto;}
+.fc-chips{margin-bottom:12px;}
+.fc-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.fc-toolbar .btn-icon{font-size:12.5px;}
+#reverse-btn.rev-on,.btn-icon.rev-on{background:var(--orange);color:#161006;border-color:var(--orange);font-weight:700;}
+.btn-icon.weak-on{background:var(--ng);color:#2B0808;border-color:var(--ng);font-weight:700;}
+.fc-meta{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;}
+.fc-counter{font-family:var(--disp);font-weight:700;font-size:14px;color:var(--text);}
+.fc-stats{margin-left:auto;display:flex;gap:10px;font-family:var(--disp);font-weight:700;}
+.fc-controls{display:flex;align-items:center;gap:9px;justify-content:center;margin-top:4px;flex-wrap:wrap;}
+.btn-study:disabled{opacity:.35;cursor:not-allowed;transform:none;}
 </style>
 </head>
 <body>
@@ -336,36 +347,6 @@ textarea{resize:vertical;min-height:88px;}
   </div>
 </div>
 
-<div class="screen" id="study-screen">
-  <div class="study-container">
-    <div class="study-header">
-      <div><div style="font-family:var(--disp);font-size:16px;font-weight:700;" id="study-deck-title">学習中</div><div style="color:var(--dim);font-size:12px;" id="study-subtitle"></div></div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <div class="study-progress"><div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div><span id="progress-text">0/0</span></div>
-        <button class="btn-icon" id="reverse-btn" onclick="toggleReverse()" title="表裏を反転（説明→用語）">🔃 反転</button>
-        <button class="btn-icon" onclick="quitStudy()" title="学習を終了">✕ 終了</button>
-      </div>
-    </div>
-    <div class="study-card-wrap">
-      <div class="study-card" id="study-card" onclick="flipStudyCard()" tabindex="0" role="button" aria-label="カードをめくる">
-        <div class="study-face study-front"><div class="study-label" id="study-front-label">用語</div><div class="study-term" id="study-term-text"></div><div class="study-tap-hint">タップ / Space で答えを見る</div></div>
-        <div class="study-face study-back"><div class="study-label" id="study-back-label">説明</div><div class="study-definition" id="study-def-text"></div></div>
-      </div>
-    </div>
-    <div class="study-controls" id="study-controls" style="display:none;">
-      <button class="btn-prev" onclick="prevCard()" aria-label="前のカードへ">←</button>
-      <button class="btn-study btn-again" onclick="markCard(false)">もう一度 🔄</button>
-      <button class="btn-study btn-know" onclick="markCard(true)">覚えた ✓</button>
-    </div>
-    <div class="study-stats">
-      <div class="stat-item"><div class="stat-num" id="stat-know" style="color:var(--ok)">0</div><div class="stat-lbl">覚えた</div></div>
-      <div class="stat-item"><div class="stat-num" id="stat-again" style="color:var(--orange)">0</div><div class="stat-lbl">要復習</div></div>
-      <div class="stat-item"><div class="stat-num" id="stat-remain" style="color:var(--dim)">0</div><div class="stat-lbl">残り</div></div>
-    </div>
-    <div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> もう一度 ・ <kbd>2</kbd> 覚えた ・ <kbd>R</kbd> 反転</div>
-  </div>
-</div>
-
 <div class="screen" id="result-screen">
   <div class="result-card">
     <div class="result-emoji" id="result-emoji">🎉</div>
@@ -393,7 +374,7 @@ textarea{resize:vertical;min-height:88px;}
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="store.js?v=6"></script>
+<script src="store.js?v=7"></script>
 <script type="module">
 const firebaseConfig=window.FIREBASE_CONFIG;
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -405,21 +386,32 @@ else{
   try{await init(db);}catch(e){toast('Firebase接続エラー: '+e.message,'error');afterLoad();}
 }
 function adoptData(d){
-  // 新形式 / 旧形式（notebooks・notebook+decks）の両対応。
   state.customCards = d.customCards || {};
-  state.cardStats   = d.cardStats   || {};
+  state.fcStats     = d.fcStats     || {};
+  state.fcTabState  = d.fcTabState  || {};
   state.quizStats   = d.quizStats   || {answered:{},wrong:[]};
-  // 旧ノート形式からカスタムカードを救出（組み込みカードと同名でないものだけ）
+  // 旧cardStats（'k'/'a'方式・キーが「カテゴリ::b::番号」形式）からの移行
+  if(!d.fcStats && d.cardStats){
+    Object.entries(d.cardStats).forEach(([key,val])=>{
+      let newKey = null;
+      const mB = key.match(/^(.+)::b::(\d+)$/);
+      const mC = key.match(/^(.+)::c::(.+)$/);
+      if(mB) newKey = `b::${mB[1]}::${mB[2]}`;
+      else if(mC) newKey = `c::${mC[2]}`;
+      if(newKey) state.fcStats[newKey] = val==='k' ? {ok:1,ng:0} : {ok:0,ng:1};
+    });
+  }
+  // さらに古いノート形式からカスタムカードを救出
   if(!d.customCards && (d.notebooks || d.decks)){
     const builtinTerms = new Set();
-    Object.values(SAMPLE).forEach(list=>list.forEach(c=>builtinTerms.add(c.term)));
+    Object.values(SAMPLE).forEach(list=>list.forEach(cc=>builtinTerms.add(cc.term)));
     const rescue = (decks)=>{
       (decks||[]).forEach(deck=>{
         (deck.cards||[]).forEach(card=>{
           if(builtinTerms.has(card.term)) return;
           const cat = SAMPLE[deck.name] ? deck.name : (Object.keys(SAMPLE)[0]);
           if(!state.customCards[cat]) state.customCards[cat]=[];
-          if(!state.customCards[cat].some(c=>c.term===card.term)){
+          if(!state.customCards[cat].some(cc=>cc.term===card.term)){
             state.customCards[cat].push({id:String(card.id||Date.now()+Math.floor(Math.random()*1e6)), term:card.term, def:card.def});
           }
         });
@@ -437,7 +429,8 @@ async function init(db){
   onSnapshot(doc(db,'app','notebook'),s=>{
     if(!s.exists())return;const d2=s.data();
     const same=JSON.stringify(d2.customCards||{})===JSON.stringify(state.customCards)
-      &&JSON.stringify(d2.cardStats||{})===JSON.stringify(state.cardStats)
+      &&JSON.stringify(d2.fcStats||{})===JSON.stringify(state.fcStats)
+      &&JSON.stringify(d2.fcTabState||{})===JSON.stringify(state.fcTabState)
       &&JSON.stringify(d2.quizStats||{})===JSON.stringify(state.quizStats);
     if(same)return;
     adoptData(d2);
@@ -446,13 +439,13 @@ async function init(db){
 }
 async function saveFB(){
   if(!window._db)return;setSyncState('syncing');
-  try{await setDoc(doc(window._db,'app','notebook'),{customCards:state.customCards,cardStats:state.cardStats,quizStats:state.quizStats,updatedAt:new Date().toISOString()});setSyncState('ok');}
+  try{await setDoc(doc(window._db,'app','notebook'),{customCards:state.customCards,fcStats:state.fcStats,fcTabState:state.fcTabState,quizStats:state.quizStats,updatedAt:new Date().toISOString()});setSyncState('ok');}
   catch(e){setSyncState('error');toast('保存エラー: '+e.message,'error');}
 }
 window._save=saveFB;
 </script>
 
-<script src="data.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="data.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

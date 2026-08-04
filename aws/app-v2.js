@@ -6,36 +6,58 @@
 
 // ─── STATE ────────────────────────────────────────────────
 let state = {
-  customCards: {},                 // {カテゴリ: [{id,term,def}]}
+  customCards: {},                 // {カテゴリID: [{id,term,def}]}
+  cardEdits: {},                   // { 'B0001': {term, def} } — 組み込みカードの上書き
+  hiddenCards: [],                 // ['B0001', ...] — 論理削除された組み込みカード（復活可能）
   fcStats: {},                     // { cardId: {ok, ng} }
-  fcTabState: {},                  // { datasetKey: {activeCat, weakOnly, reverseMode, orderIds, pos} }
+  fcTabState: {},                  // 旧形式（移行専用。以後はfcProgressを使う）
+  fcProgress: {},                  // { '<catId|_all_|_weak_>': {orderIds,pos,shuffled,reverse,answeredIds} }
+  fcLastKey: null,                 // 最後に見ていたビュー（起動時にそこへ復帰）
   quiz: {selectedCatId:null, session:null},
   quizStats: {answered:{}, wrong:[]},
+  scenario: {selectedCatId:null, session:null},
+  scenarioStats: {answered:{}, wrong:[]},
+  multi: {selectedCatId:null, session:null},
+  multiStats: {answered:{}, wrong:[]},
+  multiQEdits: {},                 // { 'MS001': {q,o,a,n} } — 組み込み複数選択問題の上書き
+  hiddenMultiQ: [],                // ['MS001', ...] — 論理削除された組み込み複数選択問題
+  customMultiQ: [],                // ユーザーが追加した複数選択問題
   resultCtx: null,
 };
 
 const FC_CATS = Object.keys(SAMPLE);
 
+// カテゴリ安定ID ⇔ 表示名（現在の名称）の対応。
+// customCards・activeCatの永続化はIDで行い、日本語名が変わっても崩れないようにする。
+const CAT_NAME_TO_ID = {}; const CAT_ID_TO_NAME = {};
+FC_CATS_DEF.forEach(c=>{ CAT_NAME_TO_ID[c.name]=c.id; CAT_ID_TO_NAME[c.id]=c.name; });
+// Firestoreは "__xxx__" 形式のフィールド名を予約済みとして拒否するため、
+// 単一アンダースコアの _all_ / _weak_ を使う（fcProgressのキーとして保存されるため）。
+const CAT_ALL  = '_all_';
+const CAT_WEAK = '_weak_';
+
 // ─── 単語カード：データセット ──────────────────────────────
-// カード: {id, cat, term, meaning}
+// カード: {id, cat(表示名), catId(安定ID), term, meaning}
+// 組み込みカードには cardEdits（上書き）・hiddenCards（論理削除）を適用する
 function buildCards(){
   const cards = [];
-  FC_CATS.forEach(cat=>{
-    (SAMPLE[cat]||[]).forEach((c,i)=>{
-      cards.push({id:`b::${cat}::${i}`, cat, term:c.term, meaning:c.def, builtin:true});
+  FC_CATS_DEF.forEach(({id:catId, name})=>{
+    (SAMPLE[name]||[]).forEach((c)=>{
+      if((state.hiddenCards||[]).includes(c.id)) return;
+      const ov = (state.cardEdits||{})[c.id];
+      cards.push({id:c.id, cat:name, catId, term:(ov&&ov.term)||c.term, meaning:(ov&&ov.def)||c.def, builtin:true});
     });
-    (state.customCards[cat]||[]).forEach(c=>{
-      cards.push({id:`c::${c.id}`, cat, term:c.term, meaning:c.def, builtin:false, rawId:c.id});
+    (state.customCards[catId]||[]).forEach(c=>{
+      cards.push({id:`c::${c.id}`, cat:name, catId, term:c.term, meaning:c.def, builtin:false, rawId:c.id});
     });
   });
   return cards;
 }
-const DATASETS = { aws: { label:'AWS 用語', get cards(){ return buildCards(); } } };
+function cardById(id){ return deck.find(c=>c.id===id) || buildCards().find(c=>c.id===id); }
 
-// ─── 単語カード：セッション状態（仕様書準拠） ─────────────
-let datasetKey = 'aws';
-let activeCat = '全カテゴリ';
-let weakOnly = false;
+// ─── 単語カード：セッション状態 ────────────────────────────
+// currentKey: カテゴリID or CAT_ALL('全カテゴリ') or CAT_WEAK('苦手のみ')
+let currentKey = CAT_ALL;
 let reverseMode = false;
 let deck = [];
 let order = [];
@@ -48,7 +70,7 @@ const stats = new Proxy({}, {   // stats[card.id] → state.fcStats へ透過
   has(_, k){ return k in state.fcStats; },
 });
 
-function currentCards(){ return DATASETS[datasetKey].cards; }
+function currentCards(){ return buildCards(); }
 function isWeak(card){
   const s = stats[card.id];
   return s && s.ng > s.ok;
@@ -57,75 +79,100 @@ function weakCount(){
   return currentCards().filter(isWeak).length;
 }
 
-// ─── デッキ計算（仕様書準拠） ─────────────────────────────
-function computeDeck(){
-  let base = currentCards();
-  if(!weakOnly && activeCat !== '全カテゴリ'){
-    base = base.filter(c => c.cat === activeCat);
-  }
-  if(weakOnly){
-    base = base.filter(isWeak);
-  }
-  return base;
-}
-function applyFilter(){
-  deck = computeDeck();
-  order = deck.map((_, i) => i);
-  pos = 0; flipped = false;
-  persistTabState();
-  renderFc();
+// ─── デッキ計算（キー単位：カテゴリ or 全カテゴリ or 苦手のみ） ─
+function computeDeck(key){
+  const all = currentCards();
+  if(key === CAT_WEAK) return all.filter(isWeak);
+  if(key !== CAT_ALL)  return all.filter(c => c.catId === key);
+  return all;
 }
 
-// ─── タブごとの続き再開（IDベース保存・仕様書準拠） ───────
-function persistTabState(){
-  state.fcTabState[datasetKey] = {
-    activeCat,
-    weakOnly,
-    reverseMode,
-    orderIds: order.map(i => deck[i] ? deck[i].id : null).filter(Boolean),
-    pos
-  };
+// ─── キーごとの進捗（カテゴリ別・確定仕様） ────────────────
+function getProgress(key){
+  if(!state.fcProgress) state.fcProgress = {};
+  if(!state.fcProgress[key]){
+    state.fcProgress[key] = { orderIds:[], pos:0, shuffled:false, reverse:false, answeredIds:[] };
+  }
+  return state.fcProgress[key];
+}
+function persistProgress(){
+  const prog = getProgress(currentKey);
+  prog.orderIds = order.map(i => deck[i] ? deck[i].id : null).filter(Boolean);
+  prog.pos = pos;
+  prog.reverse = reverseMode;
+  state.fcLastKey = currentKey;
   save();
 }
-function enterTab(key){
-  datasetKey = key;
-  const saved = state.fcTabState[key];
-  activeCat   = saved ? saved.activeCat : '全カテゴリ';
-  weakOnly    = saved ? !!saved.weakOnly : false;
-  reverseMode = saved ? !!saved.reverseMode : false;
-  deck = computeDeck();
-
-  if(saved && saved.orderIds && saved.orderIds.length){
-    const idToIndex = {};
-    deck.forEach((c, i) => { idToIndex[c.id] = i; });
-    let restored = saved.orderIds.map(id => idToIndex[id]).filter(i => i !== undefined);
-    const already = new Set(restored);
-    deck.forEach((c, i) => { if(!already.has(i)) restored.push(i); });  // 新規カードは末尾へ
-    order = restored;
-    pos = Math.min(saved.pos || 0, Math.max(order.length - 1, 0));
-  } else {
-    order = deck.map((_, i) => i);
-    pos = 0;
+// 一枚「わかる/わからない」を押すたびに記録。デッキ全問に答えたら自動リセット（確定仕様）
+function markAnswered(cardId){
+  const prog = getProgress(currentKey);
+  if(!prog.answeredIds.includes(cardId)) prog.answeredIds.push(cardId);
+  if(deck.length > 0 && prog.answeredIds.length >= deck.length){
+    prog.answeredIds = [];
   }
+}
+
+function selectView(key){
+  if(key === currentKey) return;
+  persistProgress();
+  enterKey(key);
+}
+function toggleWeakView(){
+  selectView(currentKey === CAT_WEAK ? CAT_ALL : CAT_WEAK);
+}
+function enterKey(key){
+  currentKey = key;
+  const prog = getProgress(key);
+  deck = computeDeck(key);
+  reverseMode = !!prog.reverse;
+
+  const idToIndex = {};
+  deck.forEach((c, i) => { idToIndex[c.id] = i; });
+  let restored = (prog.orderIds||[]).map(id => idToIndex[id]).filter(i => i !== undefined);
+  const already = new Set(restored);
+  deck.forEach((c, i) => { if(!already.has(i)) restored.push(i); });  // 新規カードは末尾へ
+  order = restored;
+  pos = Math.min(prog.pos || 0, Math.max(order.length - 1, 0));
   flipped = false;
   renderFc();
 }
 
-// ─── シャッフル（Fisher-Yates・仕様書準拠） ───────────────
-function shuffleOrder(){
-  for(let i = order.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
+// ─── シャッフルのトグル化（確定仕様） ──────────────────────
+// OFF→ON: 未回答カードをシャッフルして先頭へ／ON→OFF: 未回答カードだけを本来の順で
+function toggleShuffle(){
+  if(deck.length === 0) return;
+  const prog = getProgress(currentKey);
+  const answeredSet = new Set(prog.answeredIds || []);
+
+  if(!prog.shuffled){
+    let unanswered = order.filter(i => !answeredSet.has(deck[i].id));
+    let answered   = order.filter(i =>  answeredSet.has(deck[i].id));
+    for(let i = unanswered.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [unanswered[i], unanswered[j]] = [unanswered[j], unanswered[i]];
+    }
+    order = unanswered.concat(answered);
+    prog.shuffled = true;
+    toast('シャッフルしました 🔀');
+  } else {
+    const naturalOrder = deck.map((_, i) => i);
+    order = naturalOrder.filter(i => !answeredSet.has(deck[i].id));
+    prog.shuffled = false;
+    if(order.length === 0){
+      order = naturalOrder;
+      toast('一周しました！最初から出題します 🔁');
+    } else {
+      toast('順番どおり（未回答のみ）に切り替えました');
+    }
   }
   pos = 0; flipped = false;
-  persistTabState();
+  persistProgress();
   renderFc();
-  toast('シャッフルしました 🔀');
 }
 
 // ─── ナビゲーション ───────────────────────────────────────
-function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistTabState(); renderFc(); }
-function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistTabState(); renderFc(); }
+function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistProgress(); renderFc(); }
+function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistProgress(); renderFc(); }
 function fcFlip(){
   if(deck.length === 0) return;
   flipped = !flipped;
@@ -161,18 +208,20 @@ function removeCurrentCardFromDeck(){
   // それ以外は pos を変えない → 次のカードが繰り上がって同じ位置に来る
 }
 
-// ─── わかる / わからない（仕様書準拠） ────────────────────
+// ─── わかる / わからない ───────────────────────────────────
 function markKnow(didKnow){
   if(deck.length === 0 || !flipped) return;
   const card = deck[order[pos]];
   if(!stats[card.id]) stats[card.id] = { ok:0, ng:0 };
   if(didKnow) stats[card.id].ok++; else stats[card.id].ng++;
 
+  markAnswered(card.id);
+
   const stillWeak = stats[card.id].ng > stats[card.id].ok;
-  if(weakOnly && didKnow && !stillWeak){
+  if(currentKey === CAT_WEAK && didKnow && !stillWeak){
     removeCurrentCardFromDeck();
     flipped = false;
-    persistTabState();
+    persistProgress();
     renderFc();
     toast('🎉 苦手を克服！リストから外れました');
   } else {
@@ -184,18 +233,9 @@ function markKnow(didKnow){
 function toggleReverse(){
   reverseMode = !reverseMode;
   flipped = false;
-  persistTabState();
+  persistProgress();
   renderFc();
   toast(reverseMode ? '意味 → 用語 モード' : '用語 → 意味 モード');
-}
-function toggleWeakOnly(){
-  weakOnly = !weakOnly;
-  applyFilter();
-}
-function setCat(cat){
-  activeCat = cat;
-  weakOnly = false;
-  applyFilter();
 }
 
 // ─── 単語帳レンダリング ───────────────────────────────────
@@ -203,36 +243,38 @@ function renderFc(){
   const el = document.getElementById('fc-container');
   if(!el) return;
   const wc = weakCount();
+  const hiddenCount = (state.hiddenCards||[]).length;
+  const prog = getProgress(currentKey);
   const total = deck.length;
   const card = total ? deck[order[pos]] : null;
   const s = card ? (stats[card.id] || {ok:0, ng:0}) : null;
 
-  const chips = ['全カテゴリ', ...FC_CATS].map(cat=>{
-    const active = !weakOnly && activeCat === cat;
-    return `<button class="tag-btn${active?' selected':''}" onclick="setCat('${escAttr(cat)}')">${escHtml(cat)}</button>`;
+  const chips = [{id:CAT_ALL, name:'全カテゴリ'}, ...FC_CATS_DEF].map(c=>{
+    const active = currentKey === c.id;
+    return `<button class="tag-btn${active?' selected':''}" onclick="selectView('${escAttr(c.id)}')">${escHtml(c.name)}</button>`;
   }).join('');
 
   const front = card ? (reverseMode ? card.meaning : card.term) : '';
   const back  = card ? (reverseMode ? card.term : card.meaning) : '';
   const frontIsLong = reverseMode;
+  const isWeakView = currentKey === CAT_WEAK;
+  const formCatDefault = (currentKey !== CAT_ALL && currentKey !== CAT_WEAK) ? currentKey : FC_CATS_DEF[0].id;
 
   el.innerHTML = `
   <div class="fc-player">
     <div class="fc-chips quick-tags">${chips}</div>
 
     <div class="fc-toolbar">
-      <button class="btn-icon" onclick="shuffleOrder()" title="シャッフル">🔀 シャッフル</button>
-      <button class="btn-icon${reverseMode?' rev-on':''}" onclick="toggleReverse()" title="出題方向を反転">🔃 ${reverseMode?'意味→用語':'用語→意味'}</button>
-      <button class="btn-icon${weakOnly?' weak-on':''}" onclick="toggleWeakOnly()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
-      <button class="btn-icon" onclick="openAddForm()" title="カードを追加">＋ 追加</button>
+      <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
     </div>
+    <hr class="fc-divider">
 
     ${total === 0 ? `
       <div class="empty-state">
-        <div class="empty-icon">${weakOnly ? '🎉' : '📭'}</div>
-        <div class="empty-title">${weakOnly ? '苦手カードはありません！' : 'カードがありません'}</div>
-        <div class="empty-sub">${weakOnly ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
-        ${weakOnly ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakOnly()">全カードに戻る</button>' : ''}
+        <div class="empty-icon">${isWeakView ? '🎉' : '📭'}</div>
+        <div class="empty-title">${isWeakView ? '苦手カードはありません！' : 'カードがありません'}</div>
+        <div class="empty-sub">${isWeakView ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
+        ${isWeakView ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakView()">全カードに戻る</button>' : ''}
       </div>
     ` : `
       <div class="fc-meta">
@@ -265,13 +307,26 @@ function renderFc(){
         <button class="btn-study btn-know" id="btn-know-ok" onclick="markKnow(true)" ${flipped?'':'disabled'}>わかる ✓</button>
         <button class="btn-prev" onclick="fcNext()" aria-label="次のカード">→</button>
       </div>
-      ${card.builtin ? '' : `
       <div style="text-align:center;margin-top:10px;">
-        <button class="card-action-btn" onclick="editCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">✏️ 編集</button>
-        <button class="card-action-btn del" onclick="deleteCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">🗑 削除</button>
-      </div>`}
-      <div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>
+        <button class="card-action-btn" onclick="editCard(cardById('${escAttr(card.id)}'))">✏️ 編集</button>
+        <button class="card-action-btn del" onclick="deleteCard(cardById('${escAttr(card.id)}'))">🗑 削除</button>
+      </div>
     `}
+
+    <hr class="fc-divider">
+    <div class="fc-segment-bar">
+      <button class="seg-btn${prog.shuffled?' seg-on':''}" onclick="toggleShuffle()" title="シャッフル">
+        <span class="seg-icon">🔀</span><span class="seg-label">シャッフル${prog.shuffled?'（ON）':''}</span>
+      </button>
+      <button class="seg-btn${reverseMode?' seg-on':''}" onclick="toggleReverse()" title="出題方向を反転">
+        <span class="seg-icon">🔃</span><span class="seg-label">${reverseMode?'意味→用語':'用語→意味'}</span>
+      </button>
+      <button class="seg-btn" onclick="openAddForm()" title="カードを追加">
+        <span class="seg-icon">＋</span><span class="seg-label">追加</span>
+      </button>
+    </div>
+    <button class="hidden-cards-link" onclick="openHiddenCards()">🗂 非表示にしたカード（${hiddenCount}）</button>
+    ${total > 0 ? `<div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>` : ''}
 
     <div class="add-card-form" id="add-card-form">
       <div class="form-row">
@@ -279,7 +334,7 @@ function renderFc(){
         <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
       </div>
       <div class="form-group"><label>カテゴリ</label>
-        <select id="new-cat">${FC_CATS.map(c=>`<option value="${escHtml(c)}"${(!weakOnly&&activeCat===c)?' selected':''}>${escHtml(c)}</option>`).join('')}</select>
+        <select id="new-cat">${FC_CATS_DEF.map(c=>`<option value="${escHtml(c.id)}"${formCatDefault===c.id?' selected':''}>${escHtml(c.name)}</option>`).join('')}</select>
       </div>
       <div class="form-actions">
         <button class="btn btn-secondary" onclick="closeAddForm()">キャンセル</button>
@@ -289,10 +344,13 @@ function renderFc(){
   </div>`;
 }
 
-// ─── カスタムカード ───────────────────────────────────────
-let editingCard = null;   // {rawId, cat}
+// ─── カード編集・削除・追加 ─────────────────────────────────
+// editingCard: null（新規） | {kind:'custom', rawId, cat} | {kind:'builtin', id}
+let editingCard = null;
 function openAddForm(){
   editingCard = null;
+  const catSel = document.getElementById('new-cat');
+  if(catSel) catSel.disabled = false;
   const f = document.getElementById('add-card-form');
   f.classList.add('open');
   document.getElementById('add-card-btn').textContent = '追加';
@@ -300,6 +358,8 @@ function openAddForm(){
 }
 function closeAddForm(){
   editingCard = null;
+  const catSel = document.getElementById('new-cat');
+  if(catSel) catSel.disabled = false;
   const f = document.getElementById('add-card-form');
   if(f) f.classList.remove('open');
 }
@@ -308,7 +368,13 @@ function submitCard(){
   const def  = document.getElementById('new-def').value.trim();
   const cat  = document.getElementById('new-cat').value;
   if(!term||!def){ toast('用語と意味を入力してください','error'); return; }
-  if(editingCard){
+
+  if(editingCard && editingCard.kind === 'builtin'){
+    if(!state.cardEdits) state.cardEdits = {};
+    state.cardEdits[editingCard.id] = {term, def};
+    toast('カードを更新しました ✓');
+    editingCard = null;
+  } else if(editingCard && editingCard.kind === 'custom'){
     const list = state.customCards[editingCard.cat]||[];
     const c = list.find(x=>String(x.id)===String(editingCard.rawId));
     if(c){
@@ -329,29 +395,68 @@ function submitCard(){
     toast('カードを追加しました ✓');
   }
   save();
-  deck = computeDeck();
+  closeAddForm();
   // 新規カードを末尾に追加した状態でorderを再構成（既存順は維持）
-  enterTab(datasetKey);
+  enterKey(currentKey);
 }
-function editCustomCard(rawId, cat){
-  const c = (state.customCards[cat]||[]).find(x=>String(x.id)===String(rawId));
-  if(!c) return;
-  editingCard = {rawId, cat};
+function editCard(card){
+  if(!card) return;
+  const catSel = document.getElementById('new-cat');
+  if(card.builtin){
+    editingCard = {kind:'builtin', id:card.id};
+    if(catSel){ catSel.value = card.catId; catSel.disabled = true; }
+  }else{
+    editingCard = {kind:'custom', rawId:card.rawId, cat:card.catId};
+    if(catSel){ catSel.value = card.catId; catSel.disabled = false; }
+  }
   const f = document.getElementById('add-card-form');
   f.classList.add('open');
-  document.getElementById('new-term').value = c.term;
-  document.getElementById('new-def').value = c.def;
-  document.getElementById('new-cat').value = cat;
+  document.getElementById('new-term').value = card.term;
+  document.getElementById('new-def').value = card.meaning;
   document.getElementById('add-card-btn').textContent = '更新';
   document.getElementById('new-term').focus();
 }
-function deleteCustomCard(rawId, cat){
+function deleteCard(card){
+  if(!card) return;
   if(!confirm('このカードを削除しますか？')) return;
-  state.customCards[cat] = (state.customCards[cat]||[]).filter(x=>String(x.id)!==String(rawId));
-  delete state.fcStats['c::'+rawId];
+  if(card.builtin){
+    if(!state.hiddenCards) state.hiddenCards = [];
+    if(!state.hiddenCards.includes(card.id)) state.hiddenCards.push(card.id);
+    toast('カードを非表示にしました（🗂 非表示から復活できます）');
+  }else{
+    state.customCards[card.catId] = (state.customCards[card.catId]||[]).filter(x=>String(x.id)!==String(card.rawId));
+    delete state.fcStats['c::'+card.rawId];
+    toast('削除しました');
+  }
   save();
-  enterTab(datasetKey);
-  toast('削除しました');
+  enterKey(currentKey);
+}
+
+// ─── 非表示にしたカード（組み込みカードの論理削除・復活） ───
+function openHiddenCards(){
+  const hidden = state.hiddenCards || [];
+  const allBuiltin = FC_CATS_DEF.flatMap(({name})=>SAMPLE[name]||[]);
+  const items = hidden.map(id=>allBuiltin.find(c=>c.id===id)).filter(Boolean);
+  const listEl = document.getElementById('hidden-cards-list');
+  listEl.innerHTML = items.length ? items.map(c=>{
+    const ov = (state.cardEdits||{})[c.id];
+    const term = (ov&&ov.term) || c.term;
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;">
+      <div style="flex:1;font-size:13px;font-weight:700;">${escHtml(term)}</div>
+      <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="restoreHiddenCard('${escAttr(c.id)}')">復活</button>
+    </div>`;
+  }).join('') : '<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px 0;">非表示のカードはありません</div>';
+  document.getElementById('hidden-cards-modal').classList.add('open');
+}
+function closeHiddenCards(){
+  const m = document.getElementById('hidden-cards-modal');
+  if(m) m.classList.remove('open');
+}
+function restoreHiddenCard(id){
+  state.hiddenCards = (state.hiddenCards||[]).filter(x=>x!==id);
+  save();
+  openHiddenCards();
+  enterKey(currentKey);
 }
 
 // ─── HELPERS ──────────────────────────────────────────────
@@ -380,13 +485,126 @@ function save(){
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
+// ─── 件数照合（移行前後で件数が変わっていないことを確認するための集計） ──
+function countSnapshot(){
+  return {
+    builtinCards:  Object.values(SAMPLE).reduce((s,a)=>s+a.length,0),
+    quizQuestions: QQ.length,
+    customCards:   Object.values(state.customCards||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0),
+    fcStatsEntries: Object.keys(state.fcStats||{}).length,
+    quizAnswered:  Object.keys((state.quizStats||{}).answered||{}).length,
+    quizWrong:     ((state.quizStats||{}).wrong||[]).length,
+  };
+}
+
+// ─── KEY MIGRATION (b::cat::index → B####, "0"-"66" → Q001-Q067,
+//                    日本語カテゴリ名 → 安定カテゴリID) ──────
+function migrateOldKeys(){
+  const before = countSnapshot();
+
+  // Build old flashcard key → new stable ID map
+  const fcKeyMap = {};
+  FC_CATS.forEach(cat=>{
+    (SAMPLE[cat]||[]).forEach((c,i)=>{
+      fcKeyMap[`b::${cat}::${i}`] = c.id;
+    });
+  });
+
+  // Build old quiz key → new stable ID map
+  const qqKeyMap = {};
+  QQ.forEach((q,i)=>{ qqKeyMap[String(i)] = q.id; });
+
+  let changed = false;
+
+  // Migrate fcStats
+  const newFcStats = {};
+  Object.entries(state.fcStats).forEach(([k,v])=>{
+    const mapped = fcKeyMap[k];
+    if(mapped){ newFcStats[mapped]=v; changed=true; }
+    else newFcStats[k]=v;
+  });
+  state.fcStats = newFcStats;
+
+  // Migrate quizStats.answered
+  const newAnswered = {};
+  Object.entries(state.quizStats.answered||{}).forEach(([k,v])=>{
+    const mapped = qqKeyMap[k];
+    if(mapped){ newAnswered[mapped]=v; changed=true; }
+    else newAnswered[k]=v;
+  });
+  state.quizStats.answered = newAnswered;
+
+  // Migrate quizStats.wrong
+  state.quizStats.wrong = (state.quizStats.wrong||[]).map(x=>{
+    const mapped = qqKeyMap[String(x)];
+    if(mapped){ changed=true; return mapped; }
+    return x;
+  });
+
+  // Migrate fcTabState orderIds + activeCat（日本語名/「全カテゴリ」→ 安定ID）
+  Object.keys(state.fcTabState||{}).forEach(key=>{
+    const ts = state.fcTabState[key];
+    if(ts && ts.orderIds){
+      ts.orderIds = ts.orderIds.map(oldId=>{
+        const mapped = fcKeyMap[oldId];
+        if(mapped){ changed=true; return mapped; }
+        return oldId;
+      });
+    }
+    if(ts && ts.activeCat){
+      if(ts.activeCat === '全カテゴリ'){ ts.activeCat = CAT_ALL; changed = true; }
+      else if(CAT_NAME_TO_ID[ts.activeCat]){ ts.activeCat = CAT_NAME_TO_ID[ts.activeCat]; changed = true; }
+    }
+  });
+
+  // Migrate customCards: 日本語カテゴリ名キー → 安定カテゴリID キー
+  const newCustomCards = {};
+  Object.entries(state.customCards||{}).forEach(([k,v])=>{
+    const mapped = CAT_NAME_TO_ID[k];
+    const key = mapped || k;
+    if(mapped) changed = true;
+    newCustomCards[key] = (newCustomCards[key]||[]).concat(v||[]);
+  });
+  state.customCards = newCustomCards;
+
+  // Migrate fcTabState（旧・タブ単位の進捗）→ fcProgress（新・カテゴリ/苦手のみ単位の進捗）
+  if(!state.fcProgress) state.fcProgress = {};
+  const oldTab = (state.fcTabState||{}).aws;
+  if(oldTab && Object.keys(state.fcProgress).length === 0){
+    const key = oldTab.weakOnly ? CAT_WEAK : (oldTab.activeCat || CAT_ALL);
+    state.fcProgress[key] = {
+      orderIds: oldTab.orderIds || [],
+      pos: oldTab.pos || 0,
+      shuffled: false,
+      reverse: !!oldTab.reverseMode,
+      answeredIds: []
+    };
+    state.fcLastKey = key;
+    changed = true;
+  }
+
+  if(changed){
+    const after = countSnapshot();
+    console.log('%cSafeStore 移行 件数照合', 'color:#38BDF8;font-weight:700', { before, after });
+    Object.keys(after).forEach(k=>{
+      if(before[k] !== after[k]){
+        console.warn(`件数不一致: ${k} ${before[k]} → ${after[k]}`);
+      }
+    });
+  }
+
+  return changed;
+}
+
 // ─── BOOT ─────────────────────────────────────────────────
 function afterLoad(silent){
+  const migrated = migrateOldKeys();
+  if(migrated) save();
   document.getElementById('btn-home').style.display = 'block';
   document.getElementById('sync-indicator').style.display = 'flex';
   if(!silent){
     showScreen('notebook-screen');
-    enterTab('aws');   // 保存された続きから再開
+    enterKey(state.fcLastKey || CAT_ALL);   // 保存された続き（最後に見ていたビュー）から再開
   } else {
     if(document.getElementById('notebook-screen').classList.contains('active')
        && document.getElementById('tabcontent-fc').classList.contains('active')){
@@ -411,28 +629,32 @@ function switchTab(t){
   document.getElementById('tabcontent-'+t).classList.add('active');
   if(t==='quiz' && !state.quiz.session) renderQuizHome();
   if(t==='fc') renderFc();
+  if(t==='weak') renderWeak();
+  if(t==='scenario' && !state.scenario.session) renderScenarioHome();
+  if(t==='multi' && !state.multi.session) renderMultiHome();
+  if(t==='cheatsheet') renderCheatsheet();
 }
 
 // ─── QUIZ STATS ───────────────────────────────────────────
-function qid(q){ return QQ.indexOf(q); }
+function qid(q){ return q.id; }
 function recordAnswer(q, isCorrect){
-  const id = String(qid(q));
+  const id = q.id;
   const st = state.quizStats;
   if(!st.answered[id]) st.answered[id] = {r:0, w:0};
   if(isCorrect){
     st.answered[id].r++;
-    st.wrong = st.wrong.filter(x=>String(x)!==id);
+    st.wrong = st.wrong.filter(x=>x!==id);
   } else {
     st.answered[id].w++;
-    if(!st.wrong.some(x=>String(x)===id)) st.wrong.push(id);
+    if(!st.wrong.includes(id)) st.wrong.push(id);
   }
   save();
 }
 function catAccuracy(catId){
   let r=0, w=0;
-  QQ.forEach((q,i)=>{
+  QQ.forEach((q)=>{
     if(q.c!==catId) return;
-    const a = state.quizStats.answered[String(i)];
+    const a = state.quizStats.answered[q.id];
     if(a){ r+=a.r; w+=a.w; }
   });
   const total = r+w;
@@ -444,6 +666,762 @@ function overallStats(){
   return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.quizStats.wrong.length};
 }
 function accColor(p){ return p>=80?'var(--ok)':p>=60?'var(--orange)':'var(--ng)'; }
+
+// ─── 弱点診断（段階3-6：ローカル集計のみ・AI不要） ──────────
+function fcCatAccuracy(catId){
+  let ok=0, ng=0;
+  buildCards().filter(c=>c.catId===catId).forEach(c=>{
+    const s = state.fcStats[c.id];
+    if(s){ ok+=s.ok||0; ng+=s.ng||0; }
+  });
+  const total = ok+ng;
+  return total ? {pct:Math.round(ok/total*100), total} : null;
+}
+
+const DOJO_LAB_NAME = {
+  basics:'Lab 0（コンソールの歩き方）', iam:'Lab 1（IAM）', s3:'Lab 2（S3）',
+  ec2:'Lab 3（EC2）', vpc:'Lab 4（VPC）', lambda:'Lab 5（Lambda）', budgets:'Lab 6（Billing）'
+};
+const WEAK_PRESCRIPTIONS = {
+  cat_compute:{ text:'EC2・Lambda・ECSなど起動方式とスケーリングの違いが頻出です。単語帳「コンピューティング」を復習し、道場のEC2ラボで手を動かしましょう。', lab:'ec2' },
+  cat_storage: { text:'S3のストレージクラスとEBS/EFSの使い分けが頻出です。単語帳「ストレージ」を重点的に復習し、道場のS3ラボで実践しましょう。', lab:'s3' },
+  cat_network: { text:'VPC構成要素（サブネット・IGW・NAT・SG/NACL）の役割の違いを図で整理しましょう。道場のVPCラボが実感を掴む近道です。', lab:'vpc' },
+  cat_db:      { text:'RDS・Aurora・DynamoDBの使い分けと、マルチAZ/リードレプリカの違いを単語帳「データベース」で復習しましょう。', lab:null },
+  cat_sec:     { text:'IAMの権限モデルとGuardDuty/WAF/Shieldの役割分担が混同されがちです。単語帳「セキュリティ」＋道場のIAMラボがおすすめです。', lab:'iam' },
+  cat_sls:     { text:'SQS/SNS/EventBridgeの違いとサーバーレス構成の典型パターンを復習しましょう。道場のLambdaラボで流れを確認できます。', lab:'lambda' },
+  cat_ai:      { text:'各AIサービスの用途対応（画像→Rekognition、文書→Textract等）を単語帳「AI / ML」で覚え直しましょう。', lab:null },
+  cat_ops:     { text:'CloudWatch・CloudTrail・Configの役割の違いが混同されがちです。単語帳「監視・管理」で3つを並べて比較しましょう。', lab:null },
+  cat_cost:    { text:'料金モデルとサポートプランの違い、Cost Explorer/Budgetsの使い分けを復習しましょう。道場のBillingラボが実践的です。', lab:'budgets' },
+  basics:      { text:'責任共有モデルやリージョン/AZの定義など、クラウドの基礎用語を単語帳で確認しましょう。道場Lab 0が導入に最適です。', lab:'basics' },
+  arch:        { text:'Well-Architectedフレームワークの柱と高可用性設計の考え方を過去問「アーキテクチャ設計」で復習しましょう。', lab:null },
+  mig:         { text:'DMS・DataSync・Snow Familyなど移行サービスの使い分けを過去問「移行・転送」で整理しましょう。', lab:null },
+};
+
+function weakDiagnosis(){
+  const rows = [];
+  FC_CATS_DEF.forEach(({id, name})=>{
+    const quizId = id.replace('cat_','');
+    const quizAcc = catAccuracy(quizId);
+    const fcAcc = fcCatAccuracy(id);
+    let pct = null, total = 0;
+    if(quizAcc && fcAcc){
+      total = quizAcc.total + fcAcc.total;
+      pct = Math.round((quizAcc.pct*quizAcc.total + fcAcc.pct*fcAcc.total) / total);
+    } else if(quizAcc){ pct = quizAcc.pct; total = quizAcc.total; }
+    else if(fcAcc){ pct = fcAcc.pct; total = fcAcc.total; }
+    rows.push({ id, name, pct, total });
+  });
+  ['basics','arch','mig'].forEach(qid=>{
+    const acc = catAccuracy(qid);
+    const info = QCAT.find(c=>c.id===qid);
+    rows.push({ id:qid, name:info.name, pct:acc?acc.pct:null, total:acc?acc.total:0 });
+  });
+  return rows;
+}
+
+function renderWeak(){
+  const el = document.getElementById('weak-container');
+  if(!el) return;
+  const rows = weakDiagnosis();
+  const answered = rows.filter(r=>r.total > 0).sort((a,b)=>a.pct-b.pct);
+  const unanswered = rows.filter(r=>r.total === 0);
+  const weakest = answered.slice(0, 3);
+
+  const rowHtml = (r)=>`
+    <div class="category-card" style="cursor:default;">
+      <div class="cat-head"><span class="cat-name">${escHtml(r.name)}</span>
+        <span class="cat-count">${r.total>0 ? r.total+'回' : '未挑戦'}</span></div>
+      ${r.total>0 ? `
+        <div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${r.pct}%;background:${accColor(r.pct)}"></div></div>
+        <div class="cat-acc-text">正答率 ${r.pct}%</div>
+      ` : `<div class="cat-acc-text">まだ記録がありません</div>`}
+    </div>`;
+
+  const prescriptionHtml = weakest.length ? weakest.map(r=>{
+    const rx = WEAK_PRESCRIPTIONS[r.id];
+    if(!rx) return '';
+    const labHtml = rx.lab ? `<br>🥋 おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
+    return `<div class="quiz-card" style="margin-bottom:12px;">
+      <div class="quiz-cat-tag">🎯 ${escHtml(r.name)}（正答率 ${r.pct}%）</div>
+      <div style="font-size:13.5px;line-height:1.8;">${escHtml(rx.text)}${labHtml}</div>
+    </div>`;
+  }).join('') : `<div class="empty-sub">まだ十分な学習記録がありません。単語帳や過去問に取り組むとここに弱点が表示されます。</div>`;
+
+  const os = overallStats();
+  const timeHint = weakest.length
+    ? `苦手カテゴリ（${weakest.map(r=>r.name).join('・')}）に学習時間の6割程度を配分し、残りは全体の復習に回すのがおすすめです。`
+    : `まずは単語帳・過去問を一通り触って記録を作りましょう。記録が増えるほど診断が正確になります。`;
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🎯 弱点診断</div>
+      <div class="quiz-home-sub">単語帳と過去問の正答率をカテゴリ別に集計し、重点強化ポイントを提案します（模試の受験履歴があればそちらも加味されます）。</div>
+      <div class="overall-stats">
+        <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">過去問 累計解答数</span></div>
+        <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">過去問 全体正答率</span></div>
+      </div>
+
+      <div class="review-bar" style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(255,153,0,.06));border-color:rgba(56,189,248,.35);">
+        <div class="review-label">⏱ ${escHtml(timeHint)}</div>
+      </div>
+
+      <div style="font-family:var(--disp);font-size:14px;font-weight:700;margin:18px 0 10px;">重点強化カテゴリ</div>
+      ${prescriptionHtml}
+
+      <div style="font-family:var(--disp);font-size:14px;font-weight:700;margin:18px 0 10px;">カテゴリ別 正答率一覧</div>
+      <div class="category-grid">${answered.map(rowHtml).join('')}${unanswered.map(rowHtml).join('')}</div>
+    </div>`;
+}
+
+// ─── シナリオ問題（段階3-7）────────────────────────────────
+// 過去問クイズエンジンとは独立させ、既存の過去問フロー（実データが乗っている）に
+// 影響を与えないようにしている。カテゴリ体系はQCATを共用。
+function scenarioCatAccuracy(catId){
+  let r=0, w=0;
+  SCENARIO_Q.forEach((q)=>{
+    if(q.c!==catId) return;
+    const a = state.scenarioStats.answered[q.id];
+    if(a){ r+=a.r; w+=a.w; }
+  });
+  const total = r+w;
+  return total ? {pct:Math.round(r/total*100), total} : null;
+}
+function scenarioOverallStats(){
+  let r=0, w=0;
+  Object.values(state.scenarioStats.answered).forEach(a=>{ r+=a.r; w+=a.w; });
+  return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.scenarioStats.wrong.length};
+}
+function recordScenarioAnswer(q, isCorrect){
+  const id = q.id;
+  const st = state.scenarioStats;
+  if(!st.answered[id]) st.answered[id] = {r:0, w:0};
+  if(isCorrect){
+    st.answered[id].r++;
+    st.wrong = st.wrong.filter(x=>x!==id);
+  } else {
+    st.answered[id].w++;
+    if(!st.wrong.includes(id)) st.wrong.push(id);
+  }
+  save();
+}
+
+function renderScenarioHome(){
+  state.scenario.session = null;
+  const el = document.getElementById('scenario-layout');
+  if(!el) return;
+  const selCat = state.scenario.selectedCatId;
+  const os = scenarioOverallStats();
+
+  const catCardsHtml = QCAT.map(cat=>{
+    const n = SCENARIO_Q.filter(q=>q.c===cat.id).length;
+    if(n===0) return '';
+    const acc = scenarioCatAccuracy(cat.id);
+    const accHtml = acc
+      ? `<div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${acc.pct}%;background:${accColor(acc.pct)}"></div></div>
+         <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
+      : `<div class="cat-acc-text">未挑戦</div>`;
+    return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectScenarioCat('${cat.id}')" role="button" tabindex="0">
+      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      ${accHtml}
+    </div>`;
+  }).join('');
+
+  const totalQ = SCENARIO_Q.length;
+  const selName = selCat ? (QCAT.find(c=>c.id===selCat)||{}).name : '';
+  const selCount = selCat ? SCENARIO_Q.filter(q=>q.c===selCat).length : totalQ;
+
+  const statsHtml = os.answered > 0 ? `
+    <div class="overall-stats">
+      <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">累計解答数</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">全体正答率</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${os.wrongCount?'var(--ng)':'var(--ok)'}">${os.wrongCount}</span><span class="os-lbl">要復習の問題</span></div>
+    </div>` : '';
+
+  const reviewHtml = os.wrongCount > 0 ? `
+    <div class="review-bar">
+      <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えたシナリオ問題があります。正解するとリストから消えます。</div>
+      <button class="btn btn-secondary" onclick="startScenarioWrongReview()">🔥 苦手を復習する</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🧩 シナリオ問題チャレンジ</div>
+      <div class="quiz-home-sub">「〇〇したい場合、どのサービスを使うか」形式の実践的な問題です。カテゴリを選んで学習するか、全問ランダムで挑戦できます。全 ${totalQ} 問収録。</div>
+      ${statsHtml}
+      ${reviewHtml}
+      <div class="quiz-start-bar">
+        <div class="sel-cat-label">${selCat ? `<strong>${selName}</strong>（${selCount}問）を選択中` : `<strong>全カテゴリ</strong>（${totalQ}問）`}</div>
+        <select class="qcount-select" id="s-count">
+          <option value="10">10問</option>
+          <option value="20">20問</option>
+          <option value="all" selected>全問</option>
+        </select>
+        <button class="btn btn-secondary" onclick="startScenario('${selCat||'all'}',false)">📖 順番に</button>
+        <button class="btn btn-primary" onclick="startScenario('${selCat||'all'}',true)">🔀 ランダム</button>
+      </div>
+      <div class="category-grid">${catCardsHtml}</div>
+    </div>`;
+}
+function selectScenarioCat(catId){
+  state.scenario.selectedCatId = state.scenario.selectedCatId === catId ? null : catId;
+  renderScenarioHome();
+}
+function startScenario(catId, shuffle){
+  let qs = catId==='all' ? [...SCENARIO_Q] : SCENARIO_Q.filter(q=>q.c===catId);
+  if(shuffle) qs = qs.sort(()=>Math.random()-.5);
+  const countSel = document.getElementById('s-count');
+  const limit = countSel && countSel.value !== 'all' ? parseInt(countSel.value,10) : qs.length;
+  qs = qs.slice(0, limit);
+  launchScenarioSession(qs, {catId, shuffle, mode:'normal'});
+}
+function startScenarioWrongReview(){
+  const wrongSet = new Set(state.scenarioStats.wrong);
+  let qs = SCENARIO_Q.filter(q=>wrongSet.has(q.id));
+  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  qs = qs.sort(()=>Math.random()-.5);
+  launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+}
+function launchScenarioSession(qs, meta){
+  state.scenario.session = {questions:qs, index:0, correct:0, wrong:0, wrongThisRun:[], ...meta};
+  state.resultCtx = 'scenario';
+  renderScenarioSession();
+}
+function quitScenario(){
+  const sess = state.scenario.session;
+  if(sess && sess.index > 0 && !confirm('シナリオ問題を終了しますか？（途中の成績も記録されています）')) return;
+  renderScenarioHome();
+}
+function renderScenarioSession(){
+  const sess = state.scenario.session;
+  const el = document.getElementById('scenario-layout');
+  const q = sess.questions[sess.index];
+  const total = sess.questions.length;
+  const pct = Math.round(sess.index/total*100);
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🧩'};
+  const letters = ['A','B','C','D','E'];
+  const isMulti = Array.isArray(q.a);
+  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+
+  el.innerHTML = `
+    <div class="quiz-session">
+      <div class="qsess-header">
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🧩 ${catInfo.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;align-items:center;">
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ok)">${sess.correct}</span><div style="font-size:10.5px;color:var(--dim)">正解</div></div>
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ng)">${sess.wrong}</span><div style="font-size:10.5px;color:var(--dim)">不正解</div></div>
+        <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitScenario()">← 終了</button>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-cat-tag">🧩 ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
+        <div class="quiz-question">${escHtml(q.q)}</div>
+        <div class="quiz-choices" id="scenario-choices">
+          ${q.o.map((c,i)=>`
+            <button class="quiz-choice" id="sc-${i}" onclick="selectScenarioAnswer(${i})">
+              <div class="choice-letter">${letters[i]}</div>
+              <div>${escHtml(c)}</div>
+            </button>`).join('')}
+        </div>
+        ${isMulti ? `<div style="margin-top:13px;display:flex;justify-content:flex-end"><button class="btn btn-primary" id="scenario-multi-submit" style="width:auto;display:none" onclick="submitScenarioMulti()">回答する</button></div>` : ''}
+        <div class="quiz-explain" id="scenario-explain"></div>
+      </div>
+      <div class="quiz-nav" id="scenario-nav" style="display:none;">
+        <button class="btn btn-primary" style="width:auto" onclick="nextScenarioQuestion()" id="next-s-btn">次の問題 →</button>
+      </div>
+      <div class="kbd-hint"><kbd>A</kbd>〜<kbd>D</kbd> または <kbd>1</kbd>〜<kbd>4</kbd> で回答 ・ <kbd>Enter</kbd> で次へ</div>
+    </div>`;
+  if(isMulti) window._scenarioMultiSelected = [];
+  window._scenarioAnswered = false;
+}
+function selectScenarioAnswer(idx){
+  const sess = state.scenario.session;
+  if(!sess || window._scenarioAnswered) return;
+  const q = sess.questions[sess.index];
+  const isMulti = Array.isArray(q.a);
+  const btn = document.getElementById('sc-'+idx);
+  if(!btn || btn.disabled) return;
+
+  if(isMulti){
+    const pos2 = window._scenarioMultiSelected.indexOf(idx);
+    if(pos2===-1){ window._scenarioMultiSelected.push(idx); btn.classList.add('selected-multi'); }
+    else{ window._scenarioMultiSelected.splice(pos2,1); btn.classList.remove('selected-multi'); }
+    const submitBtn = document.getElementById('scenario-multi-submit');
+    if(submitBtn) submitBtn.style.display = window._scenarioMultiSelected.length>0 ? 'block' : 'none';
+    return;
+  }
+
+  window._scenarioAnswered = true;
+  document.querySelectorAll('#scenario-choices .quiz-choice').forEach(b=>b.disabled=true);
+  const correct = idx === q.a;
+  btn.classList.add(correct?'correct':'wrong');
+  if(!correct) document.getElementById('sc-'+q.a).classList.add('correct');
+  if(correct) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordScenarioAnswer(q, correct);
+  showScenarioExplain(q.e);
+}
+function submitScenarioMulti(){
+  const sess = state.scenario.session;
+  if(!sess || window._scenarioAnswered) return;
+  const q = sess.questions[sess.index];
+  window._scenarioAnswered = true;
+  const selected = window._scenarioMultiSelected.slice().sort((a,b)=>a-b);
+  const correct = q.a.slice().sort((a,b)=>a-b);
+  const isCorrect = JSON.stringify(selected) === JSON.stringify(correct);
+  document.querySelectorAll('#scenario-choices .quiz-choice').forEach(b=>b.disabled=true);
+  selected.forEach(i=>document.getElementById('sc-'+i).classList.add(isCorrect?'correct':'wrong'));
+  correct.forEach(i=>document.getElementById('sc-'+i).classList.add('correct'));
+  if(isCorrect) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordScenarioAnswer(q, isCorrect);
+  document.getElementById('scenario-multi-submit').style.display = 'none';
+  showScenarioExplain(q.e);
+}
+function showScenarioExplain(text){
+  const ex = document.getElementById('scenario-explain');
+  ex.textContent = text;
+  ex.classList.add('show');
+  const nav = document.getElementById('scenario-nav');
+  nav.style.display = 'flex';
+  const btn = document.getElementById('next-s-btn');
+  if(btn) btn.focus({preventScroll:true});
+}
+function nextScenarioQuestion(){
+  const sess = state.scenario.session;
+  sess.index++;
+  if(sess.index >= sess.questions.length){
+    state.lastScenarioRun = {catId:sess.catId, shuffle:sess.shuffle, mode:sess.mode, wrongThisRun:sess.wrongThisRun.slice()};
+    showResultScreen(sess.correct, sess.correct+sess.wrong);
+    state.scenario.session = null;
+  } else renderScenarioSession();
+}
+
+// ─── 複数選択問題（段階3-7追加分） ──────────────────────────
+// 択一式のQQ/SCENARIO_Qとは別の、チェックボックス複数選択専用エンジン。
+// 組み込み問題(MULTI_Q)はcardEdits/hiddenCardsと同じ要領でmultiQEdits/hiddenMultiQを
+// 重ねて編集・非表示にできる。customMultiQでユーザー独自の複数選択問題も追加できる。
+function buildMultiQuestions(){
+  const out = [];
+  MULTI_Q.forEach(q=>{
+    if((state.hiddenMultiQ||[]).includes(q.id)) return;
+    const ov = (state.multiQEdits||{})[q.id];
+    out.push(ov ? Object.assign({}, q, ov, {builtin:true}) : Object.assign({}, q, {builtin:true}));
+  });
+  (state.customMultiQ||[]).forEach(q=>out.push(Object.assign({}, q, {builtin:false})));
+  return out;
+}
+function multiCatAccuracy(catId){
+  let r=0, w=0;
+  buildMultiQuestions().forEach((q)=>{
+    if(q.c!==catId) return;
+    const a = state.multiStats.answered[q.id];
+    if(a){ r+=a.r; w+=a.w; }
+  });
+  const total = r+w;
+  return total ? {pct:Math.round(r/total*100), total} : null;
+}
+function multiOverallStats(){
+  let r=0, w=0;
+  Object.values(state.multiStats.answered).forEach(a=>{ r+=a.r; w+=a.w; });
+  return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.multiStats.wrong.length};
+}
+function recordMultiAnswer(q, isCorrect){
+  const id = q.id;
+  const st = state.multiStats;
+  if(!st.answered[id]) st.answered[id] = {r:0, w:0};
+  if(isCorrect){
+    st.answered[id].r++;
+    st.wrong = st.wrong.filter(x=>x!==id);
+  } else {
+    st.answered[id].w++;
+    if(!st.wrong.includes(id)) st.wrong.push(id);
+  }
+  save();
+}
+
+function renderMultiHome(){
+  state.multi.session = null;
+  const el = document.getElementById('multi-layout');
+  if(!el) return;
+  const all = buildMultiQuestions();
+  const selCat = state.multi.selectedCatId;
+  const os = multiOverallStats();
+  const hiddenCount = (state.hiddenMultiQ||[]).length;
+
+  const catCardsHtml = QCAT.map(cat=>{
+    const n = all.filter(q=>q.c===cat.id).length;
+    if(n===0) return '';
+    const acc = multiCatAccuracy(cat.id);
+    const accHtml = acc
+      ? `<div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${acc.pct}%;background:${accColor(acc.pct)}"></div></div>
+         <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
+      : `<div class="cat-acc-text">未挑戦</div>`;
+    return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectMultiCat('${cat.id}')" role="button" tabindex="0">
+      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      ${accHtml}
+    </div>`;
+  }).join('');
+
+  const totalQ = all.length;
+  const selName = selCat ? (QCAT.find(c=>c.id===selCat)||{}).name : '';
+  const selCount = selCat ? all.filter(q=>q.c===selCat).length : totalQ;
+
+  const statsHtml = os.answered > 0 ? `
+    <div class="overall-stats">
+      <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">累計解答数</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">全体正答率</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${os.wrongCount?'var(--ng)':'var(--ok)'}">${os.wrongCount}</span><span class="os-lbl">要復習の問題</span></div>
+    </div>` : '';
+
+  const reviewHtml = os.wrongCount > 0 ? `
+    <div class="review-bar">
+      <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えた複数選択問題があります。正解するとリストから消えます。</div>
+      <button class="btn btn-secondary" onclick="startMultiWrongReview()">🔥 苦手を復習する</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🗳️ 複数選択問題チャレンジ</div>
+      <div class="quiz-home-sub">本番試験にある「〇つ選択してください」形式の問題です。チェックボックスで複数選択して回答します。全 ${totalQ} 問収録。</div>
+      ${statsHtml}
+      ${reviewHtml}
+      <div class="quiz-start-bar">
+        <div class="sel-cat-label">${selCat ? `<strong>${selName}</strong>（${selCount}問）を選択中` : `<strong>全カテゴリ</strong>（${totalQ}問）`}</div>
+        <select class="qcount-select" id="m-count">
+          <option value="10">10問</option>
+          <option value="20">20問</option>
+          <option value="all" selected>全問</option>
+        </select>
+        <button class="btn btn-secondary" onclick="startMulti('${selCat||'all'}',false)">📖 順番に</button>
+        <button class="btn btn-primary" onclick="startMulti('${selCat||'all'}',true)">🔀 ランダム</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-secondary" style="width:auto" onclick="openMultiForm()">＋ 問題を追加</button>
+        <button class="btn btn-secondary" style="width:auto" onclick="openHiddenMultiQ()">🗂 非表示（${hiddenCount}）</button>
+      </div>
+      <div class="category-grid">${catCardsHtml}</div>
+    </div>
+
+    <div class="add-card-form" id="multi-form">
+      <div class="form-group"><label>問題文</label><textarea id="mf-q" placeholder="例: 〜な場合、正しいものを選択してください。（2つ選択してください。）" style="min-height:60px;"></textarea></div>
+      <div class="form-group"><label>カテゴリ</label>
+        <select id="mf-cat">${QCAT.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label>正解の数</label>
+        <select id="mf-mode" onchange="document.getElementById('mf-n-row').style.display=this.value==='fixed'?'block':'none'">
+          <option value="fixed">〇つ選択してください（数を指定）</option>
+          <option value="all">すべて選択してください（数を明示しない）</option>
+        </select>
+      </div>
+      <div class="form-group" id="mf-n-row"><label>正解の数</label><input type="text" id="mf-n" placeholder="例: 2"></div>
+      <div class="form-group"><label>選択肢（正解にはチェック。空欄の行は無視されます。最大6つ）</label>
+        ${[0,1,2,3,4,5].map(i=>`
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input type="checkbox" id="mf-correct-${i}" style="width:auto;flex-shrink:0;">
+            <input type="text" id="mf-opt-${i}" placeholder="選択肢${String.fromCharCode(65+i)}" style="flex:1;">
+          </div>`).join('')}
+      </div>
+      <div class="form-group"><label>解説</label><textarea id="mf-e" placeholder="正解の理由の解説"></textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeMultiForm()">キャンセル</button>
+        <button class="btn btn-primary" onclick="submitMultiForm()" style="width:auto" id="mf-submit-btn">追加</button>
+      </div>
+    </div>
+
+    <div class="cs-card" id="hidden-multi-list" style="display:none;"></div>`;
+}
+function selectMultiCat(catId){
+  state.multi.selectedCatId = state.multi.selectedCatId === catId ? null : catId;
+  renderMultiHome();
+}
+function startMulti(catId, shuffle){
+  let qs = buildMultiQuestions();
+  qs = catId==='all' ? qs : qs.filter(q=>q.c===catId);
+  if(shuffle) qs = qs.sort(()=>Math.random()-.5);
+  const countSel = document.getElementById('m-count');
+  const limit = countSel && countSel.value !== 'all' ? parseInt(countSel.value,10) : qs.length;
+  qs = qs.slice(0, limit);
+  if(!qs.length){ toast('問題がありません','error'); return; }
+  launchMultiSession(qs, {catId, shuffle, mode:'normal'});
+}
+function startMultiWrongReview(){
+  const wrongSet = new Set(state.multiStats.wrong);
+  let qs = buildMultiQuestions().filter(q=>wrongSet.has(q.id));
+  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  qs = qs.sort(()=>Math.random()-.5);
+  launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+}
+function launchMultiSession(qs, meta){
+  state.multi.session = {questions:qs, index:0, correct:0, wrong:0, wrongThisRun:[], ...meta};
+  state.resultCtx = 'multi';
+  renderMultiSession();
+}
+function quitMulti(){
+  const sess = state.multi.session;
+  if(sess && sess.index > 0 && !confirm('複数選択問題を終了しますか？（途中の成績も記録されています）')) return;
+  renderMultiHome();
+}
+function renderMultiSession(){
+  const sess = state.multi.session;
+  const el = document.getElementById('multi-layout');
+  const q = sess.questions[sess.index];
+  const total = sess.questions.length;
+  const pct = Math.round(sess.index/total*100);
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🗳️'};
+  const letters = ['A','B','C','D','E','F'];
+  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const countHint = q.n ? `（${q.n}つ選択してください）` : '（正しいものをすべて選択してください）';
+
+  el.innerHTML = `
+    <div class="quiz-session">
+      <div class="qsess-header">
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🗳️ ${catInfo.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;align-items:center;">
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ok)">${sess.correct}</span><div style="font-size:10.5px;color:var(--dim)">正解</div></div>
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ng)">${sess.wrong}</span><div style="font-size:10.5px;color:var(--dim)">不正解</div></div>
+        <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitMulti()">← 終了</button>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-cat-tag">🗳️ ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">⚠️ 要確認</span>':''}</div>
+        <div class="quiz-question">${escHtml(q.q)}</div>
+        <div class="quiz-choices" id="multi-choices">
+          ${q.o.map((c,i)=>`
+            <button class="quiz-choice" id="mc-${i}" onclick="toggleMultiChoice(${i})">
+              <div class="choice-letter">${letters[i]}</div>
+              <div>${escHtml(c)}</div>
+            </button>`).join('')}
+        </div>
+        <div style="margin-top:13px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" id="multi-answer-submit" style="width:auto;" onclick="submitMultiAnswer()">回答する</button>
+        </div>
+        <div class="quiz-explain" id="multi-explain"></div>
+        <div style="text-align:center;margin-top:10px;">
+          <button class="card-action-btn" onclick="editMultiQuestion('${escAttr(q.id)}')">✏️ 編集</button>
+          <button class="card-action-btn del" onclick="deleteMultiQuestion('${escAttr(q.id)}')">🗑 削除</button>
+        </div>
+      </div>
+      <div class="quiz-nav" id="multi-nav" style="display:none;">
+        <button class="btn btn-primary" style="width:auto" onclick="nextMultiQuestion()" id="next-m-btn">次の問題 →</button>
+      </div>
+    </div>`;
+  window._multiSelected = [];
+  window._multiAnswered = false;
+}
+function toggleMultiChoice(idx){
+  if(window._multiAnswered) return;
+  const btn = document.getElementById('mc-'+idx);
+  if(!btn) return;
+  const pos = window._multiSelected.indexOf(idx);
+  if(pos===-1){ window._multiSelected.push(idx); btn.classList.add('selected-multi'); }
+  else{ window._multiSelected.splice(pos,1); btn.classList.remove('selected-multi'); }
+}
+function submitMultiAnswer(){
+  const sess = state.multi.session;
+  if(!sess || window._multiAnswered) return;
+  if(window._multiSelected.length === 0){ toast('少なくとも1つ選択してください','error'); return; }
+  const q = sess.questions[sess.index];
+  window._multiAnswered = true;
+  const selected = window._multiSelected.slice().sort((a,b)=>a-b);
+  const correct = q.a.slice().sort((a,b)=>a-b);
+  const isCorrect = JSON.stringify(selected) === JSON.stringify(correct);
+  document.querySelectorAll('#multi-choices .quiz-choice').forEach(b=>b.disabled=true);
+  selected.forEach(i=>document.getElementById('mc-'+i).classList.add(isCorrect?'correct':(correct.includes(i)?'correct':'wrong')));
+  correct.forEach(i=>document.getElementById('mc-'+i).classList.add('correct'));
+  if(isCorrect) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordMultiAnswer(q, isCorrect);
+  document.getElementById('multi-answer-submit').style.display = 'none';
+  const ex = document.getElementById('multi-explain');
+  ex.textContent = q.e;
+  ex.classList.add('show');
+  const nav = document.getElementById('multi-nav');
+  nav.style.display = 'flex';
+  const btn = document.getElementById('next-m-btn');
+  if(btn) btn.focus({preventScroll:true});
+}
+function nextMultiQuestion(){
+  const sess = state.multi.session;
+  sess.index++;
+  if(sess.index >= sess.questions.length){
+    state.lastMultiRun = {catId:sess.catId, shuffle:sess.shuffle, mode:sess.mode, wrongThisRun:sess.wrongThisRun.slice()};
+    showResultScreen(sess.correct, sess.correct+sess.wrong);
+    state.multi.session = null;
+  } else renderMultiSession();
+}
+
+// ─── 複数選択問題：編集・追加・非表示 ───────────────────────
+let editingMultiQ = null;   // null | {kind:'builtin', id} | {kind:'custom', id}
+function openMultiForm(){
+  editingMultiQ = null;
+  const f = document.getElementById('multi-form');
+  if(!f) return;
+  f.classList.add('open');
+  document.getElementById('mf-submit-btn').textContent = '追加';
+  document.getElementById('mf-q').focus();
+}
+function closeMultiForm(){
+  editingMultiQ = null;
+  const f = document.getElementById('multi-form');
+  if(f) f.classList.remove('open');
+}
+function submitMultiForm(){
+  const qText = document.getElementById('mf-q').value.trim();
+  const cat = document.getElementById('mf-cat').value;
+  const mode = document.getElementById('mf-mode').value;
+  const nVal = parseInt(document.getElementById('mf-n').value, 10);
+  const eText = document.getElementById('mf-e').value.trim();
+  const opts = [], correct = [];
+  for(let i=0;i<6;i++){
+    const t = document.getElementById('mf-opt-'+i).value.trim();
+    if(!t) continue;
+    const isCorrect = document.getElementById('mf-correct-'+i).checked;
+    if(isCorrect) correct.push(opts.length);
+    opts.push(t);
+  }
+  if(!qText || opts.length < 2){ toast('問題文と2つ以上の選択肢を入力してください','error'); return; }
+  if(correct.length === 0){ toast('正解を少なくとも1つチェックしてください','error'); return; }
+  const n = mode==='fixed' && nVal ? nVal : null;
+  if(n && correct.length !== n){ toast(`正解の数（${n}）とチェックした数（${correct.length}）が一致しません`,'error'); return; }
+
+  if(editingMultiQ && editingMultiQ.kind==='builtin'){
+    if(!state.multiQEdits) state.multiQEdits = {};
+    state.multiQEdits[editingMultiQ.id] = {q:qText, c:cat, n, o:opts, a:correct, e:eText};
+    toast('問題を更新しました ✓');
+  } else if(editingMultiQ && editingMultiQ.kind==='custom'){
+    const item = (state.customMultiQ||[]).find(x=>x.id===editingMultiQ.id);
+    if(item) Object.assign(item, {q:qText, c:cat, n, o:opts, a:correct, e:eText});
+    toast('問題を更新しました ✓');
+  } else {
+    if(!state.customMultiQ) state.customMultiQ = [];
+    state.customMultiQ.push({id:'cm::'+Date.now(), q:qText, c:cat, n, o:opts, a:correct, e:eText});
+    toast('問題を追加しました ✓');
+  }
+  save();
+  closeMultiForm();
+  renderMultiHome();
+}
+function editMultiQuestion(id){
+  const q = buildMultiQuestions().find(x=>x.id===id);
+  if(!q) return;
+  if(state.multi.session) renderMultiHome();   // セッション画面には編集フォームがないため、先にホーム画面へ戻す
+  const f = document.getElementById('multi-form');
+  if(f) f.classList.add('open');
+  editingMultiQ = {kind:q.builtin?'builtin':'custom', id:q.id};
+  document.getElementById('mf-q').value = q.q;
+  document.getElementById('mf-cat').value = q.c;
+  document.getElementById('mf-mode').value = q.n ? 'fixed' : 'all';
+  document.getElementById('mf-n-row').style.display = q.n ? 'block' : 'none';
+  document.getElementById('mf-n').value = q.n || '';
+  q.o.forEach((t,i)=>{
+    document.getElementById('mf-opt-'+i).value = t;
+    document.getElementById('mf-correct-'+i).checked = q.a.includes(i);
+  });
+  for(let i=q.o.length;i<6;i++){
+    document.getElementById('mf-opt-'+i).value = '';
+    document.getElementById('mf-correct-'+i).checked = false;
+  }
+  document.getElementById('mf-submit-btn').textContent = '更新';
+}
+function deleteMultiQuestion(id){
+  if(!confirm('この問題を削除しますか？')) return;
+  const q = buildMultiQuestions().find(x=>x.id===id);
+  if(!q) return;
+  if(q.builtin){
+    if(!state.hiddenMultiQ) state.hiddenMultiQ = [];
+    if(!state.hiddenMultiQ.includes(id)) state.hiddenMultiQ.push(id);
+    toast('問題を非表示にしました（🗂 非表示から復活できます）');
+  } else {
+    state.customMultiQ = (state.customMultiQ||[]).filter(x=>x.id!==id);
+    delete state.multiStats.answered[id];
+    state.multiStats.wrong = state.multiStats.wrong.filter(x=>x!==id);
+    toast('削除しました');
+  }
+  save();
+  renderMultiHome();
+}
+function renderHiddenMultiQList(){
+  const hidden = state.hiddenMultiQ || [];
+  const items = hidden.map(id=>MULTI_Q.find(q=>q.id===id)).filter(Boolean);
+  const box = document.getElementById('hidden-multi-list');
+  if(!box) return;
+  box.innerHTML = `<h3>🗂 非表示にした複数選択問題</h3>` + (items.length ? items.map(q=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;">
+      <div style="flex:1;font-size:13px;">${escHtml(q.q.slice(0,60))}${q.q.length>60?'…':''}</div>
+      <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="restoreHiddenMultiQ('${escAttr(q.id)}')">復活</button>
+    </div>`).join('') : '<div style="color:var(--dim);font-size:13px;">非表示の問題はありません</div>')
+    + `<div class="form-actions" style="margin-top:10px;"><button class="btn btn-secondary" onclick="closeHiddenMultiQ()">閉じる</button></div>`;
+}
+function openHiddenMultiQ(){
+  const box = document.getElementById('hidden-multi-list');
+  if(!box) return;
+  renderHiddenMultiQList();
+  box.style.display = 'block';
+}
+function closeHiddenMultiQ(){
+  const box = document.getElementById('hidden-multi-list');
+  if(box) box.style.display = 'none';
+}
+function restoreHiddenMultiQ(id){
+  state.hiddenMultiQ = (state.hiddenMultiQ||[]).filter(x=>x!==id);
+  save();
+  renderHiddenMultiQList();
+}
+
+// ─── チートシート（段階3-8） ───────────────────────────────
+const VPC_DIAGRAM_HTML = `
+  <div class="vpc-diagram">
+    <div class="vpc-box vpc-vpc">
+      <div class="vpc-label">🌐 VPC（例: 10.0.0.0/16）</div>
+      <div class="vpc-box vpc-pub">
+        <div class="vpc-label">パブリックサブネット（IGWへのルートあり）</div>
+        <span class="vpc-item">🌍 IGW</span>
+        <span class="vpc-item">➡️ NAT Gateway</span>
+        <span class="vpc-item">🖥️ 踏み台/ALB</span>
+      </div>
+      <div class="vpc-box vpc-priv">
+        <div class="vpc-label">プライベートサブネット（IGWへのルートなし）</div>
+        <span class="vpc-item">🖥️ EC2（アプリ）</span>
+        <span class="vpc-item">🗄️ RDS</span>
+        <span class="vpc-item">⚙️ SG（ステートフル）</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;color:var(--dim);">
+      外部→IGW→ALB（パブリック）／ プライベートのEC2はNAT Gateway経由でのみ外向き通信 ／ サブネット境界にはNACL（ステートレス）も併用
+    </div>
+  </div>`;
+
+function renderCheatsheet(){
+  const el = document.getElementById('cheatsheet-container');
+  if(!el) return;
+  const sheetsHtml = CHEATSHEETS.map(cs => `
+    <div class="cs-card">
+      <h3>${escHtml(cs.title)}</h3>
+      <div class="cmp-table-wrap">
+        <table class="cmp-table">
+          <thead><tr>${cs.headers.map(h=>`<th>${escHtml(h)}</th>`).join('')}</tr></thead>
+          <tbody>${cs.rows.map(r=>`<tr>${r.map(c=>`<td>${escHtml(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">📋 サービス比較チートシート</div>
+      <div class="quiz-home-sub">試験で混同しやすいサービス群を並べて比較できます。内容は固定（静的コンテンツ）です。</div>
+      <div class="cs-card">
+        <h3>🖼️ VPC構成図（基本パターン）</h3>
+        ${VPC_DIAGRAM_HTML}
+      </div>
+      ${sheetsHtml}
+    </div>`;
+}
 
 // ─── QUIZ HOME ────────────────────────────────────────────
 function renderQuizHome(){
@@ -514,8 +1492,8 @@ function startQuiz(catId, shuffle){
   launchQuizSession(qs, {catId, shuffle, mode:'normal'});
 }
 function startWrongReview(){
-  const wrongSet = new Set(state.quizStats.wrong.map(String));
-  let qs = QQ.filter((q,i)=>wrongSet.has(String(i)));
+  const wrongSet = new Set(state.quizStats.wrong);
+  let qs = QQ.filter(q=>wrongSet.has(q.id));
   if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
@@ -657,6 +1635,24 @@ function showResultScreen(correct, total){
   setTimeout(()=>{ c.style.strokeDashoffset = 289 - (289*pct/100); }, 120);
 }
 function restartResult(){
+  if(state.resultCtx === 'scenario'){
+    const run = state.lastScenarioRun;
+    showScreen('notebook-screen'); switchTab('scenario');
+    if(run){
+      if(run.mode==='review') startScenarioWrongReview();
+      else { renderScenarioHome(); startScenario(run.catId||'all', run.shuffle); }
+    } else renderScenarioHome();
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    const run = state.lastMultiRun;
+    showScreen('notebook-screen'); switchTab('multi');
+    if(run){
+      if(run.mode==='review') startMultiWrongReview();
+      else { renderMultiHome(); startMulti(run.catId||'all', run.shuffle); }
+    } else renderMultiHome();
+    return;
+  }
   const run = state.lastQuizRun;
   showScreen('notebook-screen'); switchTab('quiz');
   if(run){
@@ -665,14 +1661,40 @@ function restartResult(){
   } else renderQuizHome();
 }
 function reviewWrongFromResult(){
+  if(state.resultCtx === 'scenario'){
+    const run = state.lastScenarioRun;
+    if(!run || !run.wrongThisRun.length) return;
+    showScreen('notebook-screen'); switchTab('scenario');
+    const set = new Set(run.wrongThisRun);
+    const qs = SCENARIO_Q.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
+    launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    const run = state.lastMultiRun;
+    if(!run || !run.wrongThisRun.length) return;
+    showScreen('notebook-screen'); switchTab('multi');
+    const set = new Set(run.wrongThisRun);
+    const qs = buildMultiQuestions().filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
+    launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+    return;
+  }
   const run = state.lastQuizRun;
   if(!run || !run.wrongThisRun.length) return;
   showScreen('notebook-screen'); switchTab('quiz');
-  const set = new Set(run.wrongThisRun.map(String));
-  const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
+  const set = new Set(run.wrongThisRun);
+  const qs = QQ.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
 function backFromResult(){
+  if(state.resultCtx === 'scenario'){
+    showScreen('notebook-screen'); switchTab('scenario'); renderScenarioHome();
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    showScreen('notebook-screen'); switchTab('multi'); renderMultiHome();
+    return;
+  }
   showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
 }
 
@@ -684,6 +1706,7 @@ document.addEventListener('keydown', e=>{
 
   const fcActive = document.getElementById('tabcontent-fc').classList.contains('active');
   const quizActive = document.getElementById('tabcontent-quiz').classList.contains('active');
+  const scenarioActive = document.getElementById('tabcontent-scenario').classList.contains('active');
 
   if(fcActive){
     if(e.code==='Space'){ e.preventDefault(); fcFlip(); }
@@ -692,7 +1715,7 @@ document.addEventListener('keydown', e=>{
     else if(e.key==='ArrowLeft') fcPrev();
     else if(e.key==='ArrowRight') fcNext();
     else if(e.key.toLowerCase()==='r') toggleReverse();
-    else if(e.key.toLowerCase()==='s') shuffleOrder();
+    else if(e.key.toLowerCase()==='s') toggleShuffle();
     return;
   }
 
@@ -704,6 +1727,17 @@ document.addEventListener('keydown', e=>{
       const q = state.quiz.session.questions[state.quiz.session.index];
       if(idx < q.o.length) selectAnswer(idx);
     }
+    return;
+  }
+
+  if(scenarioActive && state.scenario.session){
+    if(e.key==='Enter' && window._scenarioAnswered){ e.preventDefault(); nextScenarioQuestion(); return; }
+    const map = {'a':0,'b':1,'c':2,'d':3,'e':4,'1':0,'2':1,'3':2,'4':3,'5':4};
+    const idx = map[e.key.toLowerCase()];
+    if(idx!==undefined && !window._scenarioAnswered){
+      const q = state.scenario.session.questions[state.scenario.session.index];
+      if(idx < q.o.length) selectScenarioAnswer(idx);
+    }
   }
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAddForm(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeAddForm(); closeHiddenCards(); } });

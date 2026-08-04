@@ -6,9 +6,13 @@
 
 // ─── STATE ────────────────────────────────────────────────
 let state = {
-  customCards: {},                 // {カテゴリ: [{id,term,def}]}
+  customCards: {},                 // {カテゴリID: [{id,term,def}]}
+  cardEdits: {},                   // { 'B0001': {term, def} } — 組み込みカードの上書き
+  hiddenCards: [],                 // ['B0001', ...] — 論理削除された組み込みカード（復活可能）
   fcStats: {},                     // { cardId: {ok, ng} }
-  fcTabState: {},                  // { datasetKey: {activeCat, weakOnly, reverseMode, orderIds, pos} }
+  fcTabState: {},                  // 旧形式（移行専用。以後はfcProgressを使う）
+  fcProgress: {},                  // { '<catId|_all_|_weak_>': {orderIds,pos,shuffled,reverse,answeredIds} }
+  fcLastKey: null,                 // 最後に見ていたビュー（起動時にそこへ復帰）
   quiz: {selectedCatId:null, session:null},
   quizStats: {answered:{}, wrong:[]},
   resultCtx: null,
@@ -16,26 +20,37 @@ let state = {
 
 const FC_CATS = Object.keys(SAMPLE);
 
+// カテゴリ安定ID ⇔ 表示名（現在の名称）の対応。
+// customCards・activeCatの永続化はIDで行い、日本語名が変わっても崩れないようにする。
+const CAT_NAME_TO_ID = {}; const CAT_ID_TO_NAME = {};
+FC_CATS_DEF.forEach(c=>{ CAT_NAME_TO_ID[c.name]=c.id; CAT_ID_TO_NAME[c.id]=c.name; });
+// Firestoreは "__xxx__" 形式のフィールド名を予約済みとして拒否するため、
+// 単一アンダースコアの _all_ / _weak_ を使う（fcProgressのキーとして保存されるため）。
+const CAT_ALL  = '_all_';
+const CAT_WEAK = '_weak_';
+
 // ─── 単語カード：データセット ──────────────────────────────
-// カード: {id, cat, term, meaning}
+// カード: {id, cat(表示名), catId(安定ID), term, meaning}
+// 組み込みカードには cardEdits（上書き）・hiddenCards（論理削除）を適用する
 function buildCards(){
   const cards = [];
-  FC_CATS.forEach(cat=>{
-    (SAMPLE[cat]||[]).forEach((c,i)=>{
-      cards.push({id:`b::${cat}::${i}`, cat, term:c.term, meaning:c.def, builtin:true});
+  FC_CATS_DEF.forEach(({id:catId, name})=>{
+    (SAMPLE[name]||[]).forEach((c)=>{
+      if((state.hiddenCards||[]).includes(c.id)) return;
+      const ov = (state.cardEdits||{})[c.id];
+      cards.push({id:c.id, cat:name, catId, term:(ov&&ov.term)||c.term, meaning:(ov&&ov.def)||c.def, builtin:true});
     });
-    (state.customCards[cat]||[]).forEach(c=>{
-      cards.push({id:`c::${c.id}`, cat, term:c.term, meaning:c.def, builtin:false, rawId:c.id});
+    (state.customCards[catId]||[]).forEach(c=>{
+      cards.push({id:`c::${c.id}`, cat:name, catId, term:c.term, meaning:c.def, builtin:false, rawId:c.id});
     });
   });
   return cards;
 }
-const DATASETS = { aws: { label:'AWS 用語', get cards(){ return buildCards(); } } };
+function cardById(id){ return deck.find(c=>c.id===id) || buildCards().find(c=>c.id===id); }
 
-// ─── 単語カード：セッション状態（仕様書準拠） ─────────────
-let datasetKey = 'aws';
-let activeCat = '全カテゴリ';
-let weakOnly = false;
+// ─── 単語カード：セッション状態 ────────────────────────────
+// currentKey: カテゴリID or CAT_ALL('全カテゴリ') or CAT_WEAK('苦手のみ')
+let currentKey = CAT_ALL;
 let reverseMode = false;
 let deck = [];
 let order = [];
@@ -48,7 +63,7 @@ const stats = new Proxy({}, {   // stats[card.id] → state.fcStats へ透過
   has(_, k){ return k in state.fcStats; },
 });
 
-function currentCards(){ return DATASETS[datasetKey].cards; }
+function currentCards(){ return buildCards(); }
 function isWeak(card){
   const s = stats[card.id];
   return s && s.ng > s.ok;
@@ -57,75 +72,100 @@ function weakCount(){
   return currentCards().filter(isWeak).length;
 }
 
-// ─── デッキ計算（仕様書準拠） ─────────────────────────────
-function computeDeck(){
-  let base = currentCards();
-  if(!weakOnly && activeCat !== '全カテゴリ'){
-    base = base.filter(c => c.cat === activeCat);
-  }
-  if(weakOnly){
-    base = base.filter(isWeak);
-  }
-  return base;
-}
-function applyFilter(){
-  deck = computeDeck();
-  order = deck.map((_, i) => i);
-  pos = 0; flipped = false;
-  persistTabState();
-  renderFc();
+// ─── デッキ計算（キー単位：カテゴリ or 全カテゴリ or 苦手のみ） ─
+function computeDeck(key){
+  const all = currentCards();
+  if(key === CAT_WEAK) return all.filter(isWeak);
+  if(key !== CAT_ALL)  return all.filter(c => c.catId === key);
+  return all;
 }
 
-// ─── タブごとの続き再開（IDベース保存・仕様書準拠） ───────
-function persistTabState(){
-  state.fcTabState[datasetKey] = {
-    activeCat,
-    weakOnly,
-    reverseMode,
-    orderIds: order.map(i => deck[i] ? deck[i].id : null).filter(Boolean),
-    pos
-  };
+// ─── キーごとの進捗（カテゴリ別・確定仕様） ────────────────
+function getProgress(key){
+  if(!state.fcProgress) state.fcProgress = {};
+  if(!state.fcProgress[key]){
+    state.fcProgress[key] = { orderIds:[], pos:0, shuffled:false, reverse:false, answeredIds:[] };
+  }
+  return state.fcProgress[key];
+}
+function persistProgress(){
+  const prog = getProgress(currentKey);
+  prog.orderIds = order.map(i => deck[i] ? deck[i].id : null).filter(Boolean);
+  prog.pos = pos;
+  prog.reverse = reverseMode;
+  state.fcLastKey = currentKey;
   save();
 }
-function enterTab(key){
-  datasetKey = key;
-  const saved = state.fcTabState[key];
-  activeCat   = saved ? saved.activeCat : '全カテゴリ';
-  weakOnly    = saved ? !!saved.weakOnly : false;
-  reverseMode = saved ? !!saved.reverseMode : false;
-  deck = computeDeck();
-
-  if(saved && saved.orderIds && saved.orderIds.length){
-    const idToIndex = {};
-    deck.forEach((c, i) => { idToIndex[c.id] = i; });
-    let restored = saved.orderIds.map(id => idToIndex[id]).filter(i => i !== undefined);
-    const already = new Set(restored);
-    deck.forEach((c, i) => { if(!already.has(i)) restored.push(i); });  // 新規カードは末尾へ
-    order = restored;
-    pos = Math.min(saved.pos || 0, Math.max(order.length - 1, 0));
-  } else {
-    order = deck.map((_, i) => i);
-    pos = 0;
+// 一枚「わかる/わからない」を押すたびに記録。デッキ全問に答えたら自動リセット（確定仕様）
+function markAnswered(cardId){
+  const prog = getProgress(currentKey);
+  if(!prog.answeredIds.includes(cardId)) prog.answeredIds.push(cardId);
+  if(deck.length > 0 && prog.answeredIds.length >= deck.length){
+    prog.answeredIds = [];
   }
+}
+
+function selectView(key){
+  if(key === currentKey) return;
+  persistProgress();
+  enterKey(key);
+}
+function toggleWeakView(){
+  selectView(currentKey === CAT_WEAK ? CAT_ALL : CAT_WEAK);
+}
+function enterKey(key){
+  currentKey = key;
+  const prog = getProgress(key);
+  deck = computeDeck(key);
+  reverseMode = !!prog.reverse;
+
+  const idToIndex = {};
+  deck.forEach((c, i) => { idToIndex[c.id] = i; });
+  let restored = (prog.orderIds||[]).map(id => idToIndex[id]).filter(i => i !== undefined);
+  const already = new Set(restored);
+  deck.forEach((c, i) => { if(!already.has(i)) restored.push(i); });  // 新規カードは末尾へ
+  order = restored;
+  pos = Math.min(prog.pos || 0, Math.max(order.length - 1, 0));
   flipped = false;
   renderFc();
 }
 
-// ─── シャッフル（Fisher-Yates・仕様書準拠） ───────────────
-function shuffleOrder(){
-  for(let i = order.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
+// ─── シャッフルのトグル化（確定仕様） ──────────────────────
+// OFF→ON: 未回答カードをシャッフルして先頭へ／ON→OFF: 未回答カードだけを本来の順で
+function toggleShuffle(){
+  if(deck.length === 0) return;
+  const prog = getProgress(currentKey);
+  const answeredSet = new Set(prog.answeredIds || []);
+
+  if(!prog.shuffled){
+    let unanswered = order.filter(i => !answeredSet.has(deck[i].id));
+    let answered   = order.filter(i =>  answeredSet.has(deck[i].id));
+    for(let i = unanswered.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [unanswered[i], unanswered[j]] = [unanswered[j], unanswered[i]];
+    }
+    order = unanswered.concat(answered);
+    prog.shuffled = true;
+    toast('シャッフルしました 🔀');
+  } else {
+    const naturalOrder = deck.map((_, i) => i);
+    order = naturalOrder.filter(i => !answeredSet.has(deck[i].id));
+    prog.shuffled = false;
+    if(order.length === 0){
+      order = naturalOrder;
+      toast('一周しました！最初から出題します 🔁');
+    } else {
+      toast('順番どおり（未回答のみ）に切り替えました');
+    }
   }
   pos = 0; flipped = false;
-  persistTabState();
+  persistProgress();
   renderFc();
-  toast('シャッフルしました 🔀');
 }
 
 // ─── ナビゲーション ───────────────────────────────────────
-function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistTabState(); renderFc(); }
-function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistTabState(); renderFc(); }
+function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistProgress(); renderFc(); }
+function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistProgress(); renderFc(); }
 function fcFlip(){
   if(deck.length === 0) return;
   flipped = !flipped;
@@ -161,18 +201,20 @@ function removeCurrentCardFromDeck(){
   // それ以外は pos を変えない → 次のカードが繰り上がって同じ位置に来る
 }
 
-// ─── わかる / わからない（仕様書準拠） ────────────────────
+// ─── わかる / わからない ───────────────────────────────────
 function markKnow(didKnow){
   if(deck.length === 0 || !flipped) return;
   const card = deck[order[pos]];
   if(!stats[card.id]) stats[card.id] = { ok:0, ng:0 };
   if(didKnow) stats[card.id].ok++; else stats[card.id].ng++;
 
+  markAnswered(card.id);
+
   const stillWeak = stats[card.id].ng > stats[card.id].ok;
-  if(weakOnly && didKnow && !stillWeak){
+  if(currentKey === CAT_WEAK && didKnow && !stillWeak){
     removeCurrentCardFromDeck();
     flipped = false;
-    persistTabState();
+    persistProgress();
     renderFc();
     toast('🎉 苦手を克服！リストから外れました');
   } else {
@@ -184,18 +226,9 @@ function markKnow(didKnow){
 function toggleReverse(){
   reverseMode = !reverseMode;
   flipped = false;
-  persistTabState();
+  persistProgress();
   renderFc();
   toast(reverseMode ? '意味 → 用語 モード' : '用語 → 意味 モード');
-}
-function toggleWeakOnly(){
-  weakOnly = !weakOnly;
-  applyFilter();
-}
-function setCat(cat){
-  activeCat = cat;
-  weakOnly = false;
-  applyFilter();
 }
 
 // ─── 単語帳レンダリング ───────────────────────────────────
@@ -203,36 +236,38 @@ function renderFc(){
   const el = document.getElementById('fc-container');
   if(!el) return;
   const wc = weakCount();
+  const hiddenCount = (state.hiddenCards||[]).length;
+  const prog = getProgress(currentKey);
   const total = deck.length;
   const card = total ? deck[order[pos]] : null;
   const s = card ? (stats[card.id] || {ok:0, ng:0}) : null;
 
-  const chips = ['全カテゴリ', ...FC_CATS].map(cat=>{
-    const active = !weakOnly && activeCat === cat;
-    return `<button class="tag-btn${active?' selected':''}" onclick="setCat('${escAttr(cat)}')">${escHtml(cat)}</button>`;
+  const chips = [{id:CAT_ALL, name:'全カテゴリ'}, ...FC_CATS_DEF].map(c=>{
+    const active = currentKey === c.id;
+    return `<button class="tag-btn${active?' selected':''}" onclick="selectView('${escAttr(c.id)}')">${escHtml(c.name)}</button>`;
   }).join('');
 
   const front = card ? (reverseMode ? card.meaning : card.term) : '';
   const back  = card ? (reverseMode ? card.term : card.meaning) : '';
   const frontIsLong = reverseMode;
+  const isWeakView = currentKey === CAT_WEAK;
+  const formCatDefault = (currentKey !== CAT_ALL && currentKey !== CAT_WEAK) ? currentKey : FC_CATS_DEF[0].id;
 
   el.innerHTML = `
   <div class="fc-player">
     <div class="fc-chips quick-tags">${chips}</div>
 
     <div class="fc-toolbar">
-      <button class="btn-icon" onclick="shuffleOrder()" title="シャッフル">🔀 シャッフル</button>
-      <button class="btn-icon${reverseMode?' rev-on':''}" onclick="toggleReverse()" title="出題方向を反転">🔃 ${reverseMode?'意味→用語':'用語→意味'}</button>
-      <button class="btn-icon${weakOnly?' weak-on':''}" onclick="toggleWeakOnly()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
-      <button class="btn-icon" onclick="openAddForm()" title="カードを追加">＋ 追加</button>
+      <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
     </div>
+    <hr class="fc-divider">
 
     ${total === 0 ? `
       <div class="empty-state">
-        <div class="empty-icon">${weakOnly ? '🎉' : '📭'}</div>
-        <div class="empty-title">${weakOnly ? '苦手カードはありません！' : 'カードがありません'}</div>
-        <div class="empty-sub">${weakOnly ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
-        ${weakOnly ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakOnly()">全カードに戻る</button>' : ''}
+        <div class="empty-icon">${isWeakView ? '🎉' : '📭'}</div>
+        <div class="empty-title">${isWeakView ? '苦手カードはありません！' : 'カードがありません'}</div>
+        <div class="empty-sub">${isWeakView ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
+        ${isWeakView ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakView()">全カードに戻る</button>' : ''}
       </div>
     ` : `
       <div class="fc-meta">
@@ -265,13 +300,26 @@ function renderFc(){
         <button class="btn-study btn-know" id="btn-know-ok" onclick="markKnow(true)" ${flipped?'':'disabled'}>わかる ✓</button>
         <button class="btn-prev" onclick="fcNext()" aria-label="次のカード">→</button>
       </div>
-      ${card.builtin ? '' : `
       <div style="text-align:center;margin-top:10px;">
-        <button class="card-action-btn" onclick="editCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">✏️ 編集</button>
-        <button class="card-action-btn del" onclick="deleteCustomCard('${escAttr(card.rawId)}','${escAttr(card.cat)}')">🗑 削除</button>
-      </div>`}
-      <div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>
+        <button class="card-action-btn" onclick="editCard(cardById('${escAttr(card.id)}'))">✏️ 編集</button>
+        <button class="card-action-btn del" onclick="deleteCard(cardById('${escAttr(card.id)}'))">🗑 削除</button>
+      </div>
     `}
+
+    <hr class="fc-divider">
+    <div class="fc-segment-bar">
+      <button class="seg-btn${prog.shuffled?' seg-on':''}" onclick="toggleShuffle()" title="シャッフル">
+        <span class="seg-icon">🔀</span><span class="seg-label">シャッフル${prog.shuffled?'（ON）':''}</span>
+      </button>
+      <button class="seg-btn${reverseMode?' seg-on':''}" onclick="toggleReverse()" title="出題方向を反転">
+        <span class="seg-icon">🔃</span><span class="seg-label">${reverseMode?'意味→用語':'用語→意味'}</span>
+      </button>
+      <button class="seg-btn" onclick="openAddForm()" title="カードを追加">
+        <span class="seg-icon">＋</span><span class="seg-label">追加</span>
+      </button>
+    </div>
+    <button class="hidden-cards-link" onclick="openHiddenCards()">🗂 非表示にしたカード（${hiddenCount}）</button>
+    ${total > 0 ? `<div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>` : ''}
 
     <div class="add-card-form" id="add-card-form">
       <div class="form-row">
@@ -279,7 +327,7 @@ function renderFc(){
         <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
       </div>
       <div class="form-group"><label>カテゴリ</label>
-        <select id="new-cat">${FC_CATS.map(c=>`<option value="${escHtml(c)}"${(!weakOnly&&activeCat===c)?' selected':''}>${escHtml(c)}</option>`).join('')}</select>
+        <select id="new-cat">${FC_CATS_DEF.map(c=>`<option value="${escHtml(c.id)}"${formCatDefault===c.id?' selected':''}>${escHtml(c.name)}</option>`).join('')}</select>
       </div>
       <div class="form-actions">
         <button class="btn btn-secondary" onclick="closeAddForm()">キャンセル</button>
@@ -289,10 +337,13 @@ function renderFc(){
   </div>`;
 }
 
-// ─── カスタムカード ───────────────────────────────────────
-let editingCard = null;   // {rawId, cat}
+// ─── カード編集・削除・追加 ─────────────────────────────────
+// editingCard: null（新規） | {kind:'custom', rawId, cat} | {kind:'builtin', id}
+let editingCard = null;
 function openAddForm(){
   editingCard = null;
+  const catSel = document.getElementById('new-cat');
+  if(catSel) catSel.disabled = false;
   const f = document.getElementById('add-card-form');
   f.classList.add('open');
   document.getElementById('add-card-btn').textContent = '追加';
@@ -300,6 +351,8 @@ function openAddForm(){
 }
 function closeAddForm(){
   editingCard = null;
+  const catSel = document.getElementById('new-cat');
+  if(catSel) catSel.disabled = false;
   const f = document.getElementById('add-card-form');
   if(f) f.classList.remove('open');
 }
@@ -308,7 +361,13 @@ function submitCard(){
   const def  = document.getElementById('new-def').value.trim();
   const cat  = document.getElementById('new-cat').value;
   if(!term||!def){ toast('用語と意味を入力してください','error'); return; }
-  if(editingCard){
+
+  if(editingCard && editingCard.kind === 'builtin'){
+    if(!state.cardEdits) state.cardEdits = {};
+    state.cardEdits[editingCard.id] = {term, def};
+    toast('カードを更新しました ✓');
+    editingCard = null;
+  } else if(editingCard && editingCard.kind === 'custom'){
     const list = state.customCards[editingCard.cat]||[];
     const c = list.find(x=>String(x.id)===String(editingCard.rawId));
     if(c){
@@ -329,29 +388,68 @@ function submitCard(){
     toast('カードを追加しました ✓');
   }
   save();
-  deck = computeDeck();
+  closeAddForm();
   // 新規カードを末尾に追加した状態でorderを再構成（既存順は維持）
-  enterTab(datasetKey);
+  enterKey(currentKey);
 }
-function editCustomCard(rawId, cat){
-  const c = (state.customCards[cat]||[]).find(x=>String(x.id)===String(rawId));
-  if(!c) return;
-  editingCard = {rawId, cat};
+function editCard(card){
+  if(!card) return;
+  const catSel = document.getElementById('new-cat');
+  if(card.builtin){
+    editingCard = {kind:'builtin', id:card.id};
+    if(catSel){ catSel.value = card.catId; catSel.disabled = true; }
+  }else{
+    editingCard = {kind:'custom', rawId:card.rawId, cat:card.catId};
+    if(catSel){ catSel.value = card.catId; catSel.disabled = false; }
+  }
   const f = document.getElementById('add-card-form');
   f.classList.add('open');
-  document.getElementById('new-term').value = c.term;
-  document.getElementById('new-def').value = c.def;
-  document.getElementById('new-cat').value = cat;
+  document.getElementById('new-term').value = card.term;
+  document.getElementById('new-def').value = card.meaning;
   document.getElementById('add-card-btn').textContent = '更新';
   document.getElementById('new-term').focus();
 }
-function deleteCustomCard(rawId, cat){
+function deleteCard(card){
+  if(!card) return;
   if(!confirm('このカードを削除しますか？')) return;
-  state.customCards[cat] = (state.customCards[cat]||[]).filter(x=>String(x.id)!==String(rawId));
-  delete state.fcStats['c::'+rawId];
+  if(card.builtin){
+    if(!state.hiddenCards) state.hiddenCards = [];
+    if(!state.hiddenCards.includes(card.id)) state.hiddenCards.push(card.id);
+    toast('カードを非表示にしました（🗂 非表示から復活できます）');
+  }else{
+    state.customCards[card.catId] = (state.customCards[card.catId]||[]).filter(x=>String(x.id)!==String(card.rawId));
+    delete state.fcStats['c::'+card.rawId];
+    toast('削除しました');
+  }
   save();
-  enterTab(datasetKey);
-  toast('削除しました');
+  enterKey(currentKey);
+}
+
+// ─── 非表示にしたカード（組み込みカードの論理削除・復活） ───
+function openHiddenCards(){
+  const hidden = state.hiddenCards || [];
+  const allBuiltin = FC_CATS_DEF.flatMap(({name})=>SAMPLE[name]||[]);
+  const items = hidden.map(id=>allBuiltin.find(c=>c.id===id)).filter(Boolean);
+  const listEl = document.getElementById('hidden-cards-list');
+  listEl.innerHTML = items.length ? items.map(c=>{
+    const ov = (state.cardEdits||{})[c.id];
+    const term = (ov&&ov.term) || c.term;
+    return `<div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;">
+      <div style="flex:1;font-size:13px;font-weight:700;">${escHtml(term)}</div>
+      <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="restoreHiddenCard('${escAttr(c.id)}')">復活</button>
+    </div>`;
+  }).join('') : '<div style="color:var(--dim);font-size:13px;text-align:center;padding:20px 0;">非表示のカードはありません</div>';
+  document.getElementById('hidden-cards-modal').classList.add('open');
+}
+function closeHiddenCards(){
+  const m = document.getElementById('hidden-cards-modal');
+  if(m) m.classList.remove('open');
+}
+function restoreHiddenCard(id){
+  state.hiddenCards = (state.hiddenCards||[]).filter(x=>x!==id);
+  save();
+  openHiddenCards();
+  enterKey(currentKey);
 }
 
 // ─── HELPERS ──────────────────────────────────────────────
@@ -380,13 +478,126 @@ function save(){
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
+// ─── 件数照合（移行前後で件数が変わっていないことを確認するための集計） ──
+function countSnapshot(){
+  return {
+    builtinCards:  Object.values(SAMPLE).reduce((s,a)=>s+a.length,0),
+    quizQuestions: QQ.length,
+    customCards:   Object.values(state.customCards||{}).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0),
+    fcStatsEntries: Object.keys(state.fcStats||{}).length,
+    quizAnswered:  Object.keys((state.quizStats||{}).answered||{}).length,
+    quizWrong:     ((state.quizStats||{}).wrong||[]).length,
+  };
+}
+
+// ─── KEY MIGRATION (b::cat::index → B####, "0"-"66" → Q001-Q067,
+//                    日本語カテゴリ名 → 安定カテゴリID) ──────
+function migrateOldKeys(){
+  const before = countSnapshot();
+
+  // Build old flashcard key → new stable ID map
+  const fcKeyMap = {};
+  FC_CATS.forEach(cat=>{
+    (SAMPLE[cat]||[]).forEach((c,i)=>{
+      fcKeyMap[`b::${cat}::${i}`] = c.id;
+    });
+  });
+
+  // Build old quiz key → new stable ID map
+  const qqKeyMap = {};
+  QQ.forEach((q,i)=>{ qqKeyMap[String(i)] = q.id; });
+
+  let changed = false;
+
+  // Migrate fcStats
+  const newFcStats = {};
+  Object.entries(state.fcStats).forEach(([k,v])=>{
+    const mapped = fcKeyMap[k];
+    if(mapped){ newFcStats[mapped]=v; changed=true; }
+    else newFcStats[k]=v;
+  });
+  state.fcStats = newFcStats;
+
+  // Migrate quizStats.answered
+  const newAnswered = {};
+  Object.entries(state.quizStats.answered||{}).forEach(([k,v])=>{
+    const mapped = qqKeyMap[k];
+    if(mapped){ newAnswered[mapped]=v; changed=true; }
+    else newAnswered[k]=v;
+  });
+  state.quizStats.answered = newAnswered;
+
+  // Migrate quizStats.wrong
+  state.quizStats.wrong = (state.quizStats.wrong||[]).map(x=>{
+    const mapped = qqKeyMap[String(x)];
+    if(mapped){ changed=true; return mapped; }
+    return x;
+  });
+
+  // Migrate fcTabState orderIds + activeCat（日本語名/「全カテゴリ」→ 安定ID）
+  Object.keys(state.fcTabState||{}).forEach(key=>{
+    const ts = state.fcTabState[key];
+    if(ts && ts.orderIds){
+      ts.orderIds = ts.orderIds.map(oldId=>{
+        const mapped = fcKeyMap[oldId];
+        if(mapped){ changed=true; return mapped; }
+        return oldId;
+      });
+    }
+    if(ts && ts.activeCat){
+      if(ts.activeCat === '全カテゴリ'){ ts.activeCat = CAT_ALL; changed = true; }
+      else if(CAT_NAME_TO_ID[ts.activeCat]){ ts.activeCat = CAT_NAME_TO_ID[ts.activeCat]; changed = true; }
+    }
+  });
+
+  // Migrate customCards: 日本語カテゴリ名キー → 安定カテゴリID キー
+  const newCustomCards = {};
+  Object.entries(state.customCards||{}).forEach(([k,v])=>{
+    const mapped = CAT_NAME_TO_ID[k];
+    const key = mapped || k;
+    if(mapped) changed = true;
+    newCustomCards[key] = (newCustomCards[key]||[]).concat(v||[]);
+  });
+  state.customCards = newCustomCards;
+
+  // Migrate fcTabState（旧・タブ単位の進捗）→ fcProgress（新・カテゴリ/苦手のみ単位の進捗）
+  if(!state.fcProgress) state.fcProgress = {};
+  const oldTab = (state.fcTabState||{}).aws;
+  if(oldTab && Object.keys(state.fcProgress).length === 0){
+    const key = oldTab.weakOnly ? CAT_WEAK : (oldTab.activeCat || CAT_ALL);
+    state.fcProgress[key] = {
+      orderIds: oldTab.orderIds || [],
+      pos: oldTab.pos || 0,
+      shuffled: false,
+      reverse: !!oldTab.reverseMode,
+      answeredIds: []
+    };
+    state.fcLastKey = key;
+    changed = true;
+  }
+
+  if(changed){
+    const after = countSnapshot();
+    console.log('%cSafeStore 移行 件数照合', 'color:#38BDF8;font-weight:700', { before, after });
+    Object.keys(after).forEach(k=>{
+      if(before[k] !== after[k]){
+        console.warn(`件数不一致: ${k} ${before[k]} → ${after[k]}`);
+      }
+    });
+  }
+
+  return changed;
+}
+
 // ─── BOOT ─────────────────────────────────────────────────
 function afterLoad(silent){
+  const migrated = migrateOldKeys();
+  if(migrated) save();
   document.getElementById('btn-home').style.display = 'block';
   document.getElementById('sync-indicator').style.display = 'flex';
   if(!silent){
     showScreen('notebook-screen');
-    enterTab('aws');   // 保存された続きから再開
+    enterKey(state.fcLastKey || CAT_ALL);   // 保存された続き（最後に見ていたビュー）から再開
   } else {
     if(document.getElementById('notebook-screen').classList.contains('active')
        && document.getElementById('tabcontent-fc').classList.contains('active')){
@@ -414,25 +625,25 @@ function switchTab(t){
 }
 
 // ─── QUIZ STATS ───────────────────────────────────────────
-function qid(q){ return QQ.indexOf(q); }
+function qid(q){ return q.id; }
 function recordAnswer(q, isCorrect){
-  const id = String(qid(q));
+  const id = q.id;
   const st = state.quizStats;
   if(!st.answered[id]) st.answered[id] = {r:0, w:0};
   if(isCorrect){
     st.answered[id].r++;
-    st.wrong = st.wrong.filter(x=>String(x)!==id);
+    st.wrong = st.wrong.filter(x=>x!==id);
   } else {
     st.answered[id].w++;
-    if(!st.wrong.some(x=>String(x)===id)) st.wrong.push(id);
+    if(!st.wrong.includes(id)) st.wrong.push(id);
   }
   save();
 }
 function catAccuracy(catId){
   let r=0, w=0;
-  QQ.forEach((q,i)=>{
+  QQ.forEach((q)=>{
     if(q.c!==catId) return;
-    const a = state.quizStats.answered[String(i)];
+    const a = state.quizStats.answered[q.id];
     if(a){ r+=a.r; w+=a.w; }
   });
   const total = r+w;
@@ -514,8 +725,8 @@ function startQuiz(catId, shuffle){
   launchQuizSession(qs, {catId, shuffle, mode:'normal'});
 }
 function startWrongReview(){
-  const wrongSet = new Set(state.quizStats.wrong.map(String));
-  let qs = QQ.filter((q,i)=>wrongSet.has(String(i)));
+  const wrongSet = new Set(state.quizStats.wrong);
+  let qs = QQ.filter(q=>wrongSet.has(q.id));
   if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
@@ -668,8 +879,8 @@ function reviewWrongFromResult(){
   const run = state.lastQuizRun;
   if(!run || !run.wrongThisRun.length) return;
   showScreen('notebook-screen'); switchTab('quiz');
-  const set = new Set(run.wrongThisRun.map(String));
-  const qs = QQ.filter((q,i)=>set.has(String(i))).sort(()=>Math.random()-.5);
+  const set = new Set(run.wrongThisRun);
+  const qs = QQ.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
 function backFromResult(){
@@ -692,7 +903,7 @@ document.addEventListener('keydown', e=>{
     else if(e.key==='ArrowLeft') fcPrev();
     else if(e.key==='ArrowRight') fcNext();
     else if(e.key.toLowerCase()==='r') toggleReverse();
-    else if(e.key.toLowerCase()==='s') shuffleOrder();
+    else if(e.key.toLowerCase()==='s') toggleShuffle();
     return;
   }
 
@@ -706,4 +917,4 @@ document.addEventListener('keydown', e=>{
     }
   }
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAddForm(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeAddForm(); closeHiddenCards(); } });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AWSハンズオン道場 — コンソール操作を安全に体験して学ぶ</title>
+<title>[v2] AWSハンズオン道場 — コンソール操作を安全に体験して学ぶ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -15,23 +15,25 @@
    ============================================================ */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --ink:#20262e;
-  --ink-soft:#5b6472;
-  --bg:#f2f1ec;
-  --panel:#ffffff;
-  --line:#e2e0d8;
-  --accent:#d96c00;
-  --accent-soft:#fdf1e3;
-  --navy:#161e2d;
-  --navy-2:#232f3e;
+  /* 外枠（ページのガワ）はStudy Deckと共通のダークテーマ。
+     --sim-* とシミュレーター内の色はAWSコンソール再現のため明るいまま維持する。 */
+  --ink:#EDF2FB;
+  --ink-soft:#93A5C1;
+  --bg:#0B1220;
+  --panel:#17233C;
+  --line:#24314F;
+  --accent:#FF9900;
+  --accent-soft:rgba(255,153,0,.14);
+  --navy:#111A2E;
+  --navy-2:#1E2C4A;
   --sim-blue:#0972d3;
   --sim-blue-dark:#065aa5;
-  --success:#037f0c;
-  --success-bg:#eafbe7;
-  --error:#d91515;
-  --error-bg:#fdf0f0;
-  --warn:#8a6116;
-  --warn-bg:#fff8e6;
+  --success:#2DD4BF;
+  --success-bg:rgba(45,212,191,.14);
+  --error:#FF6B6B;
+  --error-bg:rgba(255,107,107,.14);
+  --warn:#FFB84D;
+  --warn-bg:rgba(255,184,77,.14);
   --radius:10px;
   --font-body:"Noto Sans JP",system-ui,-apple-system,sans-serif;
   --font-display:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;
@@ -131,7 +133,7 @@ h1.page-title{font-family:var(--font-display);font-weight:900;font-size:26px;lin
 }
 .lede{color:var(--ink-soft);font-size:14.5px;max-width:62ch}
 .domain-tag{
-  display:inline-block;background:var(--accent-soft);color:#9a4d00;
+  display:inline-block;background:var(--accent-soft);color:var(--accent);
   font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 10px;margin:2px 6px 2px 0;
 }
 
@@ -141,14 +143,14 @@ h1.page-title{font-family:var(--font-display);font-weight:900;font-size:26px;lin
 .prose p{margin:10px 0;max-width:68ch}
 .prose ul,.prose ol{margin:10px 0 10px 24px;max-width:66ch}
 .prose li{margin:5px 0}
-.prose code{font-family:var(--font-mono);font-size:12.5px;background:#eef1f6;border:1px solid #dde3ec;
-  border-radius:5px;padding:1px 6px;color:#1d3d63}
-.prose strong{font-weight:700;background:linear-gradient(transparent 68%, #ffe3c2 68%)}
-.point-box{background:var(--accent-soft);border:1px solid #f3d2a8;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px}
-.point-box .pb-t{font-weight:900;font-family:var(--font-display);color:#9a4d00;font-size:13px;margin-bottom:4px}
+.prose code{font-family:var(--font-mono);font-size:12.5px;background:var(--navy-2);border:1px solid var(--line);
+  border-radius:5px;padding:1px 6px;color:#9fd1ff}
+.prose strong{font-weight:700;background:linear-gradient(transparent 68%, rgba(255,153,0,.28) 68%)}
+.point-box{background:var(--accent-soft);border:1px solid rgba(255,153,0,.35);border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px}
+.point-box .pb-t{font-weight:900;font-family:var(--font-display);color:var(--accent);font-size:13px;margin-bottom:4px}
 table.cmp{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
 table.cmp th,table.cmp td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
-table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
+table.cmp th{background:var(--navy-2);font-weight:700;font-size:12.5px}
 
 /* ---------- ステップナビ ---------- */
 .stepper{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 4px}
@@ -159,7 +161,7 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
 }
 .step-dot:hover{border-color:var(--accent)}
 .step-dot.cur{background:var(--navy);color:#fff;border-color:var(--navy)}
-.step-dot.ok{background:var(--success-bg);border-color:#bfe8bc;color:var(--success)}
+.step-dot.ok{background:var(--success-bg);border-color:rgba(45,212,191,.4);color:var(--success)}
 .step-dot.ok.cur{background:var(--success);color:#fff;border-color:var(--success)}
 .nav-row{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
 .btn{
@@ -167,9 +169,9 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
   border:1px solid transparent;transition:transform .12s, box-shadow .12s, background .12s;
 }
 .btn:active{transform:scale(.97)}
-.btn-primary{background:var(--accent);color:#fff;box-shadow:0 3px 10px rgba(217,108,0,.3)}
-.btn-primary:hover{background:#c05f00}
-.btn-primary:disabled{background:#d9cfc2;box-shadow:none;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#161006;box-shadow:0 3px 10px rgba(255,153,0,.3)}
+.btn-primary:hover{background:var(--warn)}
+.btn-primary:disabled{background:var(--line);color:var(--ink-soft);box-shadow:none;cursor:not-allowed}
 .btn-ghost{background:var(--panel);border-color:var(--line);color:var(--ink)}
 .btn-ghost:hover{border-color:var(--ink-soft)}
 
@@ -247,10 +249,10 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
 /* バナー */
 .banner{border-radius:9px;padding:12px 16px;margin:14px 0;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;line-height:1.65}
 .banner .ic{font-weight:900;flex-shrink:0}
-.banner.ok{background:var(--success-bg);border:1px solid #a8dfa3;color:#054f0b}
-.banner.ng{background:var(--error-bg);border:1px solid #efb8b8;color:#8f0f0f}
-.banner.warn{background:var(--warn-bg);border:1px solid #ecd695;color:#6e4d0e}
-.banner.info{background:#eef5fd;border:1px solid #bcd7f2;color:#0d4a80}
+.banner.ok{background:var(--success-bg);border:1px solid rgba(45,212,191,.4);color:var(--success)}
+.banner.ng{background:var(--error-bg);border:1px solid rgba(255,107,107,.4);color:var(--error)}
+.banner.warn{background:var(--warn-bg);border:1px solid rgba(255,184,77,.4);color:var(--warn)}
+.banner.info{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);color:#9fd1ff}
 
 /* リソーステーブル(EC2一覧など) */
 .res-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid #d5dbe0;border-radius:8px;overflow:hidden}
@@ -267,17 +269,17 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
 .code-block .cm{color:#7d93ad}
 
 /* ---------- クイズ ---------- */
-.quiz-q{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;background:#fffdfa}
+.quiz-q{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:14px 0;background:var(--panel)}
 .quiz-q .qn{font-family:var(--font-mono);font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.1em}
 .quiz-q .qt{font-weight:700;margin:6px 0 12px;font-size:14.5px}
-.quiz-opt{display:block;width:100%;text-align:left;background:#fff;border:2px solid var(--line);border-radius:9px;
+.quiz-opt{display:block;width:100%;text-align:left;background:var(--navy-2);color:var(--ink);border:2px solid var(--line);border-radius:9px;
   padding:10px 14px;margin:7px 0;font-size:13.5px;transition:all .12s}
 .quiz-opt:hover:not(:disabled){border-color:var(--accent)}
 .quiz-opt.picked-ok{border-color:var(--success);background:var(--success-bg);font-weight:700}
 .quiz-opt.picked-ng{border-color:var(--error);background:var(--error-bg)}
 .quiz-opt.reveal{border-color:var(--success);background:var(--success-bg)}
 .quiz-opt:disabled{cursor:default;opacity:.92}
-.quiz-exp{font-size:13px;background:#eef5fd;border:1px solid #bcd7f2;border-radius:8px;padding:10px 14px;margin-top:10px;color:#0d3f6e;display:none}
+.quiz-exp{font-size:13px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);border-radius:8px;padding:10px 14px;margin-top:10px;color:#9fd1ff;display:none}
 .quiz-exp.show{display:block;animation:fadein .3s}
 @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
@@ -374,7 +376,8 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
     <span class="mark">道</span>AWSハンズオン道場
   </button>
   <div class="spacer"></div>
-  <a href="index.html" class="deck-link">⬅ Study Deck</a>
+  <span id="staging-badge" style="font-family:monospace;font-size:10px;font-weight:700;letter-spacing:.1em;background:rgba(56,189,248,.16);color:#38BDF8;border:1px solid rgba(56,189,248,.4);border-radius:6px;padding:3px 8px;white-space:nowrap;margin-right:8px;" title="保存先は app/notebook_v2 です。本番データには書き込みません。">開発版 v2</span>
+  <a href="index-v2.html" class="deck-link">⬅ Study Deck</a>
   <div class="belt-chip" id="beltChip"></div>
   <div class="progress-mini" id="progressMini"></div>
 </header>
@@ -389,15 +392,15 @@ table.cmp th{background:#f7f6f2;font-weight:700;font-size:12.5px}
   画面や仕様は学習目的で簡略化しています。本番のコンソールは随時更新されるため、細部が異なる場合があります。
 </p>
 
-<script src="store.js?v=9"></script>
-<script>window.SAFESTORE_HOME_DOC = 'notebook'; window.SAFESTORE_STANDALONE = true;</script>
-<script src="safe-store.js?v=9"></script>
-<script src="safe-store-compat.js?v=9"></script>
+<script src="store.js?v=8"></script>
+<script src="safe-store.js?v=8"></script>
+<script src="safe-store-compat.js?v=8"></script>
 <script>
 /* ============================================================
-   状態管理（保存先はSafeStore経由でapp/notebook・本番単独運用）。
-   CloudStoreと同じインターフェースのシム（safe-store-compat.js）を
-   挟んでいるため、以下のロジックは変更前のdojo.htmlと同一のまま動く）
+   状態管理（改変版v2：保存先はSafeStore経由でapp/notebook_v2。
+   本番app/storageは読むだけ。CloudStoreと同じインターフェースの
+   シム（safe-store-compat.js）を挟んでいるため、以下のロジックは
+   本番dojo.htmlと同一のまま動く）
    ============================================================ */
 const STORE_KEY = "awsDojoProgressV1";
 function loadProgress(){

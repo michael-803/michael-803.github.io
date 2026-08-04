@@ -3,19 +3,33 @@
 
    目的：改変作業中に本番データを絶対に壊さないこと。
 
-   ・app/notebook       … 本番。「読む」経路しか持たない（書き込み関数を用意していない）
-   ・app/notebook_v2    … 改変版の保存先。読み書きはすべてここ
+   ・app/notebook       … 本番（単語帳・過去問）。「読む」経路しか持たない
+   ・app/storage        … 本番（模試・道場）。同じく「読む」経路しか持たない
+   ・app/notebook_v2    … 改変版の保存先。読み書きはすべてここ（全ページ共通の1ドキュメント）
    ・app/notebook_v2_snap … 直近5世代のスナップショット
    ・localStorage       … 3つ目の砦（クラウドが落ちても残るミラー）
 
    本番へ書き込むコードはこのファイルに存在しません。
+
+   save()はフィールド単位のmerge書き込み。ページごとに自分が管理する
+   フィールドだけ渡せば良く（例: dojo-v2は{awsDojoProgressV1:...}のみ）、
+   他ページのフィールドを消してしまうことはない。
    ============================================================ */
 
 window.SafeStore = (function(){
 
+  /* HOME_DOC: このページが読み書きするドキュメント。
+       開発版（既定）… 'notebook_v2'（本番app/notebookとは別の安全な作業場所）
+       本番運用       … 各HTMLが読み込み前に window.SAFESTORE_HOME_DOC='notebook' を設定
+     STANDALONE: true の場合、他ドキュメントからの「refresh」は行わずHOME_DOCだけを唯一の
+     読み書き先として扱う（本番運用時に使用）。 */
+  const HOME_DOC   = window.SAFESTORE_HOME_DOC || 'notebook_v2';
+  const STANDALONE = window.SAFESTORE_STANDALONE === true;
+
   const PROD_DOC  = 'notebook';
-  const STAGE_DOC = 'notebook_v2';
-  const SNAP_DOC  = 'notebook_v2_snap';
+  const PROD_DOC2 = 'storage';   // 模試・道場の本番データ（開発版が読むだけの参照先）
+  const STAGE_DOC = HOME_DOC;
+  const SNAP_DOC  = HOME_DOC + '_snap';
   const LS_KEY    = 'awsStudyDeckV2Mirror';
   const MAX_GENS  = 5;
 
@@ -48,7 +62,16 @@ window.SafeStore = (function(){
   function countStats(d){
     return (d && d.fcStats) ? Object.keys(d.fcStats).length : 0;
   }
-  function isEmpty(d){ return countCards(d) === 0 && countStats(d) === 0; }
+  function countDojoLabs(d){
+    return (d && d.awsDojoProgressV1) ? Object.keys(d.awsDojoProgressV1).length : 0;
+  }
+  function countMockHist(d){
+    return (d && Array.isArray(d.clfMockHistoryV1)) ? d.clfMockHistoryV1.length : 0;
+  }
+  function isEmpty(d){
+    return countCards(d) === 0 && countStats(d) === 0
+        && countDojoLabs(d) === 0 && countMockHist(d) === 0;
+  }
 
   function lsRead(){
     try{ const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; }
@@ -59,18 +82,34 @@ window.SafeStore = (function(){
   }
 
   /* ---------- 第1層：書き込みガード ----------
-     消し飛ばす系の保存だけを止める。1枚ずつの削除は通す。 */
+     消し飛ばす系の保存だけを止める。1枚ずつの削除は通す。
+     save()はページごとの部分保存なので、next に実際に含まれる
+     フィールドだけを検査する（含まれないフィールドは無視＝安全）。 */
   function guardCheck(next){
     if(!loaded) return '読み込みが終わる前に保存しようとしました';
 
-    const n = countCards(next), p = countCards(prev);
-    if(p > 0 && n === 0)  return `カードが全部消えています（${p}枚 → 0枚）`;
-    if(p >= GUARD.minCards && n < Math.ceil(p * GUARD.dropRatio))
-      return `カードが一度に減りすぎています（${p}枚 → ${n}枚）`;
+    if('customCards' in next){
+      const n = countCards(next), p = countCards(prev);
+      if(p > 0 && n === 0)  return `カードが全部消えています（${p}枚 → 0枚）`;
+      if(p >= GUARD.minCards && n < Math.ceil(p * GUARD.dropRatio))
+        return `カードが一度に減りすぎています（${p}枚 → ${n}枚）`;
+    }
 
-    const ns = countStats(next), ps = countStats(prev);
-    if(ps >= GUARD.minStats && ns === 0)
-      return `学習履歴が全部消えています（${ps}件 → 0件）`;
+    if('fcStats' in next){
+      const ns = countStats(next), ps = countStats(prev);
+      if(ps >= GUARD.minStats && ns === 0)
+        return `学習履歴が全部消えています（${ps}件 → 0件）`;
+    }
+
+    if('awsDojoProgressV1' in next){
+      const n = countDojoLabs(next), p = countDojoLabs(prev);
+      if(p > 0 && n === 0) return `道場の進捗が全部消えています（${p}ラボ → 0）`;
+    }
+
+    if('clfMockHistoryV1' in next){
+      const n = countMockHist(next), p = countMockHist(prev);
+      if(p > 0 && n === 0) return `模試の受験履歴が全部消えています（${p}件 → 0件）`;
+    }
 
     return null;
   }
@@ -119,25 +158,39 @@ window.SafeStore = (function(){
       return { data: clone(prev), cloud:false, notes };
     }
 
-    /* --- 本番（読むだけ）と改変版を並行して読む --- */
-    let prod = {}, stage = {};
-    try{
-      const [ps, ss] = await Promise.all([
-        fns.getDoc(fns.doc(db, 'app', PROD_DOC)),
-        fns.getDoc(ref)
-      ]);
-      if(ps.exists()) prod  = ps.data() || {};
-      if(ss.exists()) stage = ss.data() || {};
-    }catch(e){
-      console.warn('SafeStore: 読み込みに失敗', e);
-    }
-
     /* --- 使うデータを決める --- */
     let data, origin;
-    if(SYNC_MODE === 'refresh' || isEmpty(stage)){
-      data = clone(prod);  origin = '本番の最新コピー';
-    }else{
-      data = clone(stage); origin = '改変版の保存内容';
+    if(STANDALONE){
+      /* 本番運用：HOME_DOCだけが唯一の読み書き先。他ドキュメントから作り直さない。 */
+      let stage = {};
+      try{
+        const ss = await fns.getDoc(ref);
+        if(ss.exists()) stage = ss.data() || {};
+      }catch(e){
+        console.warn('SafeStore: 読み込みに失敗', e);
+      }
+      data = clone(stage); origin = '保存済みデータ';
+    } else {
+      /* 開発版：本番（読むだけ・2ドキュメントを統合）と改変版を並行して読む */
+      let prod = {}, stage = {};
+      try{
+        const [ps, ps2, ss] = await Promise.all([
+          fns.getDoc(fns.doc(db, 'app', PROD_DOC)),
+          fns.getDoc(fns.doc(db, 'app', PROD_DOC2)),
+          fns.getDoc(ref)
+        ]);
+        if(ps.exists())  Object.assign(prod, ps.data()  || {});
+        if(ps2.exists()) Object.assign(prod, ps2.data() || {});
+        if(ss.exists())  stage = ss.data() || {};
+      }catch(e){
+        console.warn('SafeStore: 読み込みに失敗', e);
+      }
+
+      if(SYNC_MODE === 'refresh' || isEmpty(stage)){
+        data = clone(prod);  origin = '本番の最新コピー';
+      }else{
+        data = clone(stage); origin = '改変版の保存内容';
+      }
     }
 
     /* --- 第3層：それでも空なら控えから自動で戻す --- */
@@ -171,7 +224,7 @@ window.SafeStore = (function(){
     return { data: clone(data), cloud:true, origin, notes };
   }
 
-  /* ---------- 保存（改変版の箱にだけ書く） ---------- */
+  /* ---------- 保存（改変版の箱にだけ、フィールド単位でmerge書き込み） ---------- */
   async function save(data){
     const reason = guardCheck(data);
     if(reason){
@@ -180,13 +233,15 @@ window.SafeStore = (function(){
       return { ok:false, reason };
     }
 
-    lsWrite(data);            // ミラーは先に更新（クラウドが落ちても残る）
-    prev = clone(data);
+    // ローカルの基準・ミラーは常にドキュメント全体を保つ（他ページのフィールドを消さない）
+    const merged = Object.assign({}, prev, clone(data));
+    lsWrite(merged);          // ミラーは先に更新（クラウドが落ちても残る）
+    prev = merged;
     if(!cloud) return { ok:true, cloud:false };
 
     try{
       applyingRemote = true;
-      await fns.setDoc(ref, Object.assign({}, data, { updatedAt:new Date().toISOString() }));
+      await fns.setDoc(ref, Object.assign({}, data, { updatedAt:new Date().toISOString() }), { merge:true });
       return { ok:true, cloud:true };
     }catch(e){
       console.warn('SafeStore: クラウドへの保存に失敗（端末の控えには保存済み）', e);
@@ -217,10 +272,13 @@ window.SafeStore = (function(){
   function setSyncMode(m){ SYNC_MODE = m; }
   function status(){
     return { cloud, loaded, syncMode:SYNC_MODE, stageDoc:STAGE_DOC,
-             cards:countCards(prev), stats:countStats(prev), blocked:blocked.length };
+             cards:countCards(prev), stats:countStats(prev),
+             dojoLabs:countDojoLabs(prev), mockHist:countMockHist(prev),
+             blocked:blocked.length };
   }
   function onRemote(cb){ remoteCbs.push(cb); }
 
   return { init, save, onRemote, listSnapshots, restore,
-           blockedLog, status, setSyncMode, countCards, countStats };
+           blockedLog, status, setSyncMode, countCards, countStats,
+           countDojoLabs, countMockHist };
 })();

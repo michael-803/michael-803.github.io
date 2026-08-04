@@ -1,0 +1,15 @@
+/* ============================================================
+   AWS Study Deck — 共有デザイントークン
+   単語帳・過去問（index）と道場（dojo）の「外枠」で共通利用する。
+   模試（mock-exam）は本番試験画面の再現のため対象外（白基調のまま）。
+   道場のコンソールシミュレーター内部（.sim-*）も対象外（AWSコンソール再現のため明るいまま）。
+   ============================================================ */
+:root{
+  --bg:#0B1220;--bg2:#111A2E;--card:#17233C;--card2:#1E2C4A;
+  --orange:#FF9900;--orange-hi:#FFB84D;--blue:#38BDF8;
+  --text:#EDF2FB;--dim:#93A5C1;--line:#24314F;
+  --ok:#2DD4BF;--ng:#FF6B6B;
+  --r:16px;--rs:10px;
+  --disp:'Space Grotesk','Noto Sans JP',sans-serif;
+  --body:'Noto Sans JP',sans-serif;
+}

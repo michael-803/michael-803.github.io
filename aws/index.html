@@ -47,34 +47,6 @@ header{background:var(--bg2);border-bottom:1px solid var(--line);padding:0 20px;
 .loading-spinner{width:44px;height:44px;border:3px solid var(--line);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;}
 .loading-text{color:var(--dim);font-size:14px;text-align:center;}
 
-#config-screen{align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto;}
-.config-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:32px;width:100%;max-width:560px;}
-.config-title{font-family:var(--disp);font-size:21px;font-weight:700;margin-bottom:6px;}
-.config-title span{color:var(--orange);}
-.config-sub{color:var(--dim);font-size:13px;margin-bottom:18px;}
-.config-step{background:var(--card);border-radius:var(--rs);padding:12px 14px;margin-bottom:8px;font-size:13px;line-height:1.8;color:var(--dim);}
-.config-step strong{color:var(--text);}
-.config-step code{background:var(--card2);border-radius:4px;color:var(--orange);font-family:monospace;font-size:12px;padding:2px 6px;}
-.config-step a{color:var(--orange);}
-.code-block{background:var(--card);border-radius:var(--rs);padding:16px;font-family:monospace;font-size:12px;color:var(--orange);line-height:2;margin-top:14px;overflow-x:auto;}
-
-#setup-screen{align-items:center;justify-content:center;padding:40px 20px;overflow-y:auto;}
-.setup-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:38px;width:100%;max-width:560px;}
-.setup-title{font-family:var(--disp);font-size:25px;font-weight:700;margin-bottom:8px;}
-.setup-title span{color:var(--orange);}
-.setup-sub{color:var(--dim);font-size:14px;margin-bottom:20px;}
-.note-list{display:flex;flex-direction:column;gap:8px;margin-bottom:22px;}
-.note-list-title{font-family:var(--disp);font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;}
-.note-item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:12px 14px;transition:border-color .15s;}
-.note-item:hover{border-color:var(--orange);}
-.note-open{flex:1;background:none;border:none;color:var(--text);cursor:pointer;text-align:left;font-family:var(--body);padding:0;}
-.note-open .nm{font-weight:700;font-size:14px;}
-.note-open .sub{color:var(--dim);font-size:11.5px;margin-top:2px;}
-.note-del{background:transparent;border:1px solid var(--line);border-radius:6px;color:var(--dim);cursor:pointer;font-size:11px;padding:5px 10px;transition:all .15s;flex-shrink:0;}
-.note-del:hover{color:var(--ng);border-color:var(--ng);}
-.setup-divider{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:11px;margin-bottom:16px;}
-.setup-divider::before,.setup-divider::after{content:"";flex:1;height:1px;background:var(--line);}
-
 .form-group{margin-bottom:18px;}
 label{display:block;font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;}
 input[type="text"],textarea,select{width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);color:var(--text);font-family:var(--body);font-size:15px;padding:11px 14px;outline:none;transition:border-color .2s,box-shadow .2s;}
@@ -227,8 +199,8 @@ textarea{resize:vertical;min-height:88px;}
 .study-label{font-family:var(--disp);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;}
 .study-front .study-label{color:var(--orange);}
 .study-back .study-label{color:var(--blue);}
-.study-term{font-family:var(--disp);font-size:26px;font-weight:700;line-height:1.25;}
-.study-definition{font-size:14px;line-height:1.75;}
+.study-term{font-family:var(--disp);font-size:26px;font-weight:700;line-height:1.25;white-space:pre-wrap;}
+.study-definition{font-size:14px;line-height:1.75;white-space:pre-wrap;}
 .study-tap-hint{color:var(--dim);font-size:11.5px;margin-top:14px;}
 .study-controls{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;}
 .btn-study{align-items:center;border:none;border-radius:12px;cursor:pointer;display:flex;font-family:var(--body);font-weight:700;font-size:14px;gap:7px;padding:12px 22px;transition:all .2s;}
@@ -293,10 +265,20 @@ textarea{resize:vertical;min-height:88px;}
 }
 .fc-player{max-width:680px;margin:0 auto;}
 .fc-chips{margin-bottom:12px;}
-.fc-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.fc-toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:14px;}
 .fc-toolbar .btn-icon{font-size:12.5px;}
 #reverse-btn.rev-on,.btn-icon.rev-on{background:var(--orange);color:#161006;border-color:var(--orange);font-weight:700;}
 .btn-icon.weak-on{background:var(--ng);color:#2B0808;border-color:var(--ng);font-weight:700;}
+.fc-divider{border:none;border-top:1px solid var(--line);margin:16px 0;}
+.fc-segment-bar{display:flex;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);overflow:hidden;margin-top:16px;}
+.seg-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;background:none;border:none;border-right:1px solid var(--line);color:var(--dim);cursor:pointer;font-family:var(--body);transition:background .15s,color .15s;}
+.seg-btn:last-child{border-right:none;}
+.seg-btn:hover{background:var(--card2);color:var(--text);}
+.seg-btn.seg-on{background:rgba(255,153,0,.12);color:var(--orange);}
+.seg-icon{font-size:17px;line-height:1;}
+.seg-label{font-size:10.5px;font-weight:700;letter-spacing:.02em;}
+.hidden-cards-link{display:block;margin:10px auto 0;background:none;border:none;color:var(--dim);font-size:11.5px;cursor:pointer;text-decoration:underline;padding:4px;}
+.hidden-cards-link:hover{color:var(--orange);}
 .fc-meta{display:flex;align-items:center;gap:12px;margin-bottom:10px;font-size:12.5px;color:var(--dim);flex-wrap:wrap;}
 .fc-counter{font-family:var(--disp);font-weight:700;font-size:14px;color:var(--text);}
 .fc-stats{margin-left:auto;display:flex;gap:10px;font-family:var(--disp);font-weight:700;}
@@ -318,18 +300,6 @@ textarea{resize:vertical;min-height:88px;}
 
 <div class="screen active" id="loading-screen">
   <div><div class="loading-spinner"></div><div class="loading-text">接続中...</div></div>
-</div>
-
-<div class="screen" id="config-screen">
-  <div class="config-card">
-    <div class="config-title">🔥 <span>Firebase</span> の設定が必要です</div>
-    <div class="config-sub">クラウド保存を有効にするため、設定情報を書き換えてください。</div>
-    <div class="config-step"><strong>① Firebase Console でプロジェクト作成</strong><br><a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a></div>
-    <div class="config-step"><strong>② Firestore Database を有効化</strong><br>本番環境モード → リージョン <code>asia-northeast1</code></div>
-    <div class="config-step"><strong>③ セキュリティルール：</strong><code>allow read, write: if true;</code> に変更して公開</div>
-    <div class="config-step"><strong>④ store.js 内の <code>REPLACE_ME</code> を書き換えてGitHubにアップ</strong><br>設定は store.js の1箇所だけ。模擬試験・道場のデータも同じ設定で保存されます。</div>
-    <div class="code-block">const firebaseConfig = {<br>&nbsp;&nbsp;apiKey: "REPLACE_ME",<br>&nbsp;&nbsp;authDomain: "REPLACE_ME",<br>&nbsp;&nbsp;projectId: "REPLACE_ME",<br>&nbsp;&nbsp;storageBucket: "REPLACE_ME",<br>&nbsp;&nbsp;messagingSenderId: "REPLACE_ME",<br>&nbsp;&nbsp;appId: "REPLACE_ME"<br>};</div>
-  </div>
 </div>
 
 <div class="screen" id="notebook-screen">
@@ -374,22 +344,38 @@ textarea{resize:vertical;min-height:88px;}
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="store.js?v=7"></script>
-<script type="module">
-const firebaseConfig=window.FIREBASE_CONFIG;
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getFirestore,doc,getDoc,setDoc,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-const fbok=Object.values(firebaseConfig).every(v=>v!=="REPLACE_ME");
-if(!fbok){showScreen('config-screen');}
-else{
-  const db=getFirestore(initializeApp(firebaseConfig));window._db=db;
-  try{await init(db);}catch(e){toast('Firebase接続エラー: '+e.message,'error');afterLoad();}
-}
+<div class="modal-overlay" id="hidden-cards-modal">
+  <div class="modal">
+    <div class="modal-title">🗂 非表示にしたカード</div>
+    <div id="hidden-cards-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeHiddenCards()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="store.js?v=9"></script>
+<script>window.SAFESTORE_HOME_DOC = 'notebook'; window.SAFESTORE_STANDALONE = true;</script>
+<script src="safe-store.js?v=9"></script>
+<script src="data.js?v=9"></script>
+<script src="app.js?v=9"></script>
+<script>
+/* ============================================================
+   ブート処理。保存先は app/notebook（本番・単独運用）。
+   ============================================================ */
+
+/* 本番の保存形式を、アプリが使う形に読み替える（旧形式の救出を含む） */
 function adoptData(d){
+  d = d || {};
   state.customCards = d.customCards || {};
   state.fcStats     = d.fcStats     || {};
   state.fcTabState  = d.fcTabState  || {};
-  state.quizStats   = d.quizStats   || {answered:{},wrong:[]};
+  state.quizStats   = d.quizStats   || {answered:{}, wrong:[]};
+  state.cardEdits   = d.cardEdits   || {};
+  state.hiddenCards = d.hiddenCards || [];
+  state.fcProgress  = d.fcProgress  || {};
+  state.fcLastKey   = d.fcLastKey   || null;
+
   // 旧cardStats（'k'/'a'方式・キーが「カテゴリ::b::番号」形式）からの移行
   if(!d.fcStats && d.cardStats){
     Object.entries(d.cardStats).forEach(([key,val])=>{
@@ -421,31 +407,59 @@ function adoptData(d){
     else rescue(d.decks);
   }
 }
-async function init(db){
-  setSyncState('syncing');
-  const snap=await getDoc(doc(db,'app','notebook'));
-  if(snap.exists()) adoptData(snap.data());
-  afterLoad();setSyncState('ok');
-  onSnapshot(doc(db,'app','notebook'),s=>{
-    if(!s.exists())return;const d2=s.data();
-    const same=JSON.stringify(d2.customCards||{})===JSON.stringify(state.customCards)
-      &&JSON.stringify(d2.fcStats||{})===JSON.stringify(state.fcStats)
-      &&JSON.stringify(d2.fcTabState||{})===JSON.stringify(state.fcTabState)
-      &&JSON.stringify(d2.quizStats||{})===JSON.stringify(state.quizStats);
-    if(same)return;
-    adoptData(d2);
-    afterLoad(true);setSyncState('ok');
-  });
-}
-async function saveFB(){
-  if(!window._db)return;setSyncState('syncing');
-  try{await setDoc(doc(window._db,'app','notebook'),{customCards:state.customCards,fcStats:state.fcStats,fcTabState:state.fcTabState,quizStats:state.quizStats,updatedAt:new Date().toISOString()});setSyncState('ok');}
-  catch(e){setSyncState('error');toast('保存エラー: '+e.message,'error');}
-}
-window._save=saveFB;
-</script>
 
-<script src="data.js?v=7"></script>
-<script src="app.js?v=7"></script>
+function snapshotState(){
+  return {
+    customCards: state.customCards,
+    fcStats:     state.fcStats,
+    fcTabState:  state.fcTabState,
+    quizStats:   state.quizStats,
+    cardEdits:   state.cardEdits,
+    hiddenCards: state.hiddenCards,
+    fcProgress:  state.fcProgress,
+    fcLastKey:   state.fcLastKey
+  };
+}
+
+/* app.js の save() から呼ばれる保存口。ガードを通ったものだけが書かれる */
+window._save = async function(){
+  setSyncState('syncing');
+  const r = await SafeStore.save(snapshotState());
+  if(r.ok){ setSyncState('ok'); }
+  else{
+    setSyncState('error');
+    toast('保存を中止：' + r.reason, 'error');
+  }
+};
+
+(async function boot(){
+  setSyncState('syncing');
+
+  let res;
+  try{
+    res = await SafeStore.init();
+  }catch(e){
+    res = {data:{}, cloud:false, notes:['接続できませんでした：' + e.message]};
+  }
+
+  adoptData(res.data);
+  afterLoad();
+  setSyncState(res.cloud ? 'ok' : 'error');
+
+  (res.notes || []).forEach((n,i) => setTimeout(()=>toast(n, 'success'), 400 + i*2800));
+
+  SafeStore.onRemote(d => {
+    adoptData(d);
+    afterLoad(true);
+    setSyncState('ok');
+  });
+
+  console.log('%cSafeStore', 'color:#38BDF8;font-weight:700',
+    '状態:', SafeStore.status(),
+    '\n  控えの一覧: await SafeStore.listSnapshots()',
+    '\n  控えから戻す: await SafeStore.restore(0)',
+    '\n  止めた保存: SafeStore.blockedLog()');
+})();
+</script>
 </body>
 </html>

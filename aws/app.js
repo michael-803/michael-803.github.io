@@ -15,6 +15,13 @@ let state = {
   fcLastKey: null,                 // 最後に見ていたビュー（起動時にそこへ復帰）
   quiz: {selectedCatId:null, session:null},
   quizStats: {answered:{}, wrong:[]},
+  scenario: {selectedCatId:null, session:null},
+  scenarioStats: {answered:{}, wrong:[]},
+  multi: {selectedCatId:null, session:null},
+  multiStats: {answered:{}, wrong:[]},
+  multiQEdits: {},                 // { 'MS001': {q,o,a,n} } — 組み込み複数選択問題の上書き
+  hiddenMultiQ: [],                // ['MS001', ...] — 論理削除された組み込み複数選択問題
+  customMultiQ: [],                // ユーザーが追加した複数選択問題
   resultCtx: null,
 };
 
@@ -622,6 +629,10 @@ function switchTab(t){
   document.getElementById('tabcontent-'+t).classList.add('active');
   if(t==='quiz' && !state.quiz.session) renderQuizHome();
   if(t==='fc') renderFc();
+  if(t==='weak') renderWeak();
+  if(t==='scenario' && !state.scenario.session) renderScenarioHome();
+  if(t==='multi' && !state.multi.session) renderMultiHome();
+  if(t==='cheatsheet') renderCheatsheet();
 }
 
 // ─── QUIZ STATS ───────────────────────────────────────────
@@ -655,6 +666,762 @@ function overallStats(){
   return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.quizStats.wrong.length};
 }
 function accColor(p){ return p>=80?'var(--ok)':p>=60?'var(--orange)':'var(--ng)'; }
+
+// ─── 弱点診断（段階3-6：ローカル集計のみ・AI不要） ──────────
+function fcCatAccuracy(catId){
+  let ok=0, ng=0;
+  buildCards().filter(c=>c.catId===catId).forEach(c=>{
+    const s = state.fcStats[c.id];
+    if(s){ ok+=s.ok||0; ng+=s.ng||0; }
+  });
+  const total = ok+ng;
+  return total ? {pct:Math.round(ok/total*100), total} : null;
+}
+
+const DOJO_LAB_NAME = {
+  basics:'Lab 0（コンソールの歩き方）', iam:'Lab 1（IAM）', s3:'Lab 2（S3）',
+  ec2:'Lab 3（EC2）', vpc:'Lab 4（VPC）', lambda:'Lab 5（Lambda）', budgets:'Lab 6（Billing）'
+};
+const WEAK_PRESCRIPTIONS = {
+  cat_compute:{ text:'EC2・Lambda・ECSなど起動方式とスケーリングの違いが頻出です。単語帳「コンピューティング」を復習し、道場のEC2ラボで手を動かしましょう。', lab:'ec2' },
+  cat_storage: { text:'S3のストレージクラスとEBS/EFSの使い分けが頻出です。単語帳「ストレージ」を重点的に復習し、道場のS3ラボで実践しましょう。', lab:'s3' },
+  cat_network: { text:'VPC構成要素（サブネット・IGW・NAT・SG/NACL）の役割の違いを図で整理しましょう。道場のVPCラボが実感を掴む近道です。', lab:'vpc' },
+  cat_db:      { text:'RDS・Aurora・DynamoDBの使い分けと、マルチAZ/リードレプリカの違いを単語帳「データベース」で復習しましょう。', lab:null },
+  cat_sec:     { text:'IAMの権限モデルとGuardDuty/WAF/Shieldの役割分担が混同されがちです。単語帳「セキュリティ」＋道場のIAMラボがおすすめです。', lab:'iam' },
+  cat_sls:     { text:'SQS/SNS/EventBridgeの違いとサーバーレス構成の典型パターンを復習しましょう。道場のLambdaラボで流れを確認できます。', lab:'lambda' },
+  cat_ai:      { text:'各AIサービスの用途対応（画像→Rekognition、文書→Textract等）を単語帳「AI / ML」で覚え直しましょう。', lab:null },
+  cat_ops:     { text:'CloudWatch・CloudTrail・Configの役割の違いが混同されがちです。単語帳「監視・管理」で3つを並べて比較しましょう。', lab:null },
+  cat_cost:    { text:'料金モデルとサポートプランの違い、Cost Explorer/Budgetsの使い分けを復習しましょう。道場のBillingラボが実践的です。', lab:'budgets' },
+  basics:      { text:'責任共有モデルやリージョン/AZの定義など、クラウドの基礎用語を単語帳で確認しましょう。道場Lab 0が導入に最適です。', lab:'basics' },
+  arch:        { text:'Well-Architectedフレームワークの柱と高可用性設計の考え方を過去問「アーキテクチャ設計」で復習しましょう。', lab:null },
+  mig:         { text:'DMS・DataSync・Snow Familyなど移行サービスの使い分けを過去問「移行・転送」で整理しましょう。', lab:null },
+};
+
+function weakDiagnosis(){
+  const rows = [];
+  FC_CATS_DEF.forEach(({id, name})=>{
+    const quizId = id.replace('cat_','');
+    const quizAcc = catAccuracy(quizId);
+    const fcAcc = fcCatAccuracy(id);
+    let pct = null, total = 0;
+    if(quizAcc && fcAcc){
+      total = quizAcc.total + fcAcc.total;
+      pct = Math.round((quizAcc.pct*quizAcc.total + fcAcc.pct*fcAcc.total) / total);
+    } else if(quizAcc){ pct = quizAcc.pct; total = quizAcc.total; }
+    else if(fcAcc){ pct = fcAcc.pct; total = fcAcc.total; }
+    rows.push({ id, name, pct, total });
+  });
+  ['basics','arch','mig'].forEach(qid=>{
+    const acc = catAccuracy(qid);
+    const info = QCAT.find(c=>c.id===qid);
+    rows.push({ id:qid, name:info.name, pct:acc?acc.pct:null, total:acc?acc.total:0 });
+  });
+  return rows;
+}
+
+function renderWeak(){
+  const el = document.getElementById('weak-container');
+  if(!el) return;
+  const rows = weakDiagnosis();
+  const answered = rows.filter(r=>r.total > 0).sort((a,b)=>a.pct-b.pct);
+  const unanswered = rows.filter(r=>r.total === 0);
+  const weakest = answered.slice(0, 3);
+
+  const rowHtml = (r)=>`
+    <div class="category-card" style="cursor:default;">
+      <div class="cat-head"><span class="cat-name">${escHtml(r.name)}</span>
+        <span class="cat-count">${r.total>0 ? r.total+'回' : '未挑戦'}</span></div>
+      ${r.total>0 ? `
+        <div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${r.pct}%;background:${accColor(r.pct)}"></div></div>
+        <div class="cat-acc-text">正答率 ${r.pct}%</div>
+      ` : `<div class="cat-acc-text">まだ記録がありません</div>`}
+    </div>`;
+
+  const prescriptionHtml = weakest.length ? weakest.map(r=>{
+    const rx = WEAK_PRESCRIPTIONS[r.id];
+    if(!rx) return '';
+    const labHtml = rx.lab ? `<br>🥋 おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
+    return `<div class="quiz-card" style="margin-bottom:12px;">
+      <div class="quiz-cat-tag">🎯 ${escHtml(r.name)}（正答率 ${r.pct}%）</div>
+      <div style="font-size:13.5px;line-height:1.8;">${escHtml(rx.text)}${labHtml}</div>
+    </div>`;
+  }).join('') : `<div class="empty-sub">まだ十分な学習記録がありません。単語帳や過去問に取り組むとここに弱点が表示されます。</div>`;
+
+  const os = overallStats();
+  const timeHint = weakest.length
+    ? `苦手カテゴリ（${weakest.map(r=>r.name).join('・')}）に学習時間の6割程度を配分し、残りは全体の復習に回すのがおすすめです。`
+    : `まずは単語帳・過去問を一通り触って記録を作りましょう。記録が増えるほど診断が正確になります。`;
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🎯 弱点診断</div>
+      <div class="quiz-home-sub">単語帳と過去問の正答率をカテゴリ別に集計し、重点強化ポイントを提案します（模試の受験履歴があればそちらも加味されます）。</div>
+      <div class="overall-stats">
+        <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">過去問 累計解答数</span></div>
+        <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">過去問 全体正答率</span></div>
+      </div>
+
+      <div class="review-bar" style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(255,153,0,.06));border-color:rgba(56,189,248,.35);">
+        <div class="review-label">⏱ ${escHtml(timeHint)}</div>
+      </div>
+
+      <div style="font-family:var(--disp);font-size:14px;font-weight:700;margin:18px 0 10px;">重点強化カテゴリ</div>
+      ${prescriptionHtml}
+
+      <div style="font-family:var(--disp);font-size:14px;font-weight:700;margin:18px 0 10px;">カテゴリ別 正答率一覧</div>
+      <div class="category-grid">${answered.map(rowHtml).join('')}${unanswered.map(rowHtml).join('')}</div>
+    </div>`;
+}
+
+// ─── シナリオ問題（段階3-7）────────────────────────────────
+// 過去問クイズエンジンとは独立させ、既存の過去問フロー（実データが乗っている）に
+// 影響を与えないようにしている。カテゴリ体系はQCATを共用。
+function scenarioCatAccuracy(catId){
+  let r=0, w=0;
+  SCENARIO_Q.forEach((q)=>{
+    if(q.c!==catId) return;
+    const a = state.scenarioStats.answered[q.id];
+    if(a){ r+=a.r; w+=a.w; }
+  });
+  const total = r+w;
+  return total ? {pct:Math.round(r/total*100), total} : null;
+}
+function scenarioOverallStats(){
+  let r=0, w=0;
+  Object.values(state.scenarioStats.answered).forEach(a=>{ r+=a.r; w+=a.w; });
+  return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.scenarioStats.wrong.length};
+}
+function recordScenarioAnswer(q, isCorrect){
+  const id = q.id;
+  const st = state.scenarioStats;
+  if(!st.answered[id]) st.answered[id] = {r:0, w:0};
+  if(isCorrect){
+    st.answered[id].r++;
+    st.wrong = st.wrong.filter(x=>x!==id);
+  } else {
+    st.answered[id].w++;
+    if(!st.wrong.includes(id)) st.wrong.push(id);
+  }
+  save();
+}
+
+function renderScenarioHome(){
+  state.scenario.session = null;
+  const el = document.getElementById('scenario-layout');
+  if(!el) return;
+  const selCat = state.scenario.selectedCatId;
+  const os = scenarioOverallStats();
+
+  const catCardsHtml = QCAT.map(cat=>{
+    const n = SCENARIO_Q.filter(q=>q.c===cat.id).length;
+    if(n===0) return '';
+    const acc = scenarioCatAccuracy(cat.id);
+    const accHtml = acc
+      ? `<div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${acc.pct}%;background:${accColor(acc.pct)}"></div></div>
+         <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
+      : `<div class="cat-acc-text">未挑戦</div>`;
+    return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectScenarioCat('${cat.id}')" role="button" tabindex="0">
+      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      ${accHtml}
+    </div>`;
+  }).join('');
+
+  const totalQ = SCENARIO_Q.length;
+  const selName = selCat ? (QCAT.find(c=>c.id===selCat)||{}).name : '';
+  const selCount = selCat ? SCENARIO_Q.filter(q=>q.c===selCat).length : totalQ;
+
+  const statsHtml = os.answered > 0 ? `
+    <div class="overall-stats">
+      <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">累計解答数</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">全体正答率</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${os.wrongCount?'var(--ng)':'var(--ok)'}">${os.wrongCount}</span><span class="os-lbl">要復習の問題</span></div>
+    </div>` : '';
+
+  const reviewHtml = os.wrongCount > 0 ? `
+    <div class="review-bar">
+      <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えたシナリオ問題があります。正解するとリストから消えます。</div>
+      <button class="btn btn-secondary" onclick="startScenarioWrongReview()">🔥 苦手を復習する</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🧩 シナリオ問題チャレンジ</div>
+      <div class="quiz-home-sub">「〇〇したい場合、どのサービスを使うか」形式の実践的な問題です。カテゴリを選んで学習するか、全問ランダムで挑戦できます。全 ${totalQ} 問収録。</div>
+      ${statsHtml}
+      ${reviewHtml}
+      <div class="quiz-start-bar">
+        <div class="sel-cat-label">${selCat ? `<strong>${selName}</strong>（${selCount}問）を選択中` : `<strong>全カテゴリ</strong>（${totalQ}問）`}</div>
+        <select class="qcount-select" id="s-count">
+          <option value="10">10問</option>
+          <option value="20">20問</option>
+          <option value="all" selected>全問</option>
+        </select>
+        <button class="btn btn-secondary" onclick="startScenario('${selCat||'all'}',false)">📖 順番に</button>
+        <button class="btn btn-primary" onclick="startScenario('${selCat||'all'}',true)">🔀 ランダム</button>
+      </div>
+      <div class="category-grid">${catCardsHtml}</div>
+    </div>`;
+}
+function selectScenarioCat(catId){
+  state.scenario.selectedCatId = state.scenario.selectedCatId === catId ? null : catId;
+  renderScenarioHome();
+}
+function startScenario(catId, shuffle){
+  let qs = catId==='all' ? [...SCENARIO_Q] : SCENARIO_Q.filter(q=>q.c===catId);
+  if(shuffle) qs = qs.sort(()=>Math.random()-.5);
+  const countSel = document.getElementById('s-count');
+  const limit = countSel && countSel.value !== 'all' ? parseInt(countSel.value,10) : qs.length;
+  qs = qs.slice(0, limit);
+  launchScenarioSession(qs, {catId, shuffle, mode:'normal'});
+}
+function startScenarioWrongReview(){
+  const wrongSet = new Set(state.scenarioStats.wrong);
+  let qs = SCENARIO_Q.filter(q=>wrongSet.has(q.id));
+  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  qs = qs.sort(()=>Math.random()-.5);
+  launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+}
+function launchScenarioSession(qs, meta){
+  state.scenario.session = {questions:qs, index:0, correct:0, wrong:0, wrongThisRun:[], ...meta};
+  state.resultCtx = 'scenario';
+  renderScenarioSession();
+}
+function quitScenario(){
+  const sess = state.scenario.session;
+  if(sess && sess.index > 0 && !confirm('シナリオ問題を終了しますか？（途中の成績も記録されています）')) return;
+  renderScenarioHome();
+}
+function renderScenarioSession(){
+  const sess = state.scenario.session;
+  const el = document.getElementById('scenario-layout');
+  const q = sess.questions[sess.index];
+  const total = sess.questions.length;
+  const pct = Math.round(sess.index/total*100);
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🧩'};
+  const letters = ['A','B','C','D','E'];
+  const isMulti = Array.isArray(q.a);
+  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+
+  el.innerHTML = `
+    <div class="quiz-session">
+      <div class="qsess-header">
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🧩 ${catInfo.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;align-items:center;">
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ok)">${sess.correct}</span><div style="font-size:10.5px;color:var(--dim)">正解</div></div>
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ng)">${sess.wrong}</span><div style="font-size:10.5px;color:var(--dim)">不正解</div></div>
+        <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitScenario()">← 終了</button>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-cat-tag">🧩 ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
+        <div class="quiz-question">${escHtml(q.q)}</div>
+        <div class="quiz-choices" id="scenario-choices">
+          ${q.o.map((c,i)=>`
+            <button class="quiz-choice" id="sc-${i}" onclick="selectScenarioAnswer(${i})">
+              <div class="choice-letter">${letters[i]}</div>
+              <div>${escHtml(c)}</div>
+            </button>`).join('')}
+        </div>
+        ${isMulti ? `<div style="margin-top:13px;display:flex;justify-content:flex-end"><button class="btn btn-primary" id="scenario-multi-submit" style="width:auto;display:none" onclick="submitScenarioMulti()">回答する</button></div>` : ''}
+        <div class="quiz-explain" id="scenario-explain"></div>
+      </div>
+      <div class="quiz-nav" id="scenario-nav" style="display:none;">
+        <button class="btn btn-primary" style="width:auto" onclick="nextScenarioQuestion()" id="next-s-btn">次の問題 →</button>
+      </div>
+      <div class="kbd-hint"><kbd>A</kbd>〜<kbd>D</kbd> または <kbd>1</kbd>〜<kbd>4</kbd> で回答 ・ <kbd>Enter</kbd> で次へ</div>
+    </div>`;
+  if(isMulti) window._scenarioMultiSelected = [];
+  window._scenarioAnswered = false;
+}
+function selectScenarioAnswer(idx){
+  const sess = state.scenario.session;
+  if(!sess || window._scenarioAnswered) return;
+  const q = sess.questions[sess.index];
+  const isMulti = Array.isArray(q.a);
+  const btn = document.getElementById('sc-'+idx);
+  if(!btn || btn.disabled) return;
+
+  if(isMulti){
+    const pos2 = window._scenarioMultiSelected.indexOf(idx);
+    if(pos2===-1){ window._scenarioMultiSelected.push(idx); btn.classList.add('selected-multi'); }
+    else{ window._scenarioMultiSelected.splice(pos2,1); btn.classList.remove('selected-multi'); }
+    const submitBtn = document.getElementById('scenario-multi-submit');
+    if(submitBtn) submitBtn.style.display = window._scenarioMultiSelected.length>0 ? 'block' : 'none';
+    return;
+  }
+
+  window._scenarioAnswered = true;
+  document.querySelectorAll('#scenario-choices .quiz-choice').forEach(b=>b.disabled=true);
+  const correct = idx === q.a;
+  btn.classList.add(correct?'correct':'wrong');
+  if(!correct) document.getElementById('sc-'+q.a).classList.add('correct');
+  if(correct) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordScenarioAnswer(q, correct);
+  showScenarioExplain(q.e);
+}
+function submitScenarioMulti(){
+  const sess = state.scenario.session;
+  if(!sess || window._scenarioAnswered) return;
+  const q = sess.questions[sess.index];
+  window._scenarioAnswered = true;
+  const selected = window._scenarioMultiSelected.slice().sort((a,b)=>a-b);
+  const correct = q.a.slice().sort((a,b)=>a-b);
+  const isCorrect = JSON.stringify(selected) === JSON.stringify(correct);
+  document.querySelectorAll('#scenario-choices .quiz-choice').forEach(b=>b.disabled=true);
+  selected.forEach(i=>document.getElementById('sc-'+i).classList.add(isCorrect?'correct':'wrong'));
+  correct.forEach(i=>document.getElementById('sc-'+i).classList.add('correct'));
+  if(isCorrect) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordScenarioAnswer(q, isCorrect);
+  document.getElementById('scenario-multi-submit').style.display = 'none';
+  showScenarioExplain(q.e);
+}
+function showScenarioExplain(text){
+  const ex = document.getElementById('scenario-explain');
+  ex.textContent = text;
+  ex.classList.add('show');
+  const nav = document.getElementById('scenario-nav');
+  nav.style.display = 'flex';
+  const btn = document.getElementById('next-s-btn');
+  if(btn) btn.focus({preventScroll:true});
+}
+function nextScenarioQuestion(){
+  const sess = state.scenario.session;
+  sess.index++;
+  if(sess.index >= sess.questions.length){
+    state.lastScenarioRun = {catId:sess.catId, shuffle:sess.shuffle, mode:sess.mode, wrongThisRun:sess.wrongThisRun.slice()};
+    showResultScreen(sess.correct, sess.correct+sess.wrong);
+    state.scenario.session = null;
+  } else renderScenarioSession();
+}
+
+// ─── 複数選択問題（段階3-7追加分） ──────────────────────────
+// 択一式のQQ/SCENARIO_Qとは別の、チェックボックス複数選択専用エンジン。
+// 組み込み問題(MULTI_Q)はcardEdits/hiddenCardsと同じ要領でmultiQEdits/hiddenMultiQを
+// 重ねて編集・非表示にできる。customMultiQでユーザー独自の複数選択問題も追加できる。
+function buildMultiQuestions(){
+  const out = [];
+  MULTI_Q.forEach(q=>{
+    if((state.hiddenMultiQ||[]).includes(q.id)) return;
+    const ov = (state.multiQEdits||{})[q.id];
+    out.push(ov ? Object.assign({}, q, ov, {builtin:true}) : Object.assign({}, q, {builtin:true}));
+  });
+  (state.customMultiQ||[]).forEach(q=>out.push(Object.assign({}, q, {builtin:false})));
+  return out;
+}
+function multiCatAccuracy(catId){
+  let r=0, w=0;
+  buildMultiQuestions().forEach((q)=>{
+    if(q.c!==catId) return;
+    const a = state.multiStats.answered[q.id];
+    if(a){ r+=a.r; w+=a.w; }
+  });
+  const total = r+w;
+  return total ? {pct:Math.round(r/total*100), total} : null;
+}
+function multiOverallStats(){
+  let r=0, w=0;
+  Object.values(state.multiStats.answered).forEach(a=>{ r+=a.r; w+=a.w; });
+  return {answered:r+w, pct:(r+w)?Math.round(r/(r+w)*100):0, wrongCount:state.multiStats.wrong.length};
+}
+function recordMultiAnswer(q, isCorrect){
+  const id = q.id;
+  const st = state.multiStats;
+  if(!st.answered[id]) st.answered[id] = {r:0, w:0};
+  if(isCorrect){
+    st.answered[id].r++;
+    st.wrong = st.wrong.filter(x=>x!==id);
+  } else {
+    st.answered[id].w++;
+    if(!st.wrong.includes(id)) st.wrong.push(id);
+  }
+  save();
+}
+
+function renderMultiHome(){
+  state.multi.session = null;
+  const el = document.getElementById('multi-layout');
+  if(!el) return;
+  const all = buildMultiQuestions();
+  const selCat = state.multi.selectedCatId;
+  const os = multiOverallStats();
+  const hiddenCount = (state.hiddenMultiQ||[]).length;
+
+  const catCardsHtml = QCAT.map(cat=>{
+    const n = all.filter(q=>q.c===cat.id).length;
+    if(n===0) return '';
+    const acc = multiCatAccuracy(cat.id);
+    const accHtml = acc
+      ? `<div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${acc.pct}%;background:${accColor(acc.pct)}"></div></div>
+         <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
+      : `<div class="cat-acc-text">未挑戦</div>`;
+    return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectMultiCat('${cat.id}')" role="button" tabindex="0">
+      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      ${accHtml}
+    </div>`;
+  }).join('');
+
+  const totalQ = all.length;
+  const selName = selCat ? (QCAT.find(c=>c.id===selCat)||{}).name : '';
+  const selCount = selCat ? all.filter(q=>q.c===selCat).length : totalQ;
+
+  const statsHtml = os.answered > 0 ? `
+    <div class="overall-stats">
+      <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">累計解答数</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">全体正答率</span></div>
+      <div class="os-chip"><span class="os-num" style="color:${os.wrongCount?'var(--ng)':'var(--ok)'}">${os.wrongCount}</span><span class="os-lbl">要復習の問題</span></div>
+    </div>` : '';
+
+  const reviewHtml = os.wrongCount > 0 ? `
+    <div class="review-bar">
+      <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えた複数選択問題があります。正解するとリストから消えます。</div>
+      <button class="btn btn-secondary" onclick="startMultiWrongReview()">🔥 苦手を復習する</button>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">🗳️ 複数選択問題チャレンジ</div>
+      <div class="quiz-home-sub">本番試験にある「〇つ選択してください」形式の問題です。チェックボックスで複数選択して回答します。全 ${totalQ} 問収録。</div>
+      ${statsHtml}
+      ${reviewHtml}
+      <div class="quiz-start-bar">
+        <div class="sel-cat-label">${selCat ? `<strong>${selName}</strong>（${selCount}問）を選択中` : `<strong>全カテゴリ</strong>（${totalQ}問）`}</div>
+        <select class="qcount-select" id="m-count">
+          <option value="10">10問</option>
+          <option value="20">20問</option>
+          <option value="all" selected>全問</option>
+        </select>
+        <button class="btn btn-secondary" onclick="startMulti('${selCat||'all'}',false)">📖 順番に</button>
+        <button class="btn btn-primary" onclick="startMulti('${selCat||'all'}',true)">🔀 ランダム</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button class="btn btn-secondary" style="width:auto" onclick="openMultiForm()">＋ 問題を追加</button>
+        <button class="btn btn-secondary" style="width:auto" onclick="openHiddenMultiQ()">🗂 非表示（${hiddenCount}）</button>
+      </div>
+      <div class="category-grid">${catCardsHtml}</div>
+    </div>
+
+    <div class="add-card-form" id="multi-form">
+      <div class="form-group"><label>問題文</label><textarea id="mf-q" placeholder="例: 〜な場合、正しいものを選択してください。（2つ選択してください。）" style="min-height:60px;"></textarea></div>
+      <div class="form-group"><label>カテゴリ</label>
+        <select id="mf-cat">${QCAT.map(c=>`<option value="${c.id}">${escHtml(c.name)}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label>正解の数</label>
+        <select id="mf-mode" onchange="document.getElementById('mf-n-row').style.display=this.value==='fixed'?'block':'none'">
+          <option value="fixed">〇つ選択してください（数を指定）</option>
+          <option value="all">すべて選択してください（数を明示しない）</option>
+        </select>
+      </div>
+      <div class="form-group" id="mf-n-row"><label>正解の数</label><input type="text" id="mf-n" placeholder="例: 2"></div>
+      <div class="form-group"><label>選択肢（正解にはチェック。空欄の行は無視されます。最大6つ）</label>
+        ${[0,1,2,3,4,5].map(i=>`
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input type="checkbox" id="mf-correct-${i}" style="width:auto;flex-shrink:0;">
+            <input type="text" id="mf-opt-${i}" placeholder="選択肢${String.fromCharCode(65+i)}" style="flex:1;">
+          </div>`).join('')}
+      </div>
+      <div class="form-group"><label>解説</label><textarea id="mf-e" placeholder="正解の理由の解説"></textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="closeMultiForm()">キャンセル</button>
+        <button class="btn btn-primary" onclick="submitMultiForm()" style="width:auto" id="mf-submit-btn">追加</button>
+      </div>
+    </div>
+
+    <div class="cs-card" id="hidden-multi-list" style="display:none;"></div>`;
+}
+function selectMultiCat(catId){
+  state.multi.selectedCatId = state.multi.selectedCatId === catId ? null : catId;
+  renderMultiHome();
+}
+function startMulti(catId, shuffle){
+  let qs = buildMultiQuestions();
+  qs = catId==='all' ? qs : qs.filter(q=>q.c===catId);
+  if(shuffle) qs = qs.sort(()=>Math.random()-.5);
+  const countSel = document.getElementById('m-count');
+  const limit = countSel && countSel.value !== 'all' ? parseInt(countSel.value,10) : qs.length;
+  qs = qs.slice(0, limit);
+  if(!qs.length){ toast('問題がありません','error'); return; }
+  launchMultiSession(qs, {catId, shuffle, mode:'normal'});
+}
+function startMultiWrongReview(){
+  const wrongSet = new Set(state.multiStats.wrong);
+  let qs = buildMultiQuestions().filter(q=>wrongSet.has(q.id));
+  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  qs = qs.sort(()=>Math.random()-.5);
+  launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+}
+function launchMultiSession(qs, meta){
+  state.multi.session = {questions:qs, index:0, correct:0, wrong:0, wrongThisRun:[], ...meta};
+  state.resultCtx = 'multi';
+  renderMultiSession();
+}
+function quitMulti(){
+  const sess = state.multi.session;
+  if(sess && sess.index > 0 && !confirm('複数選択問題を終了しますか？（途中の成績も記録されています）')) return;
+  renderMultiHome();
+}
+function renderMultiSession(){
+  const sess = state.multi.session;
+  const el = document.getElementById('multi-layout');
+  const q = sess.questions[sess.index];
+  const total = sess.questions.length;
+  const pct = Math.round(sess.index/total*100);
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🗳️'};
+  const letters = ['A','B','C','D','E','F'];
+  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const countHint = q.n ? `（${q.n}つ選択してください）` : '（正しいものをすべて選択してください）';
+
+  el.innerHTML = `
+    <div class="quiz-session">
+      <div class="qsess-header">
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🗳️ ${catInfo.name}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:12px;align-items:center;">
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ok)">${sess.correct}</span><div style="font-size:10.5px;color:var(--dim)">正解</div></div>
+        <div style="text-align:center"><span style="font-family:var(--disp);font-size:16px;font-weight:700;color:var(--ng)">${sess.wrong}</span><div style="font-size:10.5px;color:var(--dim)">不正解</div></div>
+        <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitMulti()">← 終了</button>
+      </div>
+      <div class="quiz-card">
+        <div class="quiz-cat-tag">🗳️ ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">⚠️ 要確認</span>':''}</div>
+        <div class="quiz-question">${escHtml(q.q)}</div>
+        <div class="quiz-choices" id="multi-choices">
+          ${q.o.map((c,i)=>`
+            <button class="quiz-choice" id="mc-${i}" onclick="toggleMultiChoice(${i})">
+              <div class="choice-letter">${letters[i]}</div>
+              <div>${escHtml(c)}</div>
+            </button>`).join('')}
+        </div>
+        <div style="margin-top:13px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" id="multi-answer-submit" style="width:auto;" onclick="submitMultiAnswer()">回答する</button>
+        </div>
+        <div class="quiz-explain" id="multi-explain"></div>
+        <div style="text-align:center;margin-top:10px;">
+          <button class="card-action-btn" onclick="editMultiQuestion('${escAttr(q.id)}')">✏️ 編集</button>
+          <button class="card-action-btn del" onclick="deleteMultiQuestion('${escAttr(q.id)}')">🗑 削除</button>
+        </div>
+      </div>
+      <div class="quiz-nav" id="multi-nav" style="display:none;">
+        <button class="btn btn-primary" style="width:auto" onclick="nextMultiQuestion()" id="next-m-btn">次の問題 →</button>
+      </div>
+    </div>`;
+  window._multiSelected = [];
+  window._multiAnswered = false;
+}
+function toggleMultiChoice(idx){
+  if(window._multiAnswered) return;
+  const btn = document.getElementById('mc-'+idx);
+  if(!btn) return;
+  const pos = window._multiSelected.indexOf(idx);
+  if(pos===-1){ window._multiSelected.push(idx); btn.classList.add('selected-multi'); }
+  else{ window._multiSelected.splice(pos,1); btn.classList.remove('selected-multi'); }
+}
+function submitMultiAnswer(){
+  const sess = state.multi.session;
+  if(!sess || window._multiAnswered) return;
+  if(window._multiSelected.length === 0){ toast('少なくとも1つ選択してください','error'); return; }
+  const q = sess.questions[sess.index];
+  window._multiAnswered = true;
+  const selected = window._multiSelected.slice().sort((a,b)=>a-b);
+  const correct = q.a.slice().sort((a,b)=>a-b);
+  const isCorrect = JSON.stringify(selected) === JSON.stringify(correct);
+  document.querySelectorAll('#multi-choices .quiz-choice').forEach(b=>b.disabled=true);
+  selected.forEach(i=>document.getElementById('mc-'+i).classList.add(isCorrect?'correct':(correct.includes(i)?'correct':'wrong')));
+  correct.forEach(i=>document.getElementById('mc-'+i).classList.add('correct'));
+  if(isCorrect) sess.correct++; else { sess.wrong++; sess.wrongThisRun.push(q.id); }
+  recordMultiAnswer(q, isCorrect);
+  document.getElementById('multi-answer-submit').style.display = 'none';
+  const ex = document.getElementById('multi-explain');
+  ex.textContent = q.e;
+  ex.classList.add('show');
+  const nav = document.getElementById('multi-nav');
+  nav.style.display = 'flex';
+  const btn = document.getElementById('next-m-btn');
+  if(btn) btn.focus({preventScroll:true});
+}
+function nextMultiQuestion(){
+  const sess = state.multi.session;
+  sess.index++;
+  if(sess.index >= sess.questions.length){
+    state.lastMultiRun = {catId:sess.catId, shuffle:sess.shuffle, mode:sess.mode, wrongThisRun:sess.wrongThisRun.slice()};
+    showResultScreen(sess.correct, sess.correct+sess.wrong);
+    state.multi.session = null;
+  } else renderMultiSession();
+}
+
+// ─── 複数選択問題：編集・追加・非表示 ───────────────────────
+let editingMultiQ = null;   // null | {kind:'builtin', id} | {kind:'custom', id}
+function openMultiForm(){
+  editingMultiQ = null;
+  const f = document.getElementById('multi-form');
+  if(!f) return;
+  f.classList.add('open');
+  document.getElementById('mf-submit-btn').textContent = '追加';
+  document.getElementById('mf-q').focus();
+}
+function closeMultiForm(){
+  editingMultiQ = null;
+  const f = document.getElementById('multi-form');
+  if(f) f.classList.remove('open');
+}
+function submitMultiForm(){
+  const qText = document.getElementById('mf-q').value.trim();
+  const cat = document.getElementById('mf-cat').value;
+  const mode = document.getElementById('mf-mode').value;
+  const nVal = parseInt(document.getElementById('mf-n').value, 10);
+  const eText = document.getElementById('mf-e').value.trim();
+  const opts = [], correct = [];
+  for(let i=0;i<6;i++){
+    const t = document.getElementById('mf-opt-'+i).value.trim();
+    if(!t) continue;
+    const isCorrect = document.getElementById('mf-correct-'+i).checked;
+    if(isCorrect) correct.push(opts.length);
+    opts.push(t);
+  }
+  if(!qText || opts.length < 2){ toast('問題文と2つ以上の選択肢を入力してください','error'); return; }
+  if(correct.length === 0){ toast('正解を少なくとも1つチェックしてください','error'); return; }
+  const n = mode==='fixed' && nVal ? nVal : null;
+  if(n && correct.length !== n){ toast(`正解の数（${n}）とチェックした数（${correct.length}）が一致しません`,'error'); return; }
+
+  if(editingMultiQ && editingMultiQ.kind==='builtin'){
+    if(!state.multiQEdits) state.multiQEdits = {};
+    state.multiQEdits[editingMultiQ.id] = {q:qText, c:cat, n, o:opts, a:correct, e:eText};
+    toast('問題を更新しました ✓');
+  } else if(editingMultiQ && editingMultiQ.kind==='custom'){
+    const item = (state.customMultiQ||[]).find(x=>x.id===editingMultiQ.id);
+    if(item) Object.assign(item, {q:qText, c:cat, n, o:opts, a:correct, e:eText});
+    toast('問題を更新しました ✓');
+  } else {
+    if(!state.customMultiQ) state.customMultiQ = [];
+    state.customMultiQ.push({id:'cm::'+Date.now(), q:qText, c:cat, n, o:opts, a:correct, e:eText});
+    toast('問題を追加しました ✓');
+  }
+  save();
+  closeMultiForm();
+  renderMultiHome();
+}
+function editMultiQuestion(id){
+  const q = buildMultiQuestions().find(x=>x.id===id);
+  if(!q) return;
+  if(state.multi.session) renderMultiHome();   // セッション画面には編集フォームがないため、先にホーム画面へ戻す
+  const f = document.getElementById('multi-form');
+  if(f) f.classList.add('open');
+  editingMultiQ = {kind:q.builtin?'builtin':'custom', id:q.id};
+  document.getElementById('mf-q').value = q.q;
+  document.getElementById('mf-cat').value = q.c;
+  document.getElementById('mf-mode').value = q.n ? 'fixed' : 'all';
+  document.getElementById('mf-n-row').style.display = q.n ? 'block' : 'none';
+  document.getElementById('mf-n').value = q.n || '';
+  q.o.forEach((t,i)=>{
+    document.getElementById('mf-opt-'+i).value = t;
+    document.getElementById('mf-correct-'+i).checked = q.a.includes(i);
+  });
+  for(let i=q.o.length;i<6;i++){
+    document.getElementById('mf-opt-'+i).value = '';
+    document.getElementById('mf-correct-'+i).checked = false;
+  }
+  document.getElementById('mf-submit-btn').textContent = '更新';
+}
+function deleteMultiQuestion(id){
+  if(!confirm('この問題を削除しますか？')) return;
+  const q = buildMultiQuestions().find(x=>x.id===id);
+  if(!q) return;
+  if(q.builtin){
+    if(!state.hiddenMultiQ) state.hiddenMultiQ = [];
+    if(!state.hiddenMultiQ.includes(id)) state.hiddenMultiQ.push(id);
+    toast('問題を非表示にしました（🗂 非表示から復活できます）');
+  } else {
+    state.customMultiQ = (state.customMultiQ||[]).filter(x=>x.id!==id);
+    delete state.multiStats.answered[id];
+    state.multiStats.wrong = state.multiStats.wrong.filter(x=>x!==id);
+    toast('削除しました');
+  }
+  save();
+  renderMultiHome();
+}
+function renderHiddenMultiQList(){
+  const hidden = state.hiddenMultiQ || [];
+  const items = hidden.map(id=>MULTI_Q.find(q=>q.id===id)).filter(Boolean);
+  const box = document.getElementById('hidden-multi-list');
+  if(!box) return;
+  box.innerHTML = `<h3>🗂 非表示にした複数選択問題</h3>` + (items.length ? items.map(q=>`
+    <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;">
+      <div style="flex:1;font-size:13px;">${escHtml(q.q.slice(0,60))}${q.q.length>60?'…':''}</div>
+      <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="restoreHiddenMultiQ('${escAttr(q.id)}')">復活</button>
+    </div>`).join('') : '<div style="color:var(--dim);font-size:13px;">非表示の問題はありません</div>')
+    + `<div class="form-actions" style="margin-top:10px;"><button class="btn btn-secondary" onclick="closeHiddenMultiQ()">閉じる</button></div>`;
+}
+function openHiddenMultiQ(){
+  const box = document.getElementById('hidden-multi-list');
+  if(!box) return;
+  renderHiddenMultiQList();
+  box.style.display = 'block';
+}
+function closeHiddenMultiQ(){
+  const box = document.getElementById('hidden-multi-list');
+  if(box) box.style.display = 'none';
+}
+function restoreHiddenMultiQ(id){
+  state.hiddenMultiQ = (state.hiddenMultiQ||[]).filter(x=>x!==id);
+  save();
+  renderHiddenMultiQList();
+}
+
+// ─── チートシート（段階3-8） ───────────────────────────────
+const VPC_DIAGRAM_HTML = `
+  <div class="vpc-diagram">
+    <div class="vpc-box vpc-vpc">
+      <div class="vpc-label">🌐 VPC（例: 10.0.0.0/16）</div>
+      <div class="vpc-box vpc-pub">
+        <div class="vpc-label">パブリックサブネット（IGWへのルートあり）</div>
+        <span class="vpc-item">🌍 IGW</span>
+        <span class="vpc-item">➡️ NAT Gateway</span>
+        <span class="vpc-item">🖥️ 踏み台/ALB</span>
+      </div>
+      <div class="vpc-box vpc-priv">
+        <div class="vpc-label">プライベートサブネット（IGWへのルートなし）</div>
+        <span class="vpc-item">🖥️ EC2（アプリ）</span>
+        <span class="vpc-item">🗄️ RDS</span>
+        <span class="vpc-item">⚙️ SG（ステートフル）</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;color:var(--dim);">
+      外部→IGW→ALB（パブリック）／ プライベートのEC2はNAT Gateway経由でのみ外向き通信 ／ サブネット境界にはNACL（ステートレス）も併用
+    </div>
+  </div>`;
+
+function renderCheatsheet(){
+  const el = document.getElementById('cheatsheet-container');
+  if(!el) return;
+  const sheetsHtml = CHEATSHEETS.map(cs => `
+    <div class="cs-card">
+      <h3>${escHtml(cs.title)}</h3>
+      <div class="cmp-table-wrap">
+        <table class="cmp-table">
+          <thead><tr>${cs.headers.map(h=>`<th>${escHtml(h)}</th>`).join('')}</tr></thead>
+          <tbody>${cs.rows.map(r=>`<tr>${r.map(c=>`<td>${escHtml(c)}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="quiz-home">
+      <div class="quiz-home-title">📋 サービス比較チートシート</div>
+      <div class="quiz-home-sub">試験で混同しやすいサービス群を並べて比較できます。内容は固定（静的コンテンツ）です。</div>
+      <div class="cs-card">
+        <h3>🖼️ VPC構成図（基本パターン）</h3>
+        ${VPC_DIAGRAM_HTML}
+      </div>
+      ${sheetsHtml}
+    </div>`;
+}
 
 // ─── QUIZ HOME ────────────────────────────────────────────
 function renderQuizHome(){
@@ -868,6 +1635,24 @@ function showResultScreen(correct, total){
   setTimeout(()=>{ c.style.strokeDashoffset = 289 - (289*pct/100); }, 120);
 }
 function restartResult(){
+  if(state.resultCtx === 'scenario'){
+    const run = state.lastScenarioRun;
+    showScreen('notebook-screen'); switchTab('scenario');
+    if(run){
+      if(run.mode==='review') startScenarioWrongReview();
+      else { renderScenarioHome(); startScenario(run.catId||'all', run.shuffle); }
+    } else renderScenarioHome();
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    const run = state.lastMultiRun;
+    showScreen('notebook-screen'); switchTab('multi');
+    if(run){
+      if(run.mode==='review') startMultiWrongReview();
+      else { renderMultiHome(); startMulti(run.catId||'all', run.shuffle); }
+    } else renderMultiHome();
+    return;
+  }
   const run = state.lastQuizRun;
   showScreen('notebook-screen'); switchTab('quiz');
   if(run){
@@ -876,6 +1661,24 @@ function restartResult(){
   } else renderQuizHome();
 }
 function reviewWrongFromResult(){
+  if(state.resultCtx === 'scenario'){
+    const run = state.lastScenarioRun;
+    if(!run || !run.wrongThisRun.length) return;
+    showScreen('notebook-screen'); switchTab('scenario');
+    const set = new Set(run.wrongThisRun);
+    const qs = SCENARIO_Q.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
+    launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    const run = state.lastMultiRun;
+    if(!run || !run.wrongThisRun.length) return;
+    showScreen('notebook-screen'); switchTab('multi');
+    const set = new Set(run.wrongThisRun);
+    const qs = buildMultiQuestions().filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
+    launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+    return;
+  }
   const run = state.lastQuizRun;
   if(!run || !run.wrongThisRun.length) return;
   showScreen('notebook-screen'); switchTab('quiz');
@@ -884,6 +1687,14 @@ function reviewWrongFromResult(){
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
 function backFromResult(){
+  if(state.resultCtx === 'scenario'){
+    showScreen('notebook-screen'); switchTab('scenario'); renderScenarioHome();
+    return;
+  }
+  if(state.resultCtx === 'multi'){
+    showScreen('notebook-screen'); switchTab('multi'); renderMultiHome();
+    return;
+  }
   showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
 }
 
@@ -895,6 +1706,7 @@ document.addEventListener('keydown', e=>{
 
   const fcActive = document.getElementById('tabcontent-fc').classList.contains('active');
   const quizActive = document.getElementById('tabcontent-quiz').classList.contains('active');
+  const scenarioActive = document.getElementById('tabcontent-scenario').classList.contains('active');
 
   if(fcActive){
     if(e.code==='Space'){ e.preventDefault(); fcFlip(); }
@@ -914,6 +1726,17 @@ document.addEventListener('keydown', e=>{
     if(idx!==undefined && !window._quizAnswered){
       const q = state.quiz.session.questions[state.quiz.session.index];
       if(idx < q.o.length) selectAnswer(idx);
+    }
+    return;
+  }
+
+  if(scenarioActive && state.scenario.session){
+    if(e.key==='Enter' && window._scenarioAnswered){ e.preventDefault(); nextScenarioQuestion(); return; }
+    const map = {'a':0,'b':1,'c':2,'d':3,'e':4,'1':0,'2':1,'3':2,'4':3,'5':4};
+    const idx = map[e.key.toLowerCase()];
+    if(idx!==undefined && !window._scenarioAnswered){
+      const q = state.scenario.session.questions[state.scenario.session.index];
+      if(idx < q.o.length) selectScenarioAnswer(idx);
     }
   }
 });

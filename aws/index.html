@@ -8,16 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css?v=1">
 <style>
-:root{
-  --bg:#0B1220;--bg2:#111A2E;--card:#17233C;--card2:#1E2C4A;
-  --orange:#FF9900;--orange-hi:#FFB84D;--blue:#38BDF8;
-  --text:#EDF2FB;--dim:#93A5C1;--line:#24314F;
-  --ok:#2DD4BF;--ng:#FF6B6B;
-  --r:16px;--rs:10px;
-  --disp:'Space Grotesk','Noto Sans JP',sans-serif;
-  --body:'Noto Sans JP',sans-serif;
-}
 *{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-text-size-adjust:100%;}
 body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;}
@@ -149,6 +141,21 @@ textarea{resize:vertical;min-height:88px;}
 .review-label strong{color:var(--ng);}
 
 .category-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
+
+.cs-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin-bottom:16px;}
+.cs-card h3{font-family:var(--disp);font-size:15px;font-weight:700;margin-bottom:12px;}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+.cmp-table th,.cmp-table td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;line-height:1.5;}
+.cmp-table th{background:var(--card2);font-weight:700;color:var(--orange);white-space:nowrap;}
+.cmp-table td:first-child{font-weight:700;color:var(--dim);white-space:nowrap;background:rgba(255,255,255,.02);}
+.cmp-table-wrap{overflow-x:auto;}
+.vpc-diagram{border:1px dashed var(--line);border-radius:var(--rs);padding:18px;font-size:11.5px;}
+.vpc-box{border-radius:8px;padding:10px 12px;margin:6px 0;}
+.vpc-vpc{border:2px solid var(--blue);background:rgba(56,189,248,.06);}
+.vpc-pub{border:1px solid var(--orange);background:rgba(255,153,0,.08);margin:8px;}
+.vpc-priv{border:1px solid var(--ok);background:rgba(45,212,191,.08);margin:8px;}
+.vpc-label{font-weight:700;font-family:var(--disp);font-size:10.5px;margin-bottom:6px;}
+.vpc-item{display:inline-block;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:5px 10px;margin:3px;font-size:11px;}
 .category-card{background:var(--card);border:1px solid var(--line);border-radius:var(--rs);cursor:pointer;padding:14px 16px;transition:all .2s;position:relative;overflow:hidden;}
 .category-card:hover{border-color:var(--orange);transform:translateY(-2px);}
 .category-card.active-cat{border-color:var(--orange);background:rgba(255,153,0,.08);}
@@ -306,6 +313,10 @@ textarea{resize:vertical;min-height:88px;}
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab">📇 単語帳</button>
     <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab">📝 過去問（4択）</button>
+    <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab">🗳️ 複数選択問題</button>
+    <button class="tab-btn" onclick="switchTab('scenario')" id="tab-scenario" role="tab">🧩 シナリオ問題</button>
+    <button class="tab-btn" onclick="switchTab('weak')" id="tab-weak" role="tab">🎯 弱点診断</button>
+    <button class="tab-btn" onclick="switchTab('cheatsheet')" id="tab-cheatsheet" role="tab">📋 チートシート</button>
     <a class="tab-btn tab-link" href="mock-exam.html">🎓 模擬試験</a>
     <a class="tab-btn tab-link" href="dojo.html">🥋 ハンズオン道場</a>
   </div>
@@ -314,6 +325,18 @@ textarea{resize:vertical;min-height:88px;}
   </div>
   <div class="tab-content" id="tabcontent-quiz">
     <div class="quiz-layout" id="quiz-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-multi">
+    <div class="quiz-layout" id="multi-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-scenario">
+    <div class="quiz-layout" id="scenario-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-weak">
+    <div class="quiz-layout" id="weak-container"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-cheatsheet">
+    <div class="quiz-layout" id="cheatsheet-container"></div>
   </div>
 </div>
 
@@ -354,11 +377,11 @@ textarea{resize:vertical;min-height:88px;}
   </div>
 </div>
 
-<script src="store.js?v=9"></script>
+<script src="store.js?v=10"></script>
 <script>window.SAFESTORE_HOME_DOC = 'notebook'; window.SAFESTORE_STANDALONE = true;</script>
-<script src="safe-store.js?v=9"></script>
-<script src="data.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="safe-store.js?v=10"></script>
+<script src="data.js?v=10"></script>
+<script src="app.js?v=10"></script>
 <script>
 /* ============================================================
    ブート処理。保存先は app/notebook（本番・単独運用）。
@@ -375,6 +398,11 @@ function adoptData(d){
   state.hiddenCards = d.hiddenCards || [];
   state.fcProgress  = d.fcProgress  || {};
   state.fcLastKey   = d.fcLastKey   || null;
+  state.scenarioStats = d.scenarioStats || {answered:{}, wrong:[]};
+  state.multiStats   = d.multiStats   || {answered:{}, wrong:[]};
+  state.multiQEdits  = d.multiQEdits  || {};
+  state.hiddenMultiQ = d.hiddenMultiQ || [];
+  state.customMultiQ = d.customMultiQ || [];
 
   // 旧cardStats（'k'/'a'方式・キーが「カテゴリ::b::番号」形式）からの移行
   if(!d.fcStats && d.cardStats){
@@ -417,7 +445,12 @@ function snapshotState(){
     cardEdits:   state.cardEdits,
     hiddenCards: state.hiddenCards,
     fcProgress:  state.fcProgress,
-    fcLastKey:   state.fcLastKey
+    fcLastKey:   state.fcLastKey,
+    scenarioStats: state.scenarioStats,
+    multiStats:   state.multiStats,
+    multiQEdits:  state.multiQEdits,
+    hiddenMultiQ: state.hiddenMultiQ,
+    customMultiQ: state.customMultiQ
   };
 }
 

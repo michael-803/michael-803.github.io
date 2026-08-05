@@ -901,6 +901,8 @@ function renderScenarioSession(){
   const letters = ['A','B','C','D','E'];
   const isMulti = Array.isArray(q.a);
   const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  // 選択肢の表示順を毎回シャッフル（解答するまでは固定）。判定は常に元のインデックス基準。
+  const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
@@ -920,10 +922,10 @@ function renderScenarioSession(){
         <div class="quiz-cat-tag">🧩 ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="scenario-choices">
-          ${q.o.map((c,i)=>`
-            <button class="quiz-choice" id="sc-${i}" onclick="selectScenarioAnswer(${i})">
-              <div class="choice-letter">${letters[i]}</div>
-              <div>${escHtml(c)}</div>
+          ${displayOrder.map((origIdx,pos)=>`
+            <button class="quiz-choice" id="sc-${origIdx}" onclick="selectScenarioAnswer(${origIdx})">
+              <div class="choice-letter">${letters[pos]}</div>
+              <div>${escHtml(q.o[origIdx])}</div>
             </button>`).join('')}
         </div>
         ${isMulti ? `<div style="margin-top:13px;display:flex;justify-content:flex-end"><button class="btn btn-primary" id="scenario-multi-submit" style="width:auto;display:none" onclick="submitScenarioMulti()">回答する</button></div>` : ''}
@@ -1002,6 +1004,15 @@ function nextScenarioQuestion(){
 // 択一式のQQ/SCENARIO_Qとは別の、チェックボックス複数選択専用エンジン。
 // 組み込み問題(MULTI_Q)はcardEdits/hiddenCardsと同じ要領でmultiQEdits/hiddenMultiQを
 // 重ねて編集・非表示にできる。customMultiQでユーザー独自の複数選択問題も追加できる。
+// Fisher-Yates。[0..n-1]をシャッフルした配列を返す（選択肢の表示順シャッフル用）。
+function shuffleIndices(n){
+  const arr = Array.from({length:n}, (_,i)=>i);
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 function buildMultiQuestions(){
   const out = [];
   MULTI_Q.forEach(q=>{
@@ -1174,6 +1185,11 @@ function renderMultiSession(){
   const letters = ['A','B','C','D','E','F'];
   const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
   const countHint = q.n ? `（${q.n}つ選択してください）` : '（正しいものをすべて選択してください）';
+  // 選択肢の表示順を毎回シャッフル（解答するまでは固定・renderMultiSessionは新しい設問に
+  // 移るときだけ呼ばれるため、回答中に並びが変わることはない）。
+  // 正誤判定・DOM要素IDは常に元のインデックス基準（q.o/q.aのインデックス）で行い、
+  // 表示位置には依存しない。displayOrder[表示位置] = 元のインデックス。
+  const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
@@ -1193,10 +1209,10 @@ function renderMultiSession(){
         <div class="quiz-cat-tag">🗳️ ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">⚠️ 要確認</span>':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="multi-choices">
-          ${q.o.map((c,i)=>`
-            <button class="quiz-choice" id="mc-${i}" onclick="toggleMultiChoice(${i})">
-              <div class="choice-letter">${letters[i]}</div>
-              <div>${escHtml(c)}</div>
+          ${displayOrder.map((origIdx,pos)=>`
+            <button class="quiz-choice" id="mc-${origIdx}" onclick="toggleMultiChoice(${origIdx})">
+              <div class="choice-letter">${letters[pos]}</div>
+              <div>${escHtml(q.o[origIdx])}</div>
             </button>`).join('')}
         </div>
         <div style="margin-top:13px;display:flex;justify-content:flex-end">
@@ -1518,6 +1534,8 @@ function renderQuizSession(){
   const letters = ['A','B','C','D','E'];
   const isMulti = Array.isArray(q.a);
   const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  // 選択肢の表示順を毎回シャッフル（解答するまでは固定）。判定は常に元のインデックス基準。
+  const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
@@ -1537,10 +1555,10 @@ function renderQuizSession(){
         <div class="quiz-cat-tag">${catInfo.icon} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="quiz-choices">
-          ${q.o.map((c,i)=>`
-            <button class="quiz-choice" id="qc-${i}" onclick="selectAnswer(${i})">
-              <div class="choice-letter">${letters[i]}</div>
-              <div>${escHtml(c)}</div>
+          ${displayOrder.map((origIdx,pos)=>`
+            <button class="quiz-choice" id="qc-${origIdx}" onclick="selectAnswer(${origIdx})">
+              <div class="choice-letter">${letters[pos]}</div>
+              <div>${escHtml(q.o[origIdx])}</div>
             </button>`).join('')}
         </div>
         ${isMulti ? `<div style="margin-top:13px;display:flex;justify-content:flex-end"><button class="btn btn-primary" id="multi-submit" style="width:auto;display:none" onclick="submitMulti()">回答する</button></div>` : ''}

@@ -319,7 +319,7 @@ table.cmp th{background:var(--navy-2);font-weight:700;font-size:12.5px}
 
 /* 完了画面 */
 .complete-box{text-align:center;padding:36px 20px}
-.complete-box .big{font-size:56px;line-height:1;margin-bottom:12px}
+.complete-box .big{font-size:56px;line-height:1;margin-bottom:12px;color:var(--accent)}
 .complete-box h2{font-family:var(--font-display);font-weight:900;font-size:24px;margin-bottom:8px}
 .footer-note{max-width:1240px;margin:0 auto;padding:0 20px 40px;color:var(--ink-soft);font-size:12px;text-align:center}
 .deck-link{color:inherit;opacity:.7;font-size:12px;text-decoration:none;border:1px solid currentColor;border-radius:16px;padding:4px 12px;margin-right:10px;white-space:nowrap;transition:opacity .2s}
@@ -368,6 +368,7 @@ table.cmp th{background:var(--navy-2);font-weight:700;font-size:12.5px}
   .sim-btn{width:100%}
 }
 </style>
+<script src="../../_engine/icons.js?v=1"></script>
 </head>
 <body>
 
@@ -1315,7 +1316,7 @@ function renderHome(){
       <div class="belt-track" aria-label="帯の進捗">
         ${BELTS.map(b=>`<span class="belt-seg" style="background:${done>=b.n?b.c:"rgba(255,255,255,.06)"};${done>=b.n?"":"opacity:.5"}"><span class="bl">${b.name}</span></span>`).join("")}
       </div>
-      <p style="margin-top:34px;font-size:13px;color:#f1a33c;font-weight:700">現在の段位:${belt.name}(${done}/${LABS.length} Lab修了)${done===LABS.length?" — 免許皆伝!🥋":""}</p>
+      <p style="margin-top:34px;font-size:13px;color:#f1a33c;font-weight:700">現在の段位:${belt.name}(${done}/${LABS.length} Lab修了)${done===LABS.length?" — 免許皆伝!"+ico('belt'):""}</p>
     </div>
     <div class="home-grid">
       ${LABS.map(lab=>{
@@ -1325,7 +1326,7 @@ function renderHome(){
           <span class="svc-badge">${esc(lab.num)} / ${esc(lab.svc)}</span>
           <h3>${esc(lab.title)}</h3>
           <p>${esc(lab.desc)}</p>
-          <div class="meta"><span>⏱ ${esc(lab.time)}</span><span>${lab.steps.length}ステップ</span></div>
+          <div class="meta"><span>${ico('clock')} ${esc(lab.time)}</span><span>${lab.steps.length}ステップ</span></div>
         </button>`;
       }).join("")}
     </div>`;
@@ -1375,7 +1376,7 @@ function renderLab(){
       <div class="nav-row">
         ${v.step>0?`<button class="btn btn-ghost" onclick="goStep('${lab.id}',${v.step-1})">← 前のステップ</button>`:`<button class="btn btn-ghost" onclick="go({type:'home'})">← ホーム</button>`}
         ${isLast
-          ? `<button class="btn btn-primary" id="nextBtn" ${nextDisabled?"disabled":""} onclick="finishLab('${lab.id}')">このLabを修了する 🥋</button>`
+          ? `<button class="btn btn-primary" id="nextBtn" ${nextDisabled?"disabled":""} onclick="finishLab('${lab.id}')">このLabを修了する ${ico('belt')}</button>`
           : `<button class="btn btn-primary" id="nextBtn" ${nextDisabled?"disabled":""} onclick="advance('${lab.id}',${v.step})">次のステップへ →</button>`}
       </div>
       ${nextDisabled?`<p style="font-size:12px;color:var(--ink-soft);margin-top:10px">${step.kind==="quiz"?"すべての問題に解答すると先へ進めます。":"上のシミュレーターで課題をクリアすると先へ進めます。"}</p>`:""}
@@ -1398,7 +1399,7 @@ function finishLab(labId){
   const allDone = completedCount()===LABS.length;
   el("main").innerHTML = `
     <div class="card complete-box">
-      <div class="big">${allDone?"🏆":"🥋"}</div>
+      <div class="big">${allDone?ico('trophy'):ico('belt')}</div>
       <h2>${esc(lab.num)}「${esc(lab.svc)}」修了!</h2>
       <p class="lede" style="margin:0 auto 6px">現在の段位:<b>${belt.name}</b>(${completedCount()}/${LABS.length} Lab)</p>
       ${allDone
@@ -1428,7 +1429,7 @@ function renderQuiz(lab, stepIdx, step){
         }
         return `<button class="${cls}" ${picked!==undefined?"disabled":""} onclick="answerQuiz('${lab.id}',${stepIdx},${qi},${oi})">${["A","B","C","D"][oi]}. ${esc(o)}</button>`;
       }).join("")}
-      <div class="quiz-exp ${picked!==undefined?"show":""}">${picked!==undefined?(picked===q.ans?"🎉 <b>正解!</b> ":"<b>正解は "+["A","B","C","D"][q.ans]+"</b>。 ")+esc(q.exp):""}</div>
+      <div class="quiz-exp ${picked!==undefined?"show":""}">${picked!==undefined?(picked===q.ans?ico('confetti')+" <b>正解!</b> ":"<b>正解は "+["A","B","C","D"][q.ans]+"</b>。 ")+esc(q.exp):""}</div>
     </div>`;
   }).join("");
 }

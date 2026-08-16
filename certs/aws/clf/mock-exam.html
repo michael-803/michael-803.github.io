@@ -196,6 +196,7 @@ dialog .d-row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
 .rv-verdict.ng{background:rgba(214,69,80,.12);color:#e0616b}
 .rv-explain{margin-top:10px;padding:12px 14px;border-left:3px solid #4a90d9;background:rgba(74,144,217,.08);font-size:13.5px;line-height:1.8;border-radius:6px}
 </style>
+<script src="../../_engine/icons.js?v=1"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -1045,7 +1046,7 @@ function vReview(){
   const answered = R.answered;
   APP.innerHTML = `
   <div class="exam-bar">
-    <div class="title">🔥 誤答復習モード<small>過去の模擬試験で間違えた問題</small></div>
+    <div class="title">${ico('flame')} 誤答復習モード<small>過去の模擬試験で間違えた問題</small></div>
     <div class="spacer"></div>
     <span class="qcount">${R.idx+1} / ${R.items.length}</span>
   </div>
@@ -1104,7 +1105,7 @@ function vHome(){
       const wl = wrongList();
       if(!wl.length) return "";
       return `<div class="review-banner">
-        <div style="flex:1;min-width:220px"><b>🔥 誤答復習：${wl.length} 問</b><br><span style="font-size:12.5px;color:#6e4d0e">過去の試験で間違えた問題です。正解するとリストから消えます。</span></div>
+        <div style="flex:1;min-width:220px"><b>${ico('flame')} 誤答復習：${wl.length} 問</b><br><span style="font-size:12.5px;color:#6e4d0e">過去の試験で間違えた問題です。正解するとリストから消えます。</span></div>
         <button class="start-btn" style="background:#d97706" onclick="startReview()">復習を開始</button>
       </div>`;
     })()}
@@ -1176,7 +1177,7 @@ function vExam(){
         <span class="q-num">問題 ${S.qIdx+1}</span>
         ${q.m?`<span class="q-type">複数選択</span>`:""}
         <button class="flag-btn ${flagged?"on":""}" onclick="toggleFlag()">
-          <span class="f-ic">⚑</span>${flagged?"フラグを外す":"後で見直すためにフラグを付ける"}
+          <span class="f-ic">${ico('flag')}</span>${flagged?"フラグを外す":"後で見直すためにフラグを付ける"}
         </button>
       </div>
       <div class="q-text">${esc(q.q)}</div>

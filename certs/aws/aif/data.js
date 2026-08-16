@@ -205,15 +205,15 @@ const SAMPLE = {
 // ─── 過去問カテゴリ ────────────────────────────────────────
 // IDは FC_CATS_DEF のIDから 'cat_' を除いたもの（weakDiagnosis の規約）。
 const QCAT = [
-  {id:'ai_basic',    name:'AI・MLの基礎',              icon:'🧠'},
-  {id:'ml_flow',     name:'MLライフサイクルと評価',    icon:'📈'},
-  {id:'genai',       name:'生成AIの基礎',              icon:'✨'},
-  {id:'prompt',      name:'プロンプトエンジニアリング',icon:'💬'},
-  {id:'bedrock',     name:'Amazon Bedrock',            icon:'🪨'},
-  {id:'sagemaker',   name:'Amazon SageMaker',          icon:'🔬'},
-  {id:'aiservices',  name:'AIサービス群',              icon:'🧰'},
-  {id:'responsible', name:'責任あるAI',                icon:'⚖️'},
-  {id:'secgov',      name:'セキュリティ・ガバナンス',  icon:'🔐'},
+  {id:'ai_basic',    name:'AI・MLの基礎',              icon:'brain',    tone:'orange'},
+  {id:'ml_flow',     name:'MLライフサイクルと評価',    icon:'chart-up', tone:'blue'},
+  {id:'genai',       name:'生成AIの基礎',              icon:'sparkle',  tone:'ok'},
+  {id:'prompt',      name:'プロンプトエンジニアリング',icon:'chat',     tone:'blue'},
+  {id:'bedrock',     name:'Amazon Bedrock',            icon:'cube',     tone:'orange'},
+  {id:'sagemaker',   name:'Amazon SageMaker',          icon:'flask',    tone:'ok'},
+  {id:'aiservices',  name:'AIサービス群',              icon:'toolbox',  tone:'blue'},
+  {id:'responsible', name:'責任あるAI',                icon:'scale',    tone:'ng'},
+  {id:'secgov',      name:'セキュリティ・ガバナンス',  icon:'lock',     tone:'ng'},
 ];
 
 // ─── 過去問（4択） ─────────────────────────────────────────
@@ -779,7 +779,7 @@ const MATCH_Q = [
 
 // ─── チートシート ──────────────────────────────────────────
 const CHEATSHEETS = [
-  { id:'adapt', title:'🪨 モデルへの知識の与え方：RAG vs ファインチューニング vs 継続的事前学習 vs プロンプト工夫',
+  { id:'adapt', icon:'cube', title:'モデルへの知識の与え方：RAG vs ファインチューニング vs 継続的事前学習 vs プロンプト工夫',
     headers:['項目','プロンプト工夫','RAG','ファインチューニング','継続的事前学習'],
     rows:[
       ['やること','指示や例を工夫する','外部データを検索して根拠に渡す','ラベル付きデータで追加学習','ラベルなしデータで事前学習を継続'],
@@ -788,7 +788,7 @@ const CHEATSHEETS = [
       ['コスト','最も低い','低〜中','中〜高','最も高い'],
       ['向いている用途','汎用タスク・形式の指定','社内文書Q&A・最新情報の反映','口調や出力形式の一貫性','専門領域の知識の底上げ'],
     ] },
-  { id:'metrics', title:'📈 評価指標の使い分け',
+  { id:'metrics', icon:'chart-up', title:'評価指標の使い分け',
     headers:['指標','対象','見ているもの','重視する場面'],
     rows:[
       ['適合率（Precision）','分類','陽性と判定したうち実際に陽性の割合','誤検知を減らしたい（スパム判定など）'],
@@ -799,7 +799,7 @@ const CHEATSHEETS = [
       ['正解率（Accuracy）','分類','全体のうち正解した割合','クラスが偏っていないとき。偏りがあると当てにならない'],
       ['RMSE','回帰','予測値と実際の値の誤差','数値予測の評価'],
     ] },
-  { id:'layer', title:'🧭 どの層を使うか：AIサービス vs Bedrock vs SageMaker',
+  { id:'layer', icon:'compass', title:'どの層を使うか：AIサービス vs Bedrock vs SageMaker',
     headers:['項目','事前学習済みAIサービス','Amazon Bedrock','Amazon SageMaker'],
     rows:[
       ['使うもの','用途特化の完成品API','既製の基盤モデル','自分で作るモデル'],
@@ -809,7 +809,7 @@ const CHEATSHEETS = [
       ['向く用途','文字起こし・翻訳・物体検出など定型処理','文章生成・対話・要約・RAG','独自データでの予測モデル'],
       ['代表例','Transcribe / Textract / Rekognition','Titan などの基盤モデル','Canvas / Autopilot / 学習ジョブ'],
     ] },
-  { id:'learn', title:'🧠 学習方式の分類',
+  { id:'learn', icon:'brain', title:'学習方式の分類',
     headers:['方式','正解ラベル','何を学ぶか','代表的なタスク'],
     rows:[
       ['教師あり学習','必要','入力と正解の対応','分類（スパム判定）・回帰（売上予測）'],
@@ -818,7 +818,7 @@ const CHEATSHEETS = [
       ['自己教師あり学習','不要（自動生成する）','隠した部分を当てる','基盤モデルの事前学習'],
       ['転移学習','元モデルに依存','学習済みの知識の転用','少ないデータでの画像認識'],
     ] },
-  { id:'service', title:'🧰 AIサービス対応表（入力の種類から引く）',
+  { id:'service', icon:'toolbox', title:'AIサービス対応表（入力の種類から引く）',
     headers:['やりたいこと','サービス','補足'],
     rows:[
       ['画像・動画から物体や顔を検出','Amazon Rekognition','不適切コンテンツの検出にも対応'],
@@ -833,7 +833,7 @@ const CHEATSHEETS = [
       ['不正行為を検出する','Amazon Fraud Detector','なりすまし登録・不正決済など'],
       ['推論に人間のレビューを挟む','Amazon Augmented AI（A2I）','Human in the Loop の実装'],
     ] },
-  { id:'guard', title:'🛡️ 似ている機能の役割分担（混同しやすい）',
+  { id:'guard', icon:'shield', title:'似ている機能の役割分担（混同しやすい）',
     headers:['機能','所属','何をするか','いつ使うか'],
     rows:[
       ['Bedrock Guardrails','Bedrock','有害な内容・拒否トピック・個人情報をフィルタ','生成AIの入出力を安全に保つ'],
@@ -843,7 +843,7 @@ const CHEATSHEETS = [
       ['Amazon A2I','独立サービス','推論結果に人間のレビューを挟む','重要な判断・低確信度の結果'],
       ['Bedrock Model Evaluation','Bedrock','複数モデルの比較評価','用途に合うモデルを選ぶ'],
     ] },
-  { id:'rai', title:'⚖️ 責任あるAIの観点と実装手段',
+  { id:'rai', icon:'scale', title:'責任あるAIの観点と実装手段',
     headers:['観点','意味','AWSでの実装手段'],
     rows:[
       ['公平性','特定のグループに不当に不利な結果を出さない','SageMaker Clarify でバイアス検出'],

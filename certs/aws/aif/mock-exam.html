@@ -117,6 +117,7 @@ h2{font-size:16px;margin-bottom:10px;}
   .mtgrid{gap:8px;} .mtitem{font-size:12.5px;padding:10px;}
 }
 </style>
+<script src="../../_engine/icons.js?v=1"></script>
 </head>
 <body>
 <div class="bar">
@@ -307,7 +308,7 @@ function renderHome(){
 
   el('app').innerHTML = `
     <div class="card">
-      <h1>🤖 AIF-C01 模擬試験</h1>
+      <h1>${ico('robot')} AIF-C01 模擬試験</h1>
       <p class="sub">本番と同じ形式で通しの演習ができます。</p>
       <table class="spec">
         <tr><th>出題数</th><td>${TOTAL_Q}問</td></tr>
@@ -327,7 +328,7 @@ function renderHome(){
       </p>
       <div class="nav">
         <button class="btn btn-main" onclick="start()">▶ 試験を開始する</button>
-        ${wrongCount ? `<button class="btn btn-sub" onclick="startWrong()">🔥 間違えた${wrongCount}問だけ解く</button>` : ''}
+        ${wrongCount ? `<button class="btn btn-sub" onclick="startWrong()">${ico('flame')} 間違えた${wrongCount}問だけ解く</button>` : ''}
       </div>
     </div>
     <div class="card">
@@ -426,7 +427,7 @@ function renderExam(){
       <div class="nav">
         <button class="btn btn-sub" onclick="go(-1)" ${S.i===0?'disabled':''}>← 前の問題</button>
         ${canReset ? `<button class="btn btn-sub" onclick="resetAns()">やり直す</button>` : ''}
-        <button class="flagbtn${S.flags[S.i]?' on':''}" onclick="toggleFlag()">${S.flags[S.i]?'🚩 見直す':'⚐ 後で見直す'}</button>
+        <button class="flagbtn${S.flags[S.i]?' on':''}" onclick="toggleFlag()">${ico('flag')} ${S.flags[S.i]?'見直す':'後で見直す'}</button>
         <span class="spacer"></span>
         ${S.i === S.qs.length-1
           ? `<button class="btn btn-main" onclick="confirmFinish()">採点する</button>`
@@ -508,7 +509,7 @@ function renderResult(){
   const r = S.result;
   el('app').innerHTML = `
     <div class="card" style="text-align:center">
-      ${r.byTimeout ? `<p class="sub" style="color:var(--ng)">⏰ 制限時間に達したため自動採点しました</p>` : ''}
+      ${r.byTimeout ? `<p class="sub" style="color:var(--ng)">${ico('clock')} 制限時間に達したため自動採点しました</p>` : ''}
       <div class="big">${r.scaled}<small> / 1000</small></div>
       <div class="verdict ${r.pass?'pass':'fail'}">${r.pass?'合格ライン到達':'不合格'}</div>
       <p class="sub">${r.correct} / ${r.count} 問正解（解答 ${r.answered} 問）／ 合格ライン ${PASS_SCORE}</p>

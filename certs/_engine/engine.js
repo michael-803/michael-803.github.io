@@ -264,14 +264,14 @@ function toggleShuffle(){
     }
     order = unanswered.concat(answered);
     prog.shuffled = true;
-    toast('シャッフルしました 🔀');
+    toast(ico('shuffle')+' シャッフルしました');
   } else {
     const naturalOrder = deck.map((_, i) => i);
     order = naturalOrder.filter(i => !answeredSet.has(deck[i].id));
     prog.shuffled = false;
     if(order.length === 0){
       order = naturalOrder;
-      toast('一周しました！最初から出題します 🔁');
+      toast(ico('repeat')+' 一周しました！最初から出題します');
     } else {
       toast('順番どおり（未回答のみ）に切り替えました');
     }
@@ -334,7 +334,7 @@ function markKnow(didKnow){
     flipped = false;
     persistProgress();
     renderFc();
-    toast('🎉 苦手を克服！リストから外れました');
+    toast(ico('confetti')+' 苦手を克服！リストから外れました');
   } else {
     fcNext();
   }
@@ -392,7 +392,7 @@ function renderFc(){
     : `${[...selectedCats].map(id=>CAT_ID_TO_NAME[id]).join('・')}（${deck.length}枚）`;
   const catSummary = `
     <button class="fc-cat-summary" onclick="toggleCatPicker()" aria-expanded="${catPickerOpen}">
-      <span>📂 カテゴリ</span>
+      <span>${ico('folder')} カテゴリ</span>
       <span class="fc-cat-current">${escHtml(catSummaryText)}</span>
       <span class="fc-cat-caret">${catPickerOpen?'▲':'▼'}</span>
     </button>`;
@@ -411,13 +411,13 @@ function renderFc(){
     ${multiBar}
 
     <div class="fc-toolbar">
-      <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
+      <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">${ico('flame')} 苦手のみ（${wc}）</button>
     </div>
     <hr class="fc-divider">
 
     ${total === 0 ? `
       <div class="empty-state">
-        <div class="empty-icon">${isWeakView ? '🎉' : '📭'}</div>
+        <div class="empty-icon">${isWeakView ? ico('confetti') : ico('empty-box')}</div>
         <div class="empty-title">${isWeakView ? '苦手カードはありません！' : 'カードがありません'}</div>
         <div class="empty-sub">${isWeakView ? '全ての苦手を克服しました。' : 'カテゴリを変えるかカードを追加してください。'}</div>
         ${isWeakView ? '<button class="btn btn-secondary" style="width:auto" onclick="toggleWeakView()">全カードに戻る</button>' : ''}
@@ -429,7 +429,7 @@ function renderFc(){
         <span class="fc-stats">
           <span style="color:var(--ok)">✓ ${s.ok}</span>
           <span style="color:var(--ng)">✗ ${s.ng}</span>
-          ${isWeak(card)?'<span style="color:var(--ng);font-weight:700">🔥 苦手</span>':''}
+          ${isWeak(card)?'<span style="color:var(--ng);font-weight:700">'+ico('flame')+' 苦手</span>':''}
         </span>
       </div>
 
@@ -454,24 +454,24 @@ function renderFc(){
         <button class="btn-prev" onclick="fcNext()" aria-label="次のカード">→</button>
       </div>
       <div style="text-align:center;margin-top:10px;">
-        <button class="card-action-btn" onclick="editCard(cardById('${escAttr(card.id)}'))">✏️ 編集</button>
-        <button class="card-action-btn del" onclick="deleteCard(cardById('${escAttr(card.id)}'))">🗑 削除</button>
+        <button class="card-action-btn" onclick="editCard(cardById('${escAttr(card.id)}'))">${ico('pencil')} 編集</button>
+        <button class="card-action-btn del" onclick="deleteCard(cardById('${escAttr(card.id)}'))">${ico('trash')} 削除</button>
       </div>
     `}
 
     <hr class="fc-divider">
     <div class="fc-segment-bar">
       <button class="seg-btn${prog.shuffled?' seg-on':''}" onclick="toggleShuffle()" title="シャッフル">
-        <span class="seg-icon">🔀</span><span class="seg-label">シャッフル${prog.shuffled?'（ON）':''}</span>
+        <span class="seg-icon">${ico('shuffle')}</span><span class="seg-label">シャッフル${prog.shuffled?'（ON）':''}</span>
       </button>
       <button class="seg-btn${reverseMode?' seg-on':''}" onclick="toggleReverse()" title="出題方向を反転">
-        <span class="seg-icon">🔃</span><span class="seg-label">${reverseMode?'意味→用語':'用語→意味'}</span>
+        <span class="seg-icon">${ico('repeat')}</span><span class="seg-label">${reverseMode?'意味→用語':'用語→意味'}</span>
       </button>
       <button class="seg-btn" onclick="openAddForm()" title="カードを追加">
         <span class="seg-icon">＋</span><span class="seg-label">追加</span>
       </button>
     </div>
-    <button class="hidden-cards-link" onclick="openHiddenCards()">🗂 非表示にしたカード（${hiddenCount}）</button>
+    <button class="hidden-cards-link" onclick="openHiddenCards()">${ico('archive')} 非表示にしたカード（${hiddenCount}）</button>
     ${total > 0 ? `<div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>` : ''}
 
     <div class="add-card-form" id="add-card-form">
@@ -568,7 +568,7 @@ function deleteCard(card){
   if(card.builtin){
     if(!state.hiddenCards) state.hiddenCards = [];
     if(!state.hiddenCards.includes(card.id)) state.hiddenCards.push(card.id);
-    toast('カードを非表示にしました（🗂 非表示から復活できます）');
+    toast(ico('archive')+' カードを非表示にしました（非表示から復活できます）');
   }else{
     state.customCards[card.catId] = (state.customCards[card.catId]||[]).filter(x=>String(x.id)!==String(card.rawId));
     delete state.fcStats['c::'+card.rawId];
@@ -619,7 +619,7 @@ function setSyncState(st){
 let _tt;
 function toast(msg, type='success'){
   const e=document.getElementById('toast');
-  e.textContent=msg; e.className='toast show '+type;
+  e.innerHTML=msg; e.className='toast show '+type;
   clearTimeout(_tt); _tt=setTimeout(()=>{e.className='toast';},2600);
 }
 let _saveTimer;
@@ -916,9 +916,9 @@ function renderWeak(){
     if(!rx) return '';
     // 道場を持たない資格（features.dojo=false）ではラボ導線を出さない
     const labHtml = (rx.lab && hasFeature('dojo'))
-      ? `<br>🥋 おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
+      ? `<br>${ico('belt')} おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
     return `<div class="quiz-card" style="margin-bottom:12px;">
-      <div class="quiz-cat-tag">🎯 ${escHtml(r.name)}（正答率 ${r.pct}%）</div>
+      <div class="quiz-cat-tag">${ico('target')} ${escHtml(r.name)}（正答率 ${r.pct}%）</div>
       <div style="font-size:13.5px;line-height:1.8;">${escHtml(rx.text)}${labHtml}</div>
     </div>`;
   }).join('') : `<div class="empty-sub">まだ十分な学習記録がありません。単語帳や過去問に取り組むとここに弱点が表示されます。</div>`;
@@ -930,7 +930,7 @@ function renderWeak(){
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">🎯 弱点診断</div>
+      <div class="quiz-home-title">${ico('target')} 弱点診断</div>
       <div class="quiz-home-sub">単語帳と過去問の正答率をカテゴリ別に集計し、重点強化ポイントを提案します（模試の受験履歴があればそちらも加味されます）。</div>
       <div class="overall-stats">
         <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">過去問 累計解答数</span></div>
@@ -938,7 +938,7 @@ function renderWeak(){
       </div>
 
       <div class="review-bar" style="background:linear-gradient(135deg,rgba(56,189,248,.08),rgba(255,153,0,.06));border-color:rgba(56,189,248,.35);">
-        <div class="review-label">⏱ ${escHtml(timeHint)}</div>
+        <div class="review-label">${ico('clock')} ${escHtml(timeHint)}</div>
       </div>
 
       <div style="font-family:var(--disp);font-size:14px;font-weight:700;margin:18px 0 10px;">重点強化カテゴリ</div>
@@ -997,7 +997,7 @@ function renderScenarioHome(){
          <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
       : `<div class="cat-acc-text">未挑戦</div>`;
     return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectScenarioCat('${cat.id}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      <div class="cat-head"><span class="cat-icon tone-${cat.tone||'orange'}">${ico(cat.icon)}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
       ${accHtml}
     </div>`;
   }).join('');
@@ -1016,12 +1016,12 @@ function renderScenarioHome(){
   const reviewHtml = os.wrongCount > 0 ? `
     <div class="review-bar">
       <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えたシナリオ問題があります。正解するとリストから消えます。</div>
-      <button class="btn btn-secondary" onclick="startScenarioWrongReview()">🔥 苦手を復習する</button>
+      <button class="btn btn-secondary" onclick="startScenarioWrongReview()">${ico('flame')} 苦手を復習する</button>
     </div>` : '';
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">🧩 シナリオ問題チャレンジ</div>
+      <div class="quiz-home-title">${ico('puzzle')} シナリオ問題チャレンジ</div>
       <div class="quiz-home-sub">「〇〇したい場合、どのサービスを使うか」形式の実践的な問題です。カテゴリを選んで学習するか、全問ランダムで挑戦できます。全 ${totalQ} 問収録。</div>
       ${statsHtml}
       ${reviewHtml}
@@ -1032,8 +1032,8 @@ function renderScenarioHome(){
           <option value="20">20問</option>
           <option value="all" selected>全問</option>
         </select>
-        <button class="btn btn-secondary" onclick="startScenario('${selCat||'all'}',false)">📖 順番に</button>
-        <button class="btn btn-primary" onclick="startScenario('${selCat||'all'}',true)">🔀 ランダム</button>
+        <button class="btn btn-secondary" onclick="startScenario('${selCat||'all'}',false)">${ico('book')} 順番に</button>
+        <button class="btn btn-primary" onclick="startScenario('${selCat||'all'}',true)">${ico('shuffle')} ランダム</button>
       </div>
       <div class="category-grid">${catCardsHtml}</div>
     </div>`;
@@ -1053,7 +1053,7 @@ function startScenario(catId, shuffle){
 function startScenarioWrongReview(){
   const wrongSet = new Set(state.scenarioStats.wrong);
   let qs = SCENARIO_Q.filter(q=>wrongSet.has(q.id));
-  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  if(!qs.length){ toast(ico('confetti')+' 復習する問題はありません'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
@@ -1073,17 +1073,17 @@ function renderScenarioSession(){
   const q = sess.questions[sess.index];
   const total = sess.questions.length;
   const pct = Math.round(sess.index/total*100);
-  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🧩'};
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'puzzle'};
   const letters = ['A','B','C','D','E'];
   const isMulti = Array.isArray(q.a);
-  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const modeTag = sess.mode==='review' ? ico('flame')+' 苦手復習 ／ ' : '';
   // 選択肢の表示順を毎回シャッフル（解答するまでは固定）。判定は常に元のインデックス基準。
   const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
       <div class="qsess-header">
-        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🧩 ${catInfo.name}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${ico('puzzle')} ${catInfo.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
           <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
@@ -1095,7 +1095,7 @@ function renderScenarioSession(){
         <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitScenario()">← 終了</button>
       </div>
       <div class="quiz-card">
-        <div class="quiz-cat-tag">🧩 ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
+        <div class="quiz-cat-tag">${ico('puzzle')} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="scenario-choices">
           ${displayOrder.map((origIdx,pos)=>`
@@ -1246,7 +1246,7 @@ function renderMultiHome(){
          <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
       : `<div class="cat-acc-text">未挑戦</div>`;
     return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectMultiCat('${cat.id}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      <div class="cat-head"><span class="cat-icon tone-${cat.tone||'orange'}">${ico(cat.icon)}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
       ${accHtml}
     </div>`;
   }).join('');
@@ -1265,12 +1265,12 @@ function renderMultiHome(){
   const reviewHtml = os.wrongCount > 0 ? `
     <div class="review-bar">
       <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えた複数選択問題があります。正解するとリストから消えます。</div>
-      <button class="btn btn-secondary" onclick="startMultiWrongReview()">🔥 苦手を復習する</button>
+      <button class="btn btn-secondary" onclick="startMultiWrongReview()">${ico('flame')} 苦手を復習する</button>
     </div>` : '';
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">🗳️ 複数選択問題チャレンジ</div>
+      <div class="quiz-home-title">${ico('ballot')} 複数選択問題チャレンジ</div>
       <div class="quiz-home-sub">本番試験にある「〇つ選択してください」形式の問題です。チェックボックスで複数選択して回答します。全 ${totalQ} 問収録。</div>
       ${statsHtml}
       ${reviewHtml}
@@ -1281,12 +1281,12 @@ function renderMultiHome(){
           <option value="20">20問</option>
           <option value="all" selected>全問</option>
         </select>
-        <button class="btn btn-secondary" onclick="startMulti('${selCat||'all'}',false)">📖 順番に</button>
-        <button class="btn btn-primary" onclick="startMulti('${selCat||'all'}',true)">🔀 ランダム</button>
+        <button class="btn btn-secondary" onclick="startMulti('${selCat||'all'}',false)">${ico('book')} 順番に</button>
+        <button class="btn btn-primary" onclick="startMulti('${selCat||'all'}',true)">${ico('shuffle')} ランダム</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;">
         <button class="btn btn-secondary" style="width:auto" onclick="openMultiForm()">＋ 問題を追加</button>
-        <button class="btn btn-secondary" style="width:auto" onclick="openHiddenMultiQ()">🗂 非表示（${hiddenCount}）</button>
+        <button class="btn btn-secondary" style="width:auto" onclick="openHiddenMultiQ()">${ico('archive')} 非表示（${hiddenCount}）</button>
       </div>
       <div class="category-grid">${catCardsHtml}</div>
     </div>
@@ -1337,7 +1337,7 @@ function startMulti(catId, shuffle){
 function startMultiWrongReview(){
   const wrongSet = new Set(state.multiStats.wrong);
   let qs = buildMultiQuestions().filter(q=>wrongSet.has(q.id));
-  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  if(!qs.length){ toast(ico('confetti')+' 復習する問題はありません'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
@@ -1357,9 +1357,9 @@ function renderMultiSession(){
   const q = sess.questions[sess.index];
   const total = sess.questions.length;
   const pct = Math.round(sess.index/total*100);
-  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🗳️'};
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'ballot'};
   const letters = ['A','B','C','D','E','F'];
-  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const modeTag = sess.mode==='review' ? ico('flame')+' 苦手復習 ／ ' : '';
   const countHint = q.n ? `（${q.n}つ選択してください）` : '（正しいものをすべて選択してください）';
   // 選択肢の表示順を毎回シャッフル（解答するまでは固定・renderMultiSessionは新しい設問に
   // 移るときだけ呼ばれるため、回答中に並びが変わることはない）。
@@ -1370,7 +1370,7 @@ function renderMultiSession(){
   el.innerHTML = `
     <div class="quiz-session">
       <div class="qsess-header">
-        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🗳️ ${catInfo.name}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${ico('ballot')} ${catInfo.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
           <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
@@ -1382,7 +1382,7 @@ function renderMultiSession(){
         <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitMulti()">← 終了</button>
       </div>
       <div class="quiz-card">
-        <div class="quiz-cat-tag">🗳️ ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">⚠️ 要確認</span>':''}</div>
+        <div class="quiz-cat-tag">${ico('ballot')} ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">'+ico('warning')+' 要確認</span>':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="multi-choices">
           ${displayOrder.map((origIdx,pos)=>`
@@ -1396,8 +1396,8 @@ function renderMultiSession(){
         </div>
         <div class="quiz-explain" id="multi-explain"></div>
         <div style="text-align:center;margin-top:10px;">
-          <button class="card-action-btn" onclick="editMultiQuestion('${escAttr(q.id)}')">✏️ 編集</button>
-          <button class="card-action-btn del" onclick="deleteMultiQuestion('${escAttr(q.id)}')">🗑 削除</button>
+          <button class="card-action-btn" onclick="editMultiQuestion('${escAttr(q.id)}')">${ico('pencil')} 編集</button>
+          <button class="card-action-btn del" onclick="deleteMultiQuestion('${escAttr(q.id)}')">${ico('trash')} 削除</button>
         </div>
       </div>
       <div class="quiz-nav" id="multi-nav" style="display:none;">
@@ -1528,7 +1528,7 @@ function deleteMultiQuestion(id){
   if(q.builtin){
     if(!state.hiddenMultiQ) state.hiddenMultiQ = [];
     if(!state.hiddenMultiQ.includes(id)) state.hiddenMultiQ.push(id);
-    toast('問題を非表示にしました（🗂 非表示から復活できます）');
+    toast(ico('archive')+' 問題を非表示にしました（非表示から復活できます）');
   } else {
     state.customMultiQ = (state.customMultiQ||[]).filter(x=>x.id!==id);
     delete state.multiStats.answered[id];
@@ -1543,7 +1543,7 @@ function renderHiddenMultiQList(){
   const items = hidden.map(id=>MULTI_Q.find(q=>q.id===id)).filter(Boolean);
   const box = document.getElementById('hidden-multi-list');
   if(!box) return;
-  box.innerHTML = `<h3>🗂 非表示にした複数選択問題</h3>` + (items.length ? items.map(q=>`
+  box.innerHTML = `<h3>${ico('archive')} 非表示にした複数選択問題</h3>` + (items.length ? items.map(q=>`
     <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:var(--rs);padding:10px 12px;margin-bottom:8px;">
       <div style="flex:1;font-size:13px;">${escHtml(q.q.slice(0,60))}${q.q.length>60?'…':''}</div>
       <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:12px;" onclick="restoreHiddenMultiQ('${escAttr(q.id)}')">復活</button>
@@ -1570,18 +1570,18 @@ function restoreHiddenMultiQ(id){
 const VPC_DIAGRAM_HTML = `
   <div class="vpc-diagram">
     <div class="vpc-box vpc-vpc">
-      <div class="vpc-label">🌐 VPC（例: 10.0.0.0/16）</div>
+      <div class="vpc-label">${ico('globe')} VPC（例: 10.0.0.0/16）</div>
       <div class="vpc-box vpc-pub">
         <div class="vpc-label">パブリックサブネット（IGWへのルートあり）</div>
-        <span class="vpc-item">🌍 IGW</span>
-        <span class="vpc-item">➡️ NAT Gateway</span>
-        <span class="vpc-item">🖥️ 踏み台/ALB</span>
+        <span class="vpc-item">${ico('globe')} IGW</span>
+        <span class="vpc-item">${ico('arrow-right')} NAT Gateway</span>
+        <span class="vpc-item">${ico('server')} 踏み台/ALB</span>
       </div>
       <div class="vpc-box vpc-priv">
         <div class="vpc-label">プライベートサブネット（IGWへのルートなし）</div>
-        <span class="vpc-item">🖥️ EC2（アプリ）</span>
-        <span class="vpc-item">🗄️ RDS</span>
-        <span class="vpc-item">⚙️ SG（ステートフル）</span>
+        <span class="vpc-item">${ico('server')} EC2（アプリ）</span>
+        <span class="vpc-item">${ico('database')} RDS</span>
+        <span class="vpc-item">${ico('gear')} SG（ステートフル）</span>
       </div>
     </div>
     <div style="margin-top:8px;color:var(--dim);">
@@ -1594,7 +1594,7 @@ function renderCheatsheet(){
   if(!el) return;
   const sheetsHtml = CHEATSHEETS.map(cs => `
     <div class="cs-card">
-      <h3>${escHtml(cs.title)}</h3>
+      <h3>${ico(cs.icon||'clipboard')} ${escHtml(cs.title)}</h3>
       <div class="cmp-table-wrap">
         <table class="cmp-table">
           <thead><tr>${cs.headers.map(h=>`<th>${escHtml(h)}</th>`).join('')}</tr></thead>
@@ -1605,10 +1605,10 @@ function renderCheatsheet(){
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">📋 サービス比較チートシート</div>
+      <div class="quiz-home-title">${ico('clipboard')} サービス比較チートシート</div>
       <div class="quiz-home-sub">試験で混同しやすいサービス群を並べて比較できます。内容は固定（静的コンテンツ）です。</div>
       <div class="cs-card">
-        <h3>🖼️ VPC構成図（基本パターン）</h3>
+        <h3>${ico('blueprint')} VPC構成図（基本パターン）</h3>
         ${VPC_DIAGRAM_HTML}
       </div>
       ${sheetsHtml}
@@ -1630,7 +1630,7 @@ function renderQuizHome(){
          <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
       : `<div class="cat-acc-text">未挑戦</div>`;
     return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectQuizCat('${cat.id}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      <div class="cat-head"><span class="cat-icon tone-${cat.tone||'orange'}">${ico(cat.icon)}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
       ${accHtml}
     </div>`;
   }).join('');
@@ -1649,12 +1649,12 @@ function renderQuizHome(){
   const reviewHtml = os.wrongCount > 0 ? `
     <div class="review-bar">
       <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えた問題があります。正解するとリストから消えます。</div>
-      <button class="btn btn-secondary" onclick="startWrongReview()">🔥 苦手を復習する</button>
+      <button class="btn btn-secondary" onclick="startWrongReview()">${ico('flame')} 苦手を復習する</button>
     </div>` : '';
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">📝 CLF-C02 過去問チャレンジ</div>
+      <div class="quiz-home-title">${ico('doc-check')} CLF-C02 過去問チャレンジ</div>
       <div class="quiz-home-sub">カテゴリを選んで学習するか、全問ランダムで挑戦できます。全 ${totalQ} 問収録。</div>
       ${statsHtml}
       ${reviewHtml}
@@ -1665,8 +1665,8 @@ function renderQuizHome(){
           <option value="20">20問</option>
           <option value="all" selected>全問</option>
         </select>
-        <button class="btn btn-secondary" onclick="startQuiz('${selCat||'all'}',false)">📖 順番に</button>
-        <button class="btn btn-primary" onclick="startQuiz('${selCat||'all'}',true)">🔀 ランダム</button>
+        <button class="btn btn-secondary" onclick="startQuiz('${selCat||'all'}',false)">${ico('book')} 順番に</button>
+        <button class="btn btn-primary" onclick="startQuiz('${selCat||'all'}',true)">${ico('shuffle')} ランダム</button>
       </div>
       <div class="category-grid">${catCardsHtml}</div>
     </div>`;
@@ -1686,7 +1686,7 @@ function startQuiz(catId, shuffle){
 function startWrongReview(){
   const wrongSet = new Set(state.quizStats.wrong);
   let qs = QQ.filter(q=>wrongSet.has(q.id));
-  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  if(!qs.length){ toast(ico('confetti')+' 復習する問題はありません'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
@@ -1706,17 +1706,17 @@ function renderQuizSession(){
   const q = sess.questions[sess.index];
   const total = sess.questions.length;
   const pct = Math.round(sess.index/total*100);
-  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'📝'};
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'doc-check'};
   const letters = ['A','B','C','D','E'];
   const isMulti = Array.isArray(q.a);
-  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const modeTag = sess.mode==='review' ? ico('flame')+' 苦手復習 ／ ' : '';
   // 選択肢の表示順を毎回シャッフル（解答するまでは固定）。判定は常に元のインデックス基準。
   const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
       <div class="qsess-header">
-        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${catInfo.icon} ${catInfo.name}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${ico(catInfo.icon)} ${catInfo.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
           <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
@@ -1728,7 +1728,7 @@ function renderQuizSession(){
         <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitQuiz()">← 終了</button>
       </div>
       <div class="quiz-card">
-        <div class="quiz-cat-tag">${catInfo.icon} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
+        <div class="quiz-cat-tag">${ico(catInfo.icon)} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="quiz-choices" id="quiz-choices">
           ${displayOrder.map((origIdx,pos)=>`
@@ -1838,7 +1838,7 @@ function currentResultCtx(){ return RESULT_CTX[state.resultCtx] || RESULT_CTX.qu
 
 function showResultScreen(correct, total){
   const pct = total>0 ? Math.round(correct/total*100) : 0;
-  document.getElementById('result-emoji').textContent = pct>=80?'🎉':pct>=60?'👍':'💪';
+  { const re=document.getElementById('result-emoji'); re.className='result-emoji '+(pct>=80?'tone-ok':pct>=60?'tone-orange':'tone-ng'); re.innerHTML = pct>=80?ico('confetti'):pct>=60?ico('thumbs-up'):ico('dumbbell'); }
   document.getElementById('result-title').textContent = pct>=80?'素晴らしい！':pct>=60?'よく頑張りました！':'もう少し！';
   document.getElementById('result-sub').textContent = `${correct} / ${total} 問正解（${pct}%）`;
   document.getElementById('rb-correct').textContent = correct;

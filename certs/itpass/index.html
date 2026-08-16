@@ -14,18 +14,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../_engine/theme.css?v=1">
-<link rel="stylesheet" href="../_engine/app.css?v=4">
+<link rel="stylesheet" href="../_engine/app.css?v=5">
+<script src="../_engine/icons.js?v=1"></script>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="logo"><div class="logo-icon">🗾</div><span data-cert-name>ITパスポート</span> <span>Study Deck</span></div>
+  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-passport"></use></svg></div><span class="logo-word"><span data-cert-name>ITパスポート</span> <span>Study Deck</span></span></div>
   <div class="header-right">
     <div class="sync-indicator" id="sync-indicator" style="display:none;">
       <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
     </div>
-    <a class="btn-icon" href="../index.html" aria-label="資格一覧へ">🏠</a>
-    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ">📓</button>
+    <a class="btn-icon" href="../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
+    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ"><svg class="ico"><use href="#i-notebook"></use></svg></button>
   </div>
 </header>
 
@@ -36,16 +37,16 @@
 <div class="screen" id="notebook-screen">
   <!-- 無効な機能のタブは engine.js の applyFeatureToggles() が自動で隠す -->
   <div class="tab-bar" role="tablist">
-    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab">📇 単語帳</button>
-    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab">📝 過去問</button>
-    <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab">🗳️ 複数選択</button>
-    <button class="tab-btn" onclick="switchTab('ordering')" id="tab-ordering" role="tab">🔢 順序</button>
-    <button class="tab-btn" onclick="switchTab('matching')" id="tab-matching" role="tab">🔗 マッチング</button>
-    <button class="tab-btn" onclick="switchTab('scenario')" id="tab-scenario" role="tab">🧩 シナリオ</button>
-    <button class="tab-btn" onclick="switchTab('weak')" id="tab-weak" role="tab">🎯 弱点診断</button>
-    <button class="tab-btn" onclick="switchTab('cheatsheet')" id="tab-cheatsheet" role="tab">📋 チートシート</button>
-    <a class="tab-btn tab-link" href="mock-exam.html" data-feature="mock">🎓 模擬試験</a>
-    <a class="tab-btn tab-link" href="dojo.html" data-feature="dojo">🥋 ハンズオン道場</a>
+    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab"><svg class="ico"><use href="#i-card-stack"></use></svg> 単語帳</button>
+    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 過去問</button>
+    <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab"><svg class="ico"><use href="#i-ballot"></use></svg> 複数選択</button>
+    <button class="tab-btn" onclick="switchTab('ordering')" id="tab-ordering" role="tab"><svg class="ico"><use href="#i-list-ol"></use></svg> 順序</button>
+    <button class="tab-btn" onclick="switchTab('matching')" id="tab-matching" role="tab"><svg class="ico"><use href="#i-link"></use></svg> マッチング</button>
+    <button class="tab-btn" onclick="switchTab('scenario')" id="tab-scenario" role="tab"><svg class="ico"><use href="#i-puzzle"></use></svg> シナリオ</button>
+    <button class="tab-btn" onclick="switchTab('weak')" id="tab-weak" role="tab"><svg class="ico"><use href="#i-target"></use></svg> 弱点診断</button>
+    <button class="tab-btn" onclick="switchTab('cheatsheet')" id="tab-cheatsheet" role="tab"><svg class="ico"><use href="#i-clipboard"></use></svg> チートシート</button>
+    <a class="tab-btn tab-link" href="mock-exam.html" data-feature="mock"><svg class="ico"><use href="#i-cap"></use></svg> 模擬試験</a>
+    <a class="tab-btn tab-link" href="dojo.html" data-feature="dojo"><svg class="ico"><use href="#i-belt"></use></svg> ハンズオン道場</a>
   </div>
   <div class="tab-content active" id="tabcontent-fc">
     <div class="quiz-layout" id="fc-container"></div>
@@ -75,7 +76,7 @@
 
 <div class="screen" id="result-screen">
   <div class="result-card">
-    <div class="result-emoji" id="result-emoji">🎉</div>
+    <div class="result-emoji tone-ok" id="result-emoji"><svg class="ico"><use href="#i-confetti"></use></svg></div>
     <div class="result-title" id="result-title">完了！</div>
     <div class="result-sub" id="result-sub"></div>
     <div class="result-ring">
@@ -102,7 +103,7 @@
 
 <div class="modal-overlay" id="hidden-cards-modal">
   <div class="modal">
-    <div class="modal-title">🗂 非表示にしたカード</div>
+    <div class="modal-title"><svg class="ico"><use href="#i-archive"></use></svg> 非表示にしたカード</div>
     <div id="hidden-cards-list"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeHiddenCards()">閉じる</button>

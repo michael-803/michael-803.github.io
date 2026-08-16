@@ -78,7 +78,7 @@ function renderOrderingHome(){
          <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
       : `<div class="cat-acc-text">未挑戦</div>`;
     return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectOrderingCat('${cat.id}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      <div class="cat-head"><span class="cat-icon tone-${cat.tone||'orange'}">${ico(cat.icon)}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
       ${accHtml}
     </div>`;
   }).join('');
@@ -97,12 +97,12 @@ function renderOrderingHome(){
   const reviewHtml = os.wrongCount > 0 ? `
     <div class="review-bar">
       <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えた順序問題があります。正解するとリストから消えます。</div>
-      <button class="btn btn-secondary" onclick="startOrderingWrongReview()">🔥 苦手を復習する</button>
+      <button class="btn btn-secondary" onclick="startOrderingWrongReview()">${ico('flame')} 苦手を復習する</button>
     </div>` : '';
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">🔢 順序問題チャレンジ</div>
+      <div class="quiz-home-title">${ico('list-ol')} 順序問題チャレンジ</div>
       <div class="quiz-home-sub">本番試験にある「正しい順に並べてください」形式の問題です。選んだ順に番号が振られます。順序も含めて全部合っていないと正解になりません。全 ${totalQ} 問収録。</div>
       ${statsHtml}
       ${reviewHtml}
@@ -113,8 +113,8 @@ function renderOrderingHome(){
           <option value="20">20問</option>
           <option value="all" selected>全問</option>
         </select>
-        <button class="btn btn-secondary" onclick="startOrdering('${selCat||'all'}',false)">📖 順番に</button>
-        <button class="btn btn-primary" onclick="startOrdering('${selCat||'all'}',true)">🔀 ランダム</button>
+        <button class="btn btn-secondary" onclick="startOrdering('${selCat||'all'}',false)">${ico('book')} 順番に</button>
+        <button class="btn btn-primary" onclick="startOrdering('${selCat||'all'}',true)">${ico('shuffle')} ランダム</button>
       </div>
       <div class="category-grid">${catCardsHtml}</div>
     </div>`;
@@ -136,7 +136,7 @@ function startOrdering(catId, shuffle){
 function startOrderingWrongReview(){
   const wrongSet = new Set(state.orderingStats.wrong);
   let qs = orderingBank().filter(q=>wrongSet.has(q.id));
-  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  if(!qs.length){ toast(ico('confetti')+' 復習する問題はありません'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchOrderingSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
@@ -159,15 +159,15 @@ function renderOrderingSession(){
   const q = sess.questions[sess.index];
   const total = sess.questions.length;
   const pct = Math.round(sess.index/total*100);
-  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🔢'};
-  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'list-ol'};
+  const modeTag = sess.mode==='review' ? ico('flame')+' 苦手復習 ／ ' : '';
   // 表示順シャッフル。displayOrder[表示位置] = 元のインデックス。
   const displayOrder = shuffleIndices(q.o.length);
 
   el.innerHTML = `
     <div class="quiz-session">
       <div class="qsess-header">
-        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🔢 ${catInfo.name}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${ico('list-ol')} ${catInfo.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
           <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
@@ -179,7 +179,7 @@ function renderOrderingSession(){
         <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitOrdering()">← 終了</button>
       </div>
       <div class="quiz-card">
-        <div class="quiz-cat-tag">🔢 ${catInfo.name} ／ 順序問題（正しい順に選んでください）</div>
+        <div class="quiz-cat-tag">${ico('list-ol')} ${catInfo.name} ／ 順序問題（正しい順に選んでください）</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="mt-hint">選んだ順に番号が振られます。押し間違えたら「やり直す」で全部解除できます。</div>
         <div class="ord-list" id="ord-list">
@@ -310,7 +310,7 @@ function renderMatchingHome(){
          <div class="cat-acc-text">正答率 ${acc.pct}%（${acc.total}回）</div>`
       : `<div class="cat-acc-text">未挑戦</div>`;
     return `<div class="category-card${selCat===cat.id?' active-cat':''}" onclick="selectMatchingCat('${cat.id}')" role="button" tabindex="0">
-      <div class="cat-head"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
+      <div class="cat-head"><span class="cat-icon tone-${cat.tone||'orange'}">${ico(cat.icon)}</span><span class="cat-name">${cat.name}</span><span class="cat-count">${n}問</span></div>
       ${accHtml}
     </div>`;
   }).join('');
@@ -329,12 +329,12 @@ function renderMatchingHome(){
   const reviewHtml = os.wrongCount > 0 ? `
     <div class="review-bar">
       <div class="review-label"><strong>${os.wrongCount} 問</strong>の間違えたマッチング問題があります。正解するとリストから消えます。</div>
-      <button class="btn btn-secondary" onclick="startMatchingWrongReview()">🔥 苦手を復習する</button>
+      <button class="btn btn-secondary" onclick="startMatchingWrongReview()">${ico('flame')} 苦手を復習する</button>
     </div>` : '';
 
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">🔗 マッチング問題チャレンジ</div>
+      <div class="quiz-home-title">${ico('link')} マッチング問題チャレンジ</div>
       <div class="quiz-home-sub">本番試験にある「対応するものを組み合わせてください」形式の問題です。左の項目をタップしてから、対応する右の選択肢をタップします。全ペア正解で初めて得点になります。全 ${totalQ} 問収録。</div>
       ${statsHtml}
       ${reviewHtml}
@@ -345,8 +345,8 @@ function renderMatchingHome(){
           <option value="20">20問</option>
           <option value="all" selected>全問</option>
         </select>
-        <button class="btn btn-secondary" onclick="startMatching('${selCat||'all'}',false)">📖 順番に</button>
-        <button class="btn btn-primary" onclick="startMatching('${selCat||'all'}',true)">🔀 ランダム</button>
+        <button class="btn btn-secondary" onclick="startMatching('${selCat||'all'}',false)">${ico('book')} 順番に</button>
+        <button class="btn btn-primary" onclick="startMatching('${selCat||'all'}',true)">${ico('shuffle')} ランダム</button>
       </div>
       <div class="category-grid">${catCardsHtml}</div>
     </div>`;
@@ -368,7 +368,7 @@ function startMatching(catId, shuffle){
 function startMatchingWrongReview(){
   const wrongSet = new Set(state.matchingStats.wrong);
   let qs = matchingBank().filter(q=>wrongSet.has(q.id));
-  if(!qs.length){ toast('復習する問題はありません 🎉'); return; }
+  if(!qs.length){ toast(ico('confetti')+' 復習する問題はありません'); return; }
   qs = qs.sort(()=>Math.random()-.5);
   launchMatchingSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
@@ -391,8 +391,8 @@ function renderMatchingSession(){
   const q = sess.questions[sess.index];
   const total = sess.questions.length;
   const pct = Math.round(sess.index/total*100);
-  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'🔗'};
-  const modeTag = sess.mode==='review' ? '🔥 苦手復習 ／ ' : '';
+  const catInfo = QCAT.find(c=>c.id===q.c) || {name:q.c, icon:'link'};
+  const modeTag = sess.mode==='review' ? ico('flame')+' 苦手復習 ／ ' : '';
   // 左右それぞれ表示順をシャッフルする。要素IDは元のインデックス基準のまま。
   const leftOrder  = shuffleIndices(q.l.length);
   const rightOrder = shuffleIndices(q.r.length);
@@ -400,7 +400,7 @@ function renderMatchingSession(){
   el.innerHTML = `
     <div class="quiz-session">
       <div class="qsess-header">
-        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}🔗 ${catInfo.name}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:15px;">${modeTag}${ico('link')} ${catInfo.name}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="q-prog-bar"><div class="q-prog-fill" style="width:${pct}%"></div></div>
           <span style="font-size:12px;color:var(--dim);font-family:var(--disp);">${sess.index+1} / ${total}</span>
@@ -412,7 +412,7 @@ function renderMatchingSession(){
         <button class="btn btn-secondary" style="width:auto;margin-left:auto;font-size:12px;padding:7px 13px" onclick="quitMatching()">← 終了</button>
       </div>
       <div class="quiz-card">
-        <div class="quiz-cat-tag">🔗 ${catInfo.name} ／ マッチング問題（すべて対応付けてください）</div>
+        <div class="quiz-cat-tag">${ico('link')} ${catInfo.name} ／ マッチング問題（すべて対応付けてください）</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
         <div class="mt-hint">左をタップ → 対応する右をタップ。同じ番号どうしが1組です。組んだ左をもう一度タップすると解除できます。</div>
         <div class="mt-grid">

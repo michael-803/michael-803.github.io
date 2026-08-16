@@ -92,18 +92,18 @@ const SAMPLE = {
 
 // ─── QUIZ CATEGORIES ─────────────────────────────────────────
 const QCAT = [
-  {id:'basics', name:'クラウドの基礎',     icon:'☁️'},
-  {id:'compute',name:'コンピューティング', icon:'⚙️'},
-  {id:'storage',name:'ストレージ',         icon:'💾'},
-  {id:'network',name:'ネットワーク',       icon:'🌐'},
-  {id:'db',     name:'データベース',       icon:'🗄️'},
-  {id:'sec',    name:'セキュリティ',       icon:'🔐'},
-  {id:'sls',    name:'サーバーレス・統合', icon:'⚡'},
-  {id:'ai',     name:'AI・機械学習',       icon:'🤖'},
-  {id:'ops',    name:'監視・管理・運用',   icon:'📊'},
-  {id:'cost',   name:'料金・サポート',     icon:'💰'},
-  {id:'arch',   name:'アーキテクチャ設計', icon:'🏗️'},
-  {id:'mig',    name:'移行・転送',         icon:'🚚'},
+  {id:'basics', name:'クラウドの基礎',     icon:'cloud',     tone:'orange'},
+  {id:'compute',name:'コンピューティング', icon:'gear',      tone:'orange'},
+  {id:'storage',name:'ストレージ',         icon:'archive',   tone:'blue'},
+  {id:'network',name:'ネットワーク',       icon:'globe',     tone:'blue'},
+  {id:'db',     name:'データベース',       icon:'database',  tone:'blue'},
+  {id:'sec',    name:'セキュリティ',       icon:'lock',      tone:'ng'},
+  {id:'sls',    name:'サーバーレス・統合', icon:'bolt',      tone:'orange'},
+  {id:'ai',     name:'AI・機械学習',       icon:'robot',     tone:'orange'},
+  {id:'ops',    name:'監視・管理・運用',   icon:'bar-chart', tone:'ok'},
+  {id:'cost',   name:'料金・サポート',     icon:'coin',      tone:'ok'},
+  {id:'arch',   name:'アーキテクチャ設計', icon:'blueprint', tone:'orange'},
+  {id:'mig',    name:'移行・転送',         icon:'truck',     tone:'blue'},
 ];
 
 // ─── QUIZ QUESTION BANK ──────────────────────────────────────
@@ -303,7 +303,7 @@ for(const k in SAMPLE_EXTRA){
 // customCards/activeCatの永続化キーとして app-v2.js から使用（表示名は name を参照）
 // ─── サービス比較チートシート（段階3-8）─────────────────────
 const CHEATSHEETS = [
-  { id:'storage', title:'💾 ストレージ比較：S3 vs EBS vs EFS',
+  { id:'storage', icon:'archive', title:'ストレージ比較：S3 vs EBS vs EFS',
     headers:['項目','S3','EBS','EFS'],
     rows:[
       ['種類','オブジェクトストレージ','ブロックストレージ','ファイルストレージ（NFS）'],
@@ -312,7 +312,7 @@ const CHEATSHEETS = [
       ['耐久性','99.999999999%（11 9）','AZ内で冗長','マルチAZ対応'],
       ['課金','保存量＋リクエスト数','プロビジョニング容量','使用量（自動スケール）'],
     ] },
-  { id:'db', title:'🗄️ データベース比較：RDS/Aurora vs DynamoDB vs Redshift',
+  { id:'db', icon:'database', title:'データベース比較：RDS/Aurora vs DynamoDB vs Redshift',
     headers:['項目','RDS / Aurora','DynamoDB','Redshift'],
     rows:[
       ['種類','リレーショナル（RDB）','NoSQL（キーバリュー/ドキュメント）','データウェアハウス'],
@@ -321,7 +321,7 @@ const CHEATSHEETS = [
       ['スケール','垂直＋リードレプリカ','自動水平スケール','ノード追加でスケール'],
       ['典型用途','ECサイトの注文DB','ゲームのプレイヤーデータ','BIツールでの売上分析'],
     ] },
-  { id:'messaging', title:'📨 メッセージング比較：SQS vs SNS vs EventBridge',
+  { id:'messaging', icon:'mail', title:'メッセージング比較：SQS vs SNS vs EventBridge',
     headers:['項目','SQS','SNS','EventBridge'],
     rows:[
       ['パターン','キュー（1対1・ポーリング）','Pub/Sub（1対多・プッシュ）','イベントバス（ルールベース）'],
@@ -329,21 +329,21 @@ const CHEATSHEETS = [
       ['順序保証','FIFOキューで可能','なし（順序保証なし）','なし'],
       ['典型用途','非同期ジョブ処理・負荷平準化','ファンアウト通知（在庫/請求/配送）','SaaS連携・複雑なイベントルーティング'],
     ] },
-  { id:'lb', title:'⚖️ ロードバランサー比較：ALB vs NLB vs GLB',
+  { id:'lb', icon:'scale', title:'ロードバランサー比較：ALB vs NLB vs GLB',
     headers:['項目','ALB','NLB','GLB'],
     rows:[
       ['レイヤー','L7（HTTP/HTTPS）','L4（TCP/UDP）','L3（ネットワーク＋GENEVE）'],
       ['特徴','パスベース・ホストベースルーティング','超低遅延・高スループット・固定IP','サードパーティ仮想アプライアンス統合'],
       ['典型用途','Webアプリのルーティング','ゲーム・IoTなどリアルタイム通信','ファイアウォール等の透過的挿入'],
     ] },
-  { id:'security-detect', title:'🛡️ セキュリティ検出系：GuardDuty vs Inspector vs Macie vs Security Hub',
+  { id:'security-detect', icon:'shield', title:'セキュリティ検出系：GuardDuty vs Inspector vs Macie vs Security Hub',
     headers:['項目','GuardDuty','Inspector','Macie','Security Hub'],
     rows:[
       ['対象','CloudTrail/VPCフロー/DNSログ','EC2/Lambda/コンテナの脆弱性','S3内の機密データ','全検出結果の集約'],
       ['検出内容','不審な挙動・脅威','既知の脆弱性（CVE）','個人情報等の機密データ','複数サービスの結果を統合表示'],
       ['一言で','「侵入されていないか」','「弱点はないか」','「機密情報が漏れていないか」','「セキュリティ状況の司令塔」'],
     ] },
-  { id:'purchase', title:'💰 EC2購入オプション比較',
+  { id:'purchase', icon:'coin', title:'EC2購入オプション比較',
     headers:['項目','オンデマンド','リザーブド','Savings Plans','スポット'],
     rows:[
       ['割引率','なし（基準）','最大75%','最大72%','最大90%'],
@@ -351,14 +351,14 @@ const CHEATSHEETS = [
       ['柔軟性','高い','低い（コンバーチブルはやや高い）','高い（インスタンス変更可）','低い（中断あり）'],
       ['向いている用途','短期・不定期な利用','長期確定利用','長期だが構成変更あり','中断可能なバッチ・ML学習'],
     ] },
-  { id:'monitoring', title:'📊 監視・監査系：CloudWatch vs CloudTrail vs Config',
+  { id:'monitoring', icon:'bar-chart', title:'監視・監査系：CloudWatch vs CloudTrail vs Config',
     headers:['項目','CloudWatch','CloudTrail','AWS Config'],
     rows:[
       ['役割','パフォーマンス監視','API操作の監査ログ','リソース設定の変更履歴'],
       ['問いに答える','「今どれくらい負荷がかかっている？」','「誰が・いつ・何をした？」','「設定はいつ・どう変わった？ 準拠しているか？」'],
       ['典型用途','CPU使用率アラート・ダッシュボード','不正操作の調査・監査証跡','コンプライアンスルールの自動評価'],
     ] },
-  { id:'connectivity', title:'🌐 オンプレミス接続比較：VPN vs Direct Connect vs PrivateLink vs Transit Gateway',
+  { id:'connectivity', icon:'globe', title:'オンプレミス接続比較：VPN vs Direct Connect vs PrivateLink vs Transit Gateway',
     headers:['項目','Site-to-Site VPN','Direct Connect','PrivateLink','Transit Gateway'],
     rows:[
       ['経路','インターネット経由（暗号化）','専用物理回線','VPCエンドポイント経由','複数VPC/オンプレミスのハブ'],

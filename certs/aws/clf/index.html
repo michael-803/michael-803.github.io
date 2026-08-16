@@ -3,28 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AIF-C01 Study Deck</title>
+<title>CLF-C02 Study Deck</title>
 <!-- ============================================================
-     AIF-C01 学習アプリ。
-     このファイルは資格ごとの薄いガワで、中身は ../_engine/ にある共通
-     エンジンが担う。他資格を追加するときは、このファイルと cert.js・
-     data.js をコピーして中身を差し替えるだけでよい（CLAUDE.md 10-2節）。
+     CLF-C02 学習アプリ。
+     2026-08-15に aws/ 直下から移設し、共通エンジン ../../_engine/ に
+     載せ替えた。保存先は従来どおり app/notebook（cert.js で指定）。
+
+     このファイルは全資格共通のテンプレート。無効な機能のタブは
+     engine.js の applyFeatureToggles() が自動で隠すので、資格ごとに
+     タブを消す必要はない（CLAUDE.md 10-2節）。
      ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../_engine/theme.css?v=1">
-<link rel="stylesheet" href="../_engine/app.css?v=4">
+<link rel="stylesheet" href="../../_engine/theme.css?v=1">
+<link rel="stylesheet" href="../../_engine/app.css?v=4">
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="logo"><div class="logo-icon">🤖</div><span data-cert-name>AIF-C01</span> <span>Study Deck</span></div>
+  <div class="logo"><div class="logo-icon">☁️</div><span data-cert-name>CLF-C02</span> <span>Study Deck</span></div>
   <div class="header-right">
     <div class="sync-indicator" id="sync-indicator" style="display:none;">
       <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
     </div>
-    <a class="btn-icon" href="../hub.html" aria-label="資格一覧へ">🏠</a>
+    <a class="btn-icon" href="../../index.html" aria-label="資格一覧へ">🏠</a>
     <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ">📓</button>
   </div>
 </header>
@@ -34,7 +37,6 @@
 </div>
 
 <div class="screen" id="notebook-screen">
-  <!-- 無効な機能のタブは engine.js の applyFeatureToggles() が自動で隠す -->
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab">📇 単語帳</button>
     <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab">📝 過去問</button>
@@ -111,16 +113,16 @@
 </div>
 
 <!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
-<script src="../_engine/store.js?v=1"></script>
-<script src="cert.js?v=2"></script>
+<script src="../../_engine/store.js?v=1"></script>
+<script src="cert.js?v=1"></script>
 <script>
-  window.SAFESTORE_HOME_DOC = window.CERT.doc;   // app/notebook-aif
-  window.SAFESTORE_STANDALONE = true;            // 本番運用（他ドキュメントからの取り込みをしない）
+  window.SAFESTORE_HOME_DOC = window.CERT.doc;   // app/notebook（既存の保存先）
+  window.SAFESTORE_STANDALONE = true;
 </script>
-<script src="../_engine/safe-store.js?v=2"></script>
-<script src="data.js?v=1"></script>
-<script src="../_engine/engine.js?v=4"></script>
-<script src="../_engine/engine-formats.js?v=1"></script>
-<script src="../_engine/boot.js?v=1"></script>
+<script src="../../_engine/safe-store.js?v=2"></script>
+<script src="data.js?v=10"></script>
+<script src="../../_engine/engine.js?v=4"></script>
+<script src="../../_engine/engine-formats.js?v=1"></script>
+<script src="../../_engine/boot.js?v=1"></script>
 </body>
 </html>

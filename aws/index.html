@@ -5,27 +5,28 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AWS Study Deck</title>
 <!-- ============================================================
-     2026-08-15のマルチ資格化まで、このファイルがCLF-C02の学習アプリ本体だった。
-     現在アプリは資格ごとのフォルダにある（clf/ ・ aif/ ・ …）。
-     古いブックマークやタブから開かれても迷子にならないよう、
-     資格一覧（hub.html）へ送る。
+     学習アプリ一式は /certs/ へ移動した（AWS以外の資格も扱うため）。
+     このファイルは古いブックマーク・タブの救済用リダイレクト。
+       旧 /aws/            → /certs/
+       旧 /aws/index.html  → /certs/aws/clf/index.html（CLF-C02本体）
      ============================================================ -->
-<meta http-equiv="refresh" content="0; url=hub.html">
-<link rel="canonical" href="hub.html">
+<meta http-equiv="refresh" content="0; url=../certs/index.html">
+<link rel="canonical" href="../certs/index.html">
 <style>
   body{background:#0B1220;color:#EDF2FB;font-family:'Noto Sans JP',sans-serif;
-       display:grid;place-items:center;min-height:100dvh;margin:0;text-align:center;line-height:1.9;}
+       display:grid;place-items:center;min-height:100dvh;margin:0;text-align:center;line-height:1.9;padding:20px;}
   a{color:#FF9900;}
 </style>
 </head>
 <body>
   <div>
     <p>資格一覧に移動しています…</p>
-    <p><a href="hub.html">切り替わらない場合はこちら</a></p>
+    <p><a href="../certs/index.html">切り替わらない場合はこちら</a></p>
     <p style="font-size:13px;color:#93A5C1;">
-      CLF-C02の学習アプリは <a href="clf/index.html">clf/</a> に移動しました。
+      学習アプリは <code>/certs/</code> に移動しました。<br>
+      CLF-C02は <a href="../certs/aws/clf/index.html">certs/aws/clf/</a> です。
     </p>
   </div>
-  <script>location.replace('hub.html');</script>
+  <script>location.replace('../certs/index.html');</script>
 </body>
 </html>

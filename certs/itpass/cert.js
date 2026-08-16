@@ -32,7 +32,7 @@ window.CERT = {
     matching:   false,
     weak:       true,
     cheatsheet: true,
-    mock:       false,   // TODO: itpass/mock-exam.html を作ったら true に戻す
+    mock:       true,    // itpass/mock-exam.html（100問／120分・分野別判定つき）
     dojo:       false,
   },
 

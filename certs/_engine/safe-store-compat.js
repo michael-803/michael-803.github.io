@@ -1,10 +1,13 @@
 /* ============================================================
    SafeStore を CloudStore と同じ get/set/init インターフェースで
-   使うための互換シム。dojo-v2.html・mock-exam-v2.html 専用。
+   使うための互換シム。
 
-   本番 app/notebook・app/storage は読むだけ。書き込みは
-   app/notebook_v2 にのみ、SafeStore.save()経由でフィールド単位の
-   merge保存を行う（他ページのフィールドは消さない）。
+   利用箇所：自己完結型のページ（エンジンを使わないページ）
+     aws/clf/dojo.html ／ aws/clf/mock-exam.html ／ itpass/mock-exam.html
+
+   保存は SafeStore.save() 経由でフィールド単位の merge 書き込みになるため、
+   自分が管理するキーだけを渡せばよく、他ページのフィールドは消えない。
+   保存先は各HTMLが読み込み前に設定する window.SAFESTORE_HOME_DOC。
 
    store.js が定義する window.CloudStore をこのシムで上書きする。
    store.js・safe-store.js の後に読み込むこと。

@@ -340,6 +340,26 @@ function markKnow(didKnow){
   }
 }
 
+// ─── 単語帳「その他の操作」メニュー（⋮） ─────────────────────
+function toggleFcMenu(){
+  const m = document.getElementById('fc-menu');
+  const b = document.getElementById('fc-menu-btn');
+  if(!m) return;
+  const open = !m.classList.contains('open');
+  m.classList.toggle('open', open);
+  if(b) b.setAttribute('aria-expanded', String(open));
+}
+function closeFcMenu(){
+  const m = document.getElementById('fc-menu');
+  const b = document.getElementById('fc-menu-btn');
+  if(m) m.classList.remove('open');
+  if(b) b.setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('click', e=>{
+  const wrap = document.getElementById('fc-menu-wrap');
+  if(wrap && !wrap.contains(e.target)) closeFcMenu();
+});
+
 // ─── 出題方向トグル ───────────────────────────────────────
 function toggleReverse(){
   reverseMode = !reverseMode;
@@ -412,6 +432,16 @@ function renderFc(){
 
     <div class="fc-toolbar">
       <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">${ico('flame')} 苦手のみ（${wc}）</button>
+      <div class="fc-menu-wrap" id="fc-menu-wrap">
+        <button class="btn-icon" onclick="toggleFcMenu()" id="fc-menu-btn" aria-haspopup="true" aria-expanded="false" aria-label="その他の操作">${ico('more')}</button>
+        <div class="fc-menu" id="fc-menu" role="menu">
+          <button class="fc-menu-item${prog.shuffled?' on':''}" role="menuitem" onclick="closeFcMenu();toggleShuffle()">${ico('shuffle')} シャッフル${prog.shuffled?'（ON）':''}</button>
+          <button class="fc-menu-item${reverseMode?' on':''}" role="menuitem" onclick="closeFcMenu();toggleReverse()">${ico('repeat')} ${reverseMode?'意味→用語':'用語→意味'}</button>
+          <div class="fc-menu-divider"></div>
+          <button class="fc-menu-item" role="menuitem" onclick="closeFcMenu();openAddForm()">${ico('plus')} カードを追加</button>
+          <button class="fc-menu-item" role="menuitem" onclick="closeFcMenu();openHiddenCards()">${ico('archive')} 非表示にしたカード（${hiddenCount}）</button>
+        </div>
+      </div>
     </div>
     <hr class="fc-divider">
 
@@ -459,19 +489,6 @@ function renderFc(){
       </div>
     `}
 
-    <hr class="fc-divider">
-    <div class="fc-segment-bar">
-      <button class="seg-btn${prog.shuffled?' seg-on':''}" onclick="toggleShuffle()" title="シャッフル">
-        <span class="seg-icon">${ico('shuffle')}</span><span class="seg-label">シャッフル${prog.shuffled?'（ON）':''}</span>
-      </button>
-      <button class="seg-btn${reverseMode?' seg-on':''}" onclick="toggleReverse()" title="出題方向を反転">
-        <span class="seg-icon">${ico('repeat')}</span><span class="seg-label">${reverseMode?'意味→用語':'用語→意味'}</span>
-      </button>
-      <button class="seg-btn" onclick="openAddForm()" title="カードを追加">
-        <span class="seg-icon">＋</span><span class="seg-label">追加</span>
-      </button>
-    </div>
-    <button class="hidden-cards-link" onclick="openHiddenCards()">${ico('archive')} 非表示にしたカード（${hiddenCount}）</button>
     ${total > 0 ? `<div class="kbd-hint"><kbd>Space</kbd> めくる ・ <kbd>1</kbd> わからない ・ <kbd>2</kbd> わかる ・ <kbd>←</kbd><kbd>→</kbd> 移動 ・ <kbd>R</kbd> 反転 ・ <kbd>S</kbd> シャッフル</div>` : ''}
 
     <div class="add-card-form" id="add-card-form">

@@ -1,15 +1,8 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0B1220">
-<title>AWS Study Deck（開発版 v2）</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="theme.css?v=1">
-<style>
+/* ============================================================
+   AWS Study Deck — 共通コンポーネントCSS
+   由来: CLF-C02版 index.html の <style> ブロック（1:1で抽出）。
+   全資格で共有する。資格固有の色やレイアウトはここに入れないこと。
+   ============================================================ */
 *{box-sizing:border-box;margin:0;padding:0;}
 html{-webkit-text-size-adjust:100%;}
 body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;}
@@ -291,222 +284,86 @@ textarea{resize:vertical;min-height:88px;}
 .fc-stats{margin-left:auto;display:flex;gap:10px;font-family:var(--disp);font-weight:700;}
 .fc-controls{display:flex;align-items:center;gap:9px;justify-content:center;margin-top:4px;flex-wrap:wrap;}
 .btn-study:disabled{opacity:.35;cursor:not-allowed;transform:none;}
-</style>
-</head>
-<body>
-<div class="app">
-<header>
-  <div class="logo"><div class="logo-icon">☁️</div>AWS <span>Study Deck</span></div>
-  <div class="header-right">
-    <div class="sync-indicator" id="sync-indicator" style="display:none;">
-      <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
-    </div>
-    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ">📓</button>
-  </div>
-</header>
 
-<div class="screen active" id="loading-screen">
-  <div><div class="loading-spinner"></div><div class="loading-text">接続中...</div></div>
-</div>
-
-<div class="screen" id="notebook-screen">
-  <div class="tab-bar" role="tablist">
-    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab">📇 単語帳</button>
-    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab">📝 過去問（4択）</button>
-    <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab">🗳️ 複数選択問題</button>
-    <button class="tab-btn" onclick="switchTab('scenario')" id="tab-scenario" role="tab">🧩 シナリオ問題</button>
-    <button class="tab-btn" onclick="switchTab('weak')" id="tab-weak" role="tab">🎯 弱点診断</button>
-    <button class="tab-btn" onclick="switchTab('cheatsheet')" id="tab-cheatsheet" role="tab">📋 チートシート</button>
-    <a class="tab-btn tab-link" href="mock-exam-v2.html">🎓 模擬試験</a>
-    <a class="tab-btn tab-link" href="dojo-v2.html">🥋 ハンズオン道場</a>
-  </div>
-  <div class="tab-content active" id="tabcontent-fc">
-    <div class="quiz-layout" id="fc-container"></div>
-  </div>
-  <div class="tab-content" id="tabcontent-quiz">
-    <div class="quiz-layout" id="quiz-layout"></div>
-  </div>
-  <div class="tab-content" id="tabcontent-multi">
-    <div class="quiz-layout" id="multi-layout"></div>
-  </div>
-  <div class="tab-content" id="tabcontent-scenario">
-    <div class="quiz-layout" id="scenario-layout"></div>
-  </div>
-  <div class="tab-content" id="tabcontent-weak">
-    <div class="quiz-layout" id="weak-container"></div>
-  </div>
-  <div class="tab-content" id="tabcontent-cheatsheet">
-    <div class="quiz-layout" id="cheatsheet-container"></div>
-  </div>
-</div>
-
-<div class="screen" id="result-screen">
-  <div class="result-card">
-    <div class="result-emoji" id="result-emoji">🎉</div>
-    <div class="result-title" id="result-title">完了！</div>
-    <div class="result-sub" id="result-sub"></div>
-    <div class="result-ring">
-      <svg viewBox="0 0 110 110" width="110" height="110" aria-hidden="true">
-        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--card)" stroke-width="9"/>
-        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--orange)" stroke-width="9" stroke-dasharray="289" id="result-circle" stroke-dashoffset="289" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
-      </svg>
-      <div class="result-pct" id="result-pct">0%</div>
-    </div>
-    <div class="result-breakdown">
-      <div class="rb-item"><div class="rb-num" id="rb-correct" style="color:var(--ok)">0</div><div class="rb-lbl">正解</div></div>
-      <div class="rb-item"><div class="rb-num" id="rb-wrong" style="color:var(--ng)">0</div><div class="rb-lbl">不正解</div></div>
-    </div>
-    <div class="result-actions">
-      <button class="btn btn-primary" onclick="restartResult()">もう一度</button>
-      <button class="btn btn-secondary" id="review-wrong-btn" onclick="reviewWrongFromResult()" style="display:none;">間違えた問題だけ復習</button>
-      <button class="btn btn-secondary" onclick="backFromResult()">戻る</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<div class="toast" id="toast" role="status"></div>
-
-<div class="modal-overlay" id="hidden-cards-modal">
-  <div class="modal">
-    <div class="modal-title">🗂 非表示にしたカード</div>
-    <div id="hidden-cards-list"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeHiddenCards()">閉じる</button>
-    </div>
-  </div>
-</div>
-
-<script src="store.js?v=8"></script>
-<script src="safe-store.js?v=8"></script>
-<script src="data-v2.js?v=8"></script>
-<script src="app-v2.js?v=8"></script>
-<script>
 /* ============================================================
-   改変版（v2）のブート処理
-   保存先は app/notebook_v2。本番 app/notebook は読むだけ。
+   ここから下はマルチ資格化で追加した部品（CLAUDE.md 第III部）
+   既存のカラートークンのみを使い、新しい色は足していない。
    ============================================================ */
 
-/* 本番の保存形式を、アプリが使う形に読み替える（旧形式の救出を含む） */
-function adoptData(d){
-  d = d || {};
-  state.customCards = d.customCards || {};
-  state.fcStats     = d.fcStats     || {};
-  state.fcTabState  = d.fcTabState  || {};
-  state.quizStats   = d.quizStats   || {answered:{}, wrong:[]};
-  state.cardEdits   = d.cardEdits   || {};
-  state.hiddenCards = d.hiddenCards || [];
-  state.fcProgress  = d.fcProgress  || {};
-  state.fcLastKey   = d.fcLastKey   || null;
-  state.scenarioStats = d.scenarioStats || {answered:{}, wrong:[]};
-  state.multiStats   = d.multiStats   || {answered:{}, wrong:[]};
-  state.multiQEdits  = d.multiQEdits  || {};
-  state.hiddenMultiQ = d.hiddenMultiQ || [];
-  state.customMultiQ = d.customMultiQ || [];
+/* --- 単語帳：カテゴリ複数選択の状態表示（14-3節） --- */
+/* チップは常にチェックボックスとして振る舞うので、モード切り替えのボタンは無い。
+   ここは「今いくつ選んでいるか」を示す行。 */
+.fc-multi-bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;justify-content:center;margin:0 0 12px;}
+.fc-multi-bar .btn-icon{font-size:12px;padding:5px 10px;}
+.fc-multi-count{color:var(--dim);font-size:12.5px;}
+.fc-multi-count strong{color:var(--orange);font-family:var(--disp);}
 
-  // 旧cardStats（'k'/'a'方式・キーが「カテゴリ::b::番号」形式）からの移行
-  if(!d.fcStats && d.cardStats){
-    Object.entries(d.cardStats).forEach(([key,val])=>{
-      let newKey = null;
-      const mB = key.match(/^(.+)::b::(\d+)$/);
-      const mC = key.match(/^(.+)::c::(.+)$/);
-      if(mB) newKey = `b::${mB[1]}::${mB[2]}`;
-      else if(mC) newKey = `c::${mC[2]}`;
-      if(newKey) state.fcStats[newKey] = val==='k' ? {ok:1,ng:0} : {ok:0,ng:1};
-    });
-  }
-  // さらに古いノート形式からカスタムカードを救出
-  if(!d.customCards && (d.notebooks || d.decks)){
-    const builtinTerms = new Set();
-    Object.values(SAMPLE).forEach(list=>list.forEach(cc=>builtinTerms.add(cc.term)));
-    const rescue = (decks)=>{
-      (decks||[]).forEach(deck=>{
-        (deck.cards||[]).forEach(card=>{
-          if(builtinTerms.has(card.term)) return;
-          const cat = SAMPLE[deck.name] ? deck.name : (Object.keys(SAMPLE)[0]);
-          if(!state.customCards[cat]) state.customCards[cat]=[];
-          if(!state.customCards[cat].some(cc=>cc.term===card.term)){
-            state.customCards[cat].push({id:String(card.id||Date.now()+Math.floor(Math.random()*1e6)), term:card.term, def:card.def});
-          }
-        });
-      });
-    };
-    if(Array.isArray(d.notebooks)) d.notebooks.forEach(nb=>rescue(nb.decks));
-    else rescue(d.decks);
-  }
+/* --- 順序問題（14-2節） --- */
+/* タップした順に番号が振られる方式。ドラッグ＆ドロップは使わない（スマホ操作性のため） */
+.ord-list{display:flex;flex-direction:column;gap:10px;margin:16px 0;}
+.ord-opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--rs);color:var(--text);cursor:pointer;
+  font-size:14px;line-height:1.7;padding:13px 15px;transition:all .15s;}
+.ord-opt:hover:not(:disabled){border-color:var(--orange);}
+.ord-opt:disabled{cursor:default;}
+.ord-num{flex:0 0 26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--card2);border:1px solid var(--line);color:var(--dim);font-size:12px;font-weight:700;}
+.ord-opt.picked{border-color:var(--orange);background:var(--card2);}
+.ord-opt.picked .ord-num{background:var(--orange);border-color:var(--orange);color:#161006;}
+.ord-opt.ok{border-color:var(--ok);}
+.ord-opt.ok .ord-num{background:var(--ok);border-color:var(--ok);color:#04201C;}
+.ord-opt.ng{border-color:var(--ng);}
+.ord-opt.ng .ord-num{background:var(--ng);border-color:var(--ng);color:#2B0808;}
+
+/* --- マッチング問題（14-2節） --- */
+/* 左の設問をタップ → 右の選択肢をタップ、で対応が繋がる方式 */
+.mt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;}
+.mt-col-label{color:var(--dim);font-size:12px;font-weight:700;margin-bottom:6px;}
+.mt-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--rs);color:var(--text);cursor:pointer;
+  font-size:13.5px;line-height:1.65;padding:12px 13px;margin-bottom:9px;transition:all .15s;}
+.mt-item:hover:not(:disabled){border-color:var(--orange);}
+.mt-item:disabled{cursor:default;}
+.mt-item.active{border-color:var(--orange);background:var(--card2);box-shadow:0 0 0 2px rgba(255,153,0,.22);}
+.mt-item.paired{background:var(--card2);}
+.mt-badge{flex:0 0 auto;min-width:22px;height:22px;padding:0 6px;border-radius:11px;display:grid;place-items:center;
+  background:var(--card2);border:1px solid var(--line);color:var(--dim);font-size:11px;font-weight:700;}
+.mt-item.paired .mt-badge{background:var(--blue);border-color:var(--blue);color:#04202B;}
+.mt-item.ok{border-color:var(--ok);}
+.mt-item.ok .mt-badge{background:var(--ok);border-color:var(--ok);color:#04201C;}
+.mt-item.ng{border-color:var(--ng);}
+.mt-item.ng .mt-badge{background:var(--ng);border-color:var(--ng);color:#2B0808;}
+.mt-hint{color:var(--dim);font-size:12.5px;text-align:center;margin-bottom:4px;}
+@media(max-width:480px){
+  .mt-grid{gap:8px;}
+  .mt-item{font-size:12.5px;padding:10px 11px;}
 }
 
-function snapshotState(){
-  return {
-    customCards: state.customCards,
-    fcStats:     state.fcStats,
-    fcTabState:  state.fcTabState,
-    quizStats:   state.quizStats,
-    cardEdits:   state.cardEdits,
-    hiddenCards: state.hiddenCards,
-    fcProgress:  state.fcProgress,
-    fcLastKey:   state.fcLastKey,
-    scenarioStats: state.scenarioStats,
-    multiStats:   state.multiStats,
-    multiQEdits:  state.multiQEdits,
-    hiddenMultiQ: state.hiddenMultiQ,
-    customMultiQ: state.customMultiQ
-  };
+/* --- タブバー：狭い画面では折り返す --- */
+/* 出題形式が増えてタブが10個になり、スマホ幅では横スクロールしないと右側の
+   タブ（順序問題・マッチング問題など）に到達できなくなっていた。しかも
+   スクロールできるという手がかりが画面に出ないため、機能に気づけなかった。
+   折り返して全タブを常に見せる。詰めて表示するので概ね2〜3段に収まる。 */
+@media(max-width:680px){
+  .tab-bar{flex-wrap:wrap;overflow-x:visible;padding:0 10px 3px;gap:0;}
+  .tab-btn{font-size:12.5px;padding:9px 10px;border-bottom-width:2px;flex:0 0 auto;}
 }
 
-/* app-v2.js の save() から呼ばれる保存口。ガードを通ったものだけが書かれる */
-window._save = async function(){
-  setSyncState('syncing');
-  const r = await SafeStore.save(snapshotState());
-  if(r.ok){ setSyncState('ok'); }
-  else{
-    setSyncState('error');
-    toast('保存を中止：' + r.reason, 'error');
-  }
-};
-
-/* 本番と取り違えないための目印 */
-function markStaging(){
-  const h = document.querySelector('.header-right');
-  if(!h) return;
-  const b = document.createElement('span');
-  b.textContent = '開発版 v2';
-  b.title = '保存先は app/notebook_v2 です。本番データには書き込みません。';
-  b.style.cssText = 'font-family:var(--disp);font-size:10px;font-weight:700;letter-spacing:.1em;'
-    + 'background:rgba(56,189,248,.16);color:var(--blue);border:1px solid rgba(56,189,248,.4);'
-    + 'border-radius:6px;padding:3px 8px;white-space:nowrap;';
-  h.insertBefore(b, h.firstChild);
+/* --- 単語帳：カテゴリ選択のスマホ向け折りたたみ（14-3節） --- */
+/* PCでは見出しを出さず、チップを常に表示する。 */
+.fc-cat-summary{display:none;}
+@media(max-width:680px){
+  /* スマホではチップが6段233pxを占め、カードと「わかる／わからない」が
+     画面外に押し出されていた。見出しをタップして開く形にする。 */
+  .fc-cat-summary{display:flex;align-items:center;gap:8px;width:100%;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--rs);color:var(--text);cursor:pointer;
+    font-family:var(--body);font-size:13px;padding:10px 13px;margin-bottom:10px;text-align:left;}
+  .fc-cat-summary .fc-cat-current{color:var(--orange);font-weight:700;margin-left:auto;
+    max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fc-cat-summary .fc-cat-caret{color:var(--dim);font-size:10px;flex-shrink:0;}
+  .fc-chips{display:none;}
+  .fc-chips.open{display:flex;}
+  .fc-multi-bar{display:none;}
+  .fc-multi-bar.open{display:flex;}
+  .tag-btn{font-size:12px;padding:5px 11px;}
 }
-
-(async function boot(){
-  markStaging();
-  setSyncState('syncing');
-
-  let res;
-  try{
-    res = await SafeStore.init();
-  }catch(e){
-    res = {data:{}, cloud:false, notes:['接続できませんでした：' + e.message]};
-  }
-
-  adoptData(res.data);
-  afterLoad();
-  setSyncState(res.cloud ? 'ok' : 'error');
-
-  (res.notes || []).forEach((n,i) => setTimeout(()=>toast(n, 'success'), 400 + i*2800));
-
-  SafeStore.onRemote(d => {
-    adoptData(d);
-    afterLoad(true);
-    setSyncState('ok');
-  });
-
-  console.log('%cSafeStore', 'color:#38BDF8;font-weight:700',
-    '状態:', SafeStore.status(),
-    '\n  控えの一覧: await SafeStore.listSnapshots()',
-    '\n  控えから戻す: await SafeStore.restore(0)',
-    '\n  止めた保存: SafeStore.blockedLog()');
-})();
-</script>
-</body>
-</html>

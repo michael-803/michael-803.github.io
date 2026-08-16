@@ -1,8 +1,34 @@
 // ═══════════════════════════════════════════════════════════
-//  AWS Study Hub — app.js v6
-//  単語帳：移植仕様（flip / reverse / shuffle / 苦手のみ /
-//  その場除去 / タブ状態のID保存復元）+ Firestore同期
+//  AWS Study Deck — engine.js（資格非依存の共通エンジン）
+//
+//  このファイルは資格固有の情報を一切持たない。資格ごとの差分は
+//  以下の2つから供給される。読み込み順は cert.js → data.js → engine.js。
+//
+//   ・window.CERT … cert.js。資格ID・表示名・保存先・機能トグル・
+//                   弱点診断の処方箋・道場ラボ名
+//   ・データ契約 … data.js。以下のグローバルを同名で定義すること
+//                   SAMPLE / FC_CATS_DEF / QCAT / QQ / SCENARIO_Q /
+//                   MULTI_Q / ORDER_Q / MATCH_Q / CHEATSHEETS
+//
+//  由来：CLF-C02版 app.js v6。詳細は ../CLAUDE.md 第II部を参照。
 // ═══════════════════════════════════════════════════════════
+
+// ─── 資格定義の正規化 ──────────────────────────────────────
+// cert.js が無くても落ちないよう既定値で埋める。
+const CERT = Object.assign({
+  id:'unknown', name:'AWS Study Deck', doc:'notebook',
+  prescriptions:{}, labNames:{}
+}, window.CERT || {});
+
+// 機能トグル。CLAUDE.md 第11節の機能マトリクスに対応する。
+// 既定は「CLF-C02が持っていた機能を全部ON、新形式はOFF」。
+CERT.features = Object.assign({
+  flashcards:true, quiz:true, multi:true, scenario:true,
+  weak:true, cheatsheet:true, mock:true, dojo:true,
+  ordering:false, matching:false
+}, (window.CERT || {}).features || {});
+
+function hasFeature(k){ return CERT.features[k] === true; }
 
 // ─── STATE ────────────────────────────────────────────────
 let state = {
@@ -22,6 +48,10 @@ let state = {
   multiQEdits: {},                 // { 'MS001': {q,o,a,n} } — 組み込み複数選択問題の上書き
   hiddenMultiQ: [],                // ['MS001', ...] — 論理削除された組み込み複数選択問題
   customMultiQ: [],                // ユーザーが追加した複数選択問題
+  ordering: {selectedCatId:null, session:null},   // 順序問題（CLAUDE.md 14-2節）
+  orderingStats: {answered:{}, wrong:[]},
+  matching: {selectedCatId:null, session:null},   // マッチング問題（CLAUDE.md 14-2節）
+  matchingStats: {answered:{}, wrong:[]},
   resultCtx: null,
 };
 
@@ -79,12 +109,74 @@ function weakCount(){
   return currentCards().filter(isWeak).length;
 }
 
-// ─── デッキ計算（キー単位：カテゴリ or 全カテゴリ or 苦手のみ） ─
+// ─── カテゴリ複数選択（CLAUDE.md 14-3節） ───────────────────
+// fcProgress のキー設計。1件だけ選んだときは現行キーとまったく同じに
+// なるため、既存の学習進捗がそのまま引き継がれる。
+//   0件 → '_all_' ／ 1件 → そのカテゴリID ／ 2件以上 → 'm:' + ソート済みIDを'+'連結
+// IDをソートしてから連結するので、選ぶ順番が違っても同じキーになる（進捗が分裂しない）。
+// Firestoreの予約語（'__x__'形式）を避けるため、接頭辞は単一アンダースコアのまま。
+const MULTI_PREFIX = 'm:';
+const MAX_MULTI_PROGRESS = 10;   // 'm:'キーの保持上限。9カテゴリなら組み合わせは最大511通りある
+
+function isMultiKey(key){ return typeof key === 'string' && key.startsWith(MULTI_PREFIX); }
+
+// キー → カテゴリID配列。全カテゴリ・苦手のみは空配列を返す。
+function catsFromKey(key){
+  if(isMultiKey(key)) return key.slice(MULTI_PREFIX.length).split('+').filter(Boolean);
+  if(key === CAT_ALL || key === CAT_WEAK) return [];
+  return [key];
+}
+// カテゴリID配列 → キー。存在しないIDは捨てる（カテゴリ定義が変わっても壊れない）
+function keyFromCats(cats){
+  const uniq = [...new Set(cats)].filter(id => CAT_ID_TO_NAME[id]).sort();
+  if(uniq.length === 0) return CAT_ALL;
+  if(uniq.length === 1) return uniq[0];
+  return MULTI_PREFIX + uniq.join('+');
+}
+
+// 保存されているキーが、現在の資格のカテゴリ定義と食い違っていないか確かめる。
+// 資格をまたいで紛れ込んだキーや、カテゴリ定義を変えた後の古いキーを弾く。
+// これが無いと、存在しないカテゴリを復元して「0枚」の画面になってしまう。
+function sanitizeKey(key){
+  if(key === CAT_ALL || key === CAT_WEAK) return key;
+  const cats = catsFromKey(key).filter(id => CAT_ID_TO_NAME[id]);
+  return cats.length ? keyFromCats(cats) : CAT_ALL;
+}
+
+// 現在の資格に存在しないカテゴリを含む進捗を捨てる（起動時に一度だけ）
+function pruneUnknownProgress(){
+  const prog = state.fcProgress || {};
+  let changed = false;
+  Object.keys(prog).forEach(k=>{
+    if(k === CAT_ALL || k === CAT_WEAK) return;
+    const cats = catsFromKey(k);
+    if(!cats.length || !cats.every(id => CAT_ID_TO_NAME[id])){ delete prog[k]; changed = true; }
+  });
+  if(state.fcLastKey){
+    const fixed = sanitizeKey(state.fcLastKey);
+    if(fixed !== state.fcLastKey){ state.fcLastKey = fixed; changed = true; }
+  }
+  return changed;
+}
+
+// 'm:'キーが際限なく増えないよう、最終利用が古いものから削除する。
+// 単一カテゴリ・_all_・_weak_ は削除対象にしない。
+function pruneMultiProgress(){
+  const prog = state.fcProgress || {};
+  const keys = Object.keys(prog).filter(isMultiKey);
+  if(keys.length <= MAX_MULTI_PROGRESS) return false;
+  keys.sort((a,b) => (prog[b].usedAt||0) - (prog[a].usedAt||0));   // 新しい順に並べ
+  keys.slice(MAX_MULTI_PROGRESS).forEach(k => { delete prog[k]; }); // 溢れた分を捨てる
+  return true;
+}
+
+// ─── デッキ計算（キー単位：カテゴリ / 複数カテゴリ / 全カテゴリ / 苦手のみ） ─
 function computeDeck(key){
   const all = currentCards();
   if(key === CAT_WEAK) return all.filter(isWeak);
-  if(key !== CAT_ALL)  return all.filter(c => c.catId === key);
-  return all;
+  if(key === CAT_ALL)  return all;
+  const cats = new Set(catsFromKey(key));
+  return all.filter(c => cats.has(c.catId));
 }
 
 // ─── キーごとの進捗（カテゴリ別・確定仕様） ────────────────
@@ -120,9 +212,28 @@ function selectView(key){
 function toggleWeakView(){
   selectView(currentKey === CAT_WEAK ? CAT_ALL : CAT_WEAK);
 }
+
+// ─── カテゴリ選択の操作（CLAUDE.md 14-3節） ──────────────────
+// スマホではカテゴリチップが6段・233pxを占め、カードと「わかる／わからない」が
+// 画面外へ押し出されてしまう。そこで狭い画面では折りたたみ、見出しをタップして
+// 開く形にする（PCでは常に開いたまま。CSS側で出し分ける）。
+let catPickerOpen = false;
+function toggleCatPicker(){ catPickerOpen = !catPickerOpen; renderFc(); }
+
+// チップを押したとき：そのカテゴリの選択を入れる／外す
+function toggleCatSelection(catId){
+  const cats = new Set(catsFromKey(currentKey));
+  if(cats.has(catId)) cats.delete(catId); else cats.add(catId);
+  selectView(keyFromCats([...cats]));
+}
+// 選択をすべて解除（＝全カテゴリに戻す）
+function clearCatSelection(){ selectView(CAT_ALL); }
+
 function enterKey(key){
   currentKey = key;
   const prog = getProgress(key);
+  prog.usedAt = Date.now();            // LRU剪定の判定に使う
+  if(isMultiKey(key)) pruneMultiProgress();
   deck = computeDeck(key);
   reverseMode = !!prog.reverse;
 
@@ -249,20 +360,55 @@ function renderFc(){
   const card = total ? deck[order[pos]] : null;
   const s = card ? (stats[card.id] || {ok:0, ng:0}) : null;
 
+  // ─── カテゴリチップ（CLAUDE.md 14-3節：複数選択） ───────────
+  // チップは常にチェックボックスとして振る舞う。タップするたびに、その
+  // カテゴリを出題対象に入れる／外す。組み合わせは自由で個数の制限もない
+  // （例：AIサービス群＋責任あるAI の2つだけを出題する）。
+  //
+  // モード切り替え式にしていた時期があるが、「複数選択」ボタンを先に押す
+  // 必要があることに気づけず、機能していないように見えるため廃止した。
+  const selectedCats = new Set(catsFromKey(currentKey));
+
   const chips = [{id:CAT_ALL, name:'全カテゴリ'}, ...FC_CATS_DEF].map(c=>{
-    const active = currentKey === c.id;
-    return `<button class="tag-btn${active?' selected':''}" onclick="selectView('${escAttr(c.id)}')">${escHtml(c.name)}</button>`;
+    // 「全カテゴリ」は選択をすべて解除するボタンとして働く
+    if(c.id === CAT_ALL){
+      return `<button class="tag-btn${currentKey===CAT_ALL?' selected':''}" onclick="selectView('${escAttr(CAT_ALL)}')">${escHtml(c.name)}</button>`;
+    }
+    const active = selectedCats.has(c.id);
+    return `<button class="tag-btn${active?' selected':''}" onclick="toggleCatSelection('${escAttr(c.id)}')">${active?'☑':'☐'} ${escHtml(c.name)}</button>`;
   }).join('');
+
+  const multiBar = `
+    <div class="fc-multi-bar${catPickerOpen?' open':''}">
+      ${selectedCats.size === 0
+        ? `<span class="fc-multi-count">カテゴリはいくつでも組み合わせられます</span>`
+        : `<span class="fc-multi-count"><strong>${selectedCats.size}</strong> カテゴリ・<strong>${deck.length}</strong> 枚を出題中</span>
+           <button class="btn-icon" onclick="clearCatSelection()">選択を解除</button>`}
+    </div>`;
+
+  // スマホ用の折りたたみ見出し。今なにを選んでいるかを畳んだ状態でも示す。
+  const catSummaryText = selectedCats.size === 0
+    ? `全カテゴリ（${deck.length}枚）`
+    : `${[...selectedCats].map(id=>CAT_ID_TO_NAME[id]).join('・')}（${deck.length}枚）`;
+  const catSummary = `
+    <button class="fc-cat-summary" onclick="toggleCatPicker()" aria-expanded="${catPickerOpen}">
+      <span>📂 カテゴリ</span>
+      <span class="fc-cat-current">${escHtml(catSummaryText)}</span>
+      <span class="fc-cat-caret">${catPickerOpen?'▲':'▼'}</span>
+    </button>`;
 
   const front = card ? (reverseMode ? card.meaning : card.term) : '';
   const back  = card ? (reverseMode ? card.term : card.meaning) : '';
   const frontIsLong = reverseMode;
   const isWeakView = currentKey === CAT_WEAK;
-  const formCatDefault = (currentKey !== CAT_ALL && currentKey !== CAT_WEAK) ? currentKey : FC_CATS_DEF[0].id;
+  // 追加フォームの既定カテゴリ。複数選択中は先頭のカテゴリを既定にする。
+  const formCatDefault = selectedCats.size ? [...selectedCats].sort()[0] : FC_CATS_DEF[0].id;
 
   el.innerHTML = `
   <div class="fc-player">
-    <div class="fc-chips quick-tags">${chips}</div>
+    ${catSummary}
+    <div class="fc-chips quick-tags${catPickerOpen?' open':''}">${chips}</div>
+    ${multiBar}
 
     <div class="fc-toolbar">
       <button class="btn-icon${isWeakView?' weak-on':''}" onclick="toggleWeakView()" title="苦手カードのみ表示">🔥 苦手のみ（${wc}）</button>
@@ -599,12 +745,16 @@ function migrateOldKeys(){
 // ─── BOOT ─────────────────────────────────────────────────
 function afterLoad(silent){
   const migrated = migrateOldKeys();
-  if(migrated) save();
+  const cleaned  = pruneUnknownProgress(); // 他資格・旧定義のカテゴリキーを除去
+  const pruned   = pruneMultiProgress();   // 複数選択キーのLRU剪定（CLAUDE.md 14-3節）
+  if(migrated || cleaned || pruned) save();
+  applyFeatureToggles();
   document.getElementById('btn-home').style.display = 'block';
   document.getElementById('sync-indicator').style.display = 'flex';
   if(!silent){
     showScreen('notebook-screen');
-    enterKey(state.fcLastKey || CAT_ALL);   // 保存された続き（最後に見ていたビュー）から再開
+    // 保存された続き（最後に見ていたビュー）から再開。存在しないカテゴリなら全カテゴリへ。
+    enterKey(sanitizeKey(state.fcLastKey || CAT_ALL));
   } else {
     if(document.getElementById('notebook-screen').classList.contains('active')
        && document.getElementById('tabcontent-fc').classList.contains('active')){
@@ -622,17 +772,48 @@ function goHome(){
 }
 
 // ─── TABS ─────────────────────────────────────────────────
+// タブIDと機能トグルの対応。index.html は全資格共通のテンプレートで、
+// 無効な機能のタブはここで間引く。
+const TAB_FEATURE = {
+  fc:'flashcards', quiz:'quiz', multi:'multi', scenario:'scenario',
+  ordering:'ordering', matching:'matching', weak:'weak', cheatsheet:'cheatsheet'
+};
+
+// 起動時に一度だけ呼ぶ。無効な機能のタブ・導線を隠し、資格名を流し込む。
+function applyFeatureToggles(){
+  Object.entries(TAB_FEATURE).forEach(([tab, feat])=>{
+    if(hasFeature(feat)) return;
+    const btn  = document.getElementById('tab-'+tab);
+    const pane = document.getElementById('tabcontent-'+tab);
+    if(btn)  btn.style.display  = 'none';
+    if(pane) pane.style.display = 'none';
+  });
+  // タブ以外の導線（模試リンク・道場リンクなど）は data-feature 属性で制御する
+  document.querySelectorAll('[data-feature]').forEach(el=>{
+    if(!hasFeature(el.dataset.feature)) el.style.display = 'none';
+  });
+  document.querySelectorAll('[data-cert-name]').forEach(el=>{ el.textContent = CERT.name; });
+  if(CERT.name) document.title = CERT.name + ' Study Deck';
+}
+
 function switchTab(t){
+  const feat = TAB_FEATURE[t];
+  if(feat && !hasFeature(feat)) return;   // 無効な機能へは遷移させない
+  const btn  = document.getElementById('tab-'+t);
+  const pane = document.getElementById('tabcontent-'+t);
+  if(!btn || !pane) return;               // その資格に存在しないタブなら何もしない
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-  document.getElementById('tab-'+t).classList.add('active');
-  document.getElementById('tabcontent-'+t).classList.add('active');
-  if(t==='quiz' && !state.quiz.session) renderQuizHome();
-  if(t==='fc') renderFc();
-  if(t==='weak') renderWeak();
+  btn.classList.add('active');
+  pane.classList.add('active');
+  if(t==='quiz'     && !state.quiz.session)     renderQuizHome();
+  if(t==='fc')                                  renderFc();
+  if(t==='weak')                                renderWeak();
   if(t==='scenario' && !state.scenario.session) renderScenarioHome();
-  if(t==='multi' && !state.multi.session) renderMultiHome();
-  if(t==='cheatsheet') renderCheatsheet();
+  if(t==='multi'    && !state.multi.session)    renderMultiHome();
+  if(t==='ordering' && !state.ordering.session) renderOrderingHome();
+  if(t==='matching' && !state.matching.session) renderMatchingHome();
+  if(t==='cheatsheet')                          renderCheatsheet();
 }
 
 // ─── QUIZ STATS ───────────────────────────────────────────
@@ -678,25 +859,17 @@ function fcCatAccuracy(catId){
   return total ? {pct:Math.round(ok/total*100), total} : null;
 }
 
-const DOJO_LAB_NAME = {
-  basics:'Lab 0（コンソールの歩き方）', iam:'Lab 1（IAM）', s3:'Lab 2（S3）',
-  ec2:'Lab 3（EC2）', vpc:'Lab 4（VPC）', lambda:'Lab 5（Lambda）', budgets:'Lab 6（Billing）'
-};
-const WEAK_PRESCRIPTIONS = {
-  cat_compute:{ text:'EC2・Lambda・ECSなど起動方式とスケーリングの違いが頻出です。単語帳「コンピューティング」を復習し、道場のEC2ラボで手を動かしましょう。', lab:'ec2' },
-  cat_storage: { text:'S3のストレージクラスとEBS/EFSの使い分けが頻出です。単語帳「ストレージ」を重点的に復習し、道場のS3ラボで実践しましょう。', lab:'s3' },
-  cat_network: { text:'VPC構成要素（サブネット・IGW・NAT・SG/NACL）の役割の違いを図で整理しましょう。道場のVPCラボが実感を掴む近道です。', lab:'vpc' },
-  cat_db:      { text:'RDS・Aurora・DynamoDBの使い分けと、マルチAZ/リードレプリカの違いを単語帳「データベース」で復習しましょう。', lab:null },
-  cat_sec:     { text:'IAMの権限モデルとGuardDuty/WAF/Shieldの役割分担が混同されがちです。単語帳「セキュリティ」＋道場のIAMラボがおすすめです。', lab:'iam' },
-  cat_sls:     { text:'SQS/SNS/EventBridgeの違いとサーバーレス構成の典型パターンを復習しましょう。道場のLambdaラボで流れを確認できます。', lab:'lambda' },
-  cat_ai:      { text:'各AIサービスの用途対応（画像→Rekognition、文書→Textract等）を単語帳「AI / ML」で覚え直しましょう。', lab:null },
-  cat_ops:     { text:'CloudWatch・CloudTrail・Configの役割の違いが混同されがちです。単語帳「監視・管理」で3つを並べて比較しましょう。', lab:null },
-  cat_cost:    { text:'料金モデルとサポートプランの違い、Cost Explorer/Budgetsの使い分けを復習しましょう。道場のBillingラボが実践的です。', lab:'budgets' },
-  basics:      { text:'責任共有モデルやリージョン/AZの定義など、クラウドの基礎用語を単語帳で確認しましょう。道場Lab 0が導入に最適です。', lab:'basics' },
-  arch:        { text:'Well-Architectedフレームワークの柱と高可用性設計の考え方を過去問「アーキテクチャ設計」で復習しましょう。', lab:null },
-  mig:         { text:'DMS・DataSync・Snow Familyなど移行サービスの使い分けを過去問「移行・転送」で整理しましょう。', lab:null },
-};
+// 弱点診断で使う資格固有のテキストは cert.js から供給する（CLAUDE.md 10-3節）。
+// labNames は道場を持たない資格（AIF-C01など）では空オブジェクトでよい。
+const DOJO_LAB_NAME = CERT.labNames || {};
+const WEAK_PRESCRIPTIONS = CERT.prescriptions || {};
 
+// 弱点診断の集計対象は2種類ある。
+//  ① 単語帳のカテゴリ（FC_CATS_DEF）
+//     過去問カテゴリIDは「'cat_' を除いたもの」という命名規約で対応付ける。
+//     data.js の QCAT 側もこの規約に合わせること（例 cat_bedrock ⇔ bedrock）。
+//  ② 過去問にしか存在しないカテゴリ
+//     資格ごとに異なるため cert.js の quizOnlyCats に列挙する。
 function weakDiagnosis(){
   const rows = [];
   FC_CATS_DEF.forEach(({id, name})=>{
@@ -711,9 +884,10 @@ function weakDiagnosis(){
     else if(fcAcc){ pct = fcAcc.pct; total = fcAcc.total; }
     rows.push({ id, name, pct, total });
   });
-  ['basics','arch','mig'].forEach(qid=>{
-    const acc = catAccuracy(qid);
+  (CERT.quizOnlyCats || []).forEach(qid=>{
     const info = QCAT.find(c=>c.id===qid);
+    if(!info) return;                    // 定義されていないカテゴリは黙って飛ばす
+    const acc = catAccuracy(qid);
     rows.push({ id:qid, name:info.name, pct:acc?acc.pct:null, total:acc?acc.total:0 });
   });
   return rows;
@@ -740,7 +914,9 @@ function renderWeak(){
   const prescriptionHtml = weakest.length ? weakest.map(r=>{
     const rx = WEAK_PRESCRIPTIONS[r.id];
     if(!rx) return '';
-    const labHtml = rx.lab ? `<br>🥋 おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
+    // 道場を持たない資格（features.dojo=false）ではラボ導線を出さない
+    const labHtml = (rx.lab && hasFeature('dojo'))
+      ? `<br>🥋 おすすめ道場：<strong>${escHtml(DOJO_LAB_NAME[rx.lab]||rx.lab)}</strong>` : '';
     return `<div class="quiz-card" style="margin-bottom:12px;">
       <div class="quiz-cat-tag">🎯 ${escHtml(r.name)}（正答率 ${r.pct}%）</div>
       <div style="font-size:13.5px;line-height:1.8;">${escHtml(rx.text)}${labHtml}</div>
@@ -1635,6 +1811,31 @@ function nextQuestion(){
 }
 
 // ─── RESULT（クイズ用） ───────────────────────────────────
+// 結果画面は5つの出題形式（過去問・シナリオ・複数選択・順序・マッチング）から
+// 共通で使われる。形式ごとの差分をこの表に集約し、分岐の重複をなくしている。
+//
+// ※CLF-C02版 app.js には、結果画面の「間違えた問題だけ復習」ボタンの表示判定が
+//   常に state.lastQuizRun を見ており、シナリオ・複数選択の結果では別形式の履歴で
+//   出し分けてしまうバグがあった。この表を使うことで解消している。
+const RESULT_CTX = {
+  quiz:     { tab:'quiz',     run:()=>state.lastQuizRun,     home:()=>renderQuizHome(),
+              start:(c,s)=>startQuiz(c,s),     review:()=>startWrongReview(),
+              pool:()=>QQ,                     launch:(qs,m)=>launchQuizSession(qs,m) },
+  scenario: { tab:'scenario', run:()=>state.lastScenarioRun, home:()=>renderScenarioHome(),
+              start:(c,s)=>startScenario(c,s), review:()=>startScenarioWrongReview(),
+              pool:()=>SCENARIO_Q,             launch:(qs,m)=>launchScenarioSession(qs,m) },
+  multi:    { tab:'multi',    run:()=>state.lastMultiRun,    home:()=>renderMultiHome(),
+              start:(c,s)=>startMulti(c,s),    review:()=>startMultiWrongReview(),
+              pool:()=>buildMultiQuestions(),  launch:(qs,m)=>launchMultiSession(qs,m) },
+  ordering: { tab:'ordering', run:()=>state.lastOrderingRun, home:()=>renderOrderingHome(),
+              start:(c,s)=>startOrdering(c,s), review:()=>startOrderingWrongReview(),
+              pool:()=>orderingBank(),         launch:(qs,m)=>launchOrderingSession(qs,m) },
+  matching: { tab:'matching', run:()=>state.lastMatchingRun, home:()=>renderMatchingHome(),
+              start:(c,s)=>startMatching(c,s), review:()=>startMatchingWrongReview(),
+              pool:()=>matchingBank(),         launch:(qs,m)=>launchMatchingSession(qs,m) },
+};
+function currentResultCtx(){ return RESULT_CTX[state.resultCtx] || RESULT_CTX.quiz; }
+
 function showResultScreen(correct, total){
   const pct = total>0 ? Math.round(correct/total*100) : 0;
   document.getElementById('result-emoji').textContent = pct>=80?'🎉':pct>=60?'👍':'💪';
@@ -1643,7 +1844,8 @@ function showResultScreen(correct, total){
   document.getElementById('rb-correct').textContent = correct;
   document.getElementById('rb-wrong').textContent = total - correct;
   document.getElementById('result-pct').textContent = pct+'%';
-  const hasWrong = state.lastQuizRun && state.lastQuizRun.wrongThisRun.length > 0;
+  const run = currentResultCtx().run();
+  const hasWrong = !!(run && run.wrongThisRun && run.wrongThisRun.length > 0);
   const btn = document.getElementById('review-wrong-btn');
   btn.style.display = hasWrong ? 'block' : 'none';
   btn.textContent = '間違えた問題だけ復習';
@@ -1653,67 +1855,26 @@ function showResultScreen(correct, total){
   setTimeout(()=>{ c.style.strokeDashoffset = 289 - (289*pct/100); }, 120);
 }
 function restartResult(){
-  if(state.resultCtx === 'scenario'){
-    const run = state.lastScenarioRun;
-    showScreen('notebook-screen'); switchTab('scenario');
-    if(run){
-      if(run.mode==='review') startScenarioWrongReview();
-      else { renderScenarioHome(); startScenario(run.catId||'all', run.shuffle); }
-    } else renderScenarioHome();
-    return;
-  }
-  if(state.resultCtx === 'multi'){
-    const run = state.lastMultiRun;
-    showScreen('notebook-screen'); switchTab('multi');
-    if(run){
-      if(run.mode==='review') startMultiWrongReview();
-      else { renderMultiHome(); startMulti(run.catId||'all', run.shuffle); }
-    } else renderMultiHome();
-    return;
-  }
-  const run = state.lastQuizRun;
-  showScreen('notebook-screen'); switchTab('quiz');
+  const ctx = currentResultCtx();
+  const run = ctx.run();
+  showScreen('notebook-screen'); switchTab(ctx.tab);
   if(run){
-    if(run.mode==='review') startWrongReview();
-    else { renderQuizHome(); startQuiz(run.catId||'all', run.shuffle); }
-  } else renderQuizHome();
+    if(run.mode==='review') ctx.review();
+    else { ctx.home(); ctx.start(run.catId||'all', run.shuffle); }
+  } else ctx.home();
 }
 function reviewWrongFromResult(){
-  if(state.resultCtx === 'scenario'){
-    const run = state.lastScenarioRun;
-    if(!run || !run.wrongThisRun.length) return;
-    showScreen('notebook-screen'); switchTab('scenario');
-    const set = new Set(run.wrongThisRun);
-    const qs = SCENARIO_Q.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
-    launchScenarioSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
-    return;
-  }
-  if(state.resultCtx === 'multi'){
-    const run = state.lastMultiRun;
-    if(!run || !run.wrongThisRun.length) return;
-    showScreen('notebook-screen'); switchTab('multi');
-    const set = new Set(run.wrongThisRun);
-    const qs = buildMultiQuestions().filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
-    launchMultiSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
-    return;
-  }
-  const run = state.lastQuizRun;
+  const ctx = currentResultCtx();
+  const run = ctx.run();
   if(!run || !run.wrongThisRun.length) return;
-  showScreen('notebook-screen'); switchTab('quiz');
+  showScreen('notebook-screen'); switchTab(ctx.tab);
   const set = new Set(run.wrongThisRun);
-  const qs = QQ.filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
-  launchQuizSession(qs, {catId:'wrong', shuffle:true, mode:'review'});
+  const qs = ctx.pool().filter(q=>set.has(q.id)).sort(()=>Math.random()-.5);
+  ctx.launch(qs, {catId:'wrong', shuffle:true, mode:'review'});
 }
 function backFromResult(){
-  if(state.resultCtx === 'scenario'){
-    showScreen('notebook-screen'); switchTab('scenario'); renderScenarioHome();
-    return;
-  }
-  if(state.resultCtx === 'multi'){
-    showScreen('notebook-screen'); switchTab('multi'); renderMultiHome();
-    return;
-  }
-  showScreen('notebook-screen'); switchTab('quiz'); renderQuizHome();
+  const ctx = currentResultCtx();
+  showScreen('notebook-screen'); switchTab(ctx.tab); ctx.home();
 }
 
 // ─── KEYBOARD SHORTCUTS ───────────────────────────────────

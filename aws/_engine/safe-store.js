@@ -30,7 +30,12 @@ window.SafeStore = (function(){
   const PROD_DOC2 = 'storage';   // 模試・道場の本番データ（開発版が読むだけの参照先）
   const STAGE_DOC = HOME_DOC;
   const SNAP_DOC  = HOME_DOC + '_snap';
-  const LS_KEY    = 'awsStudyDeckV2Mirror';
+  /* localStorageミラーのキーは保存先ドキュメントごとに分ける。
+     元は 'awsStudyDeckV2Mirror' 固定だったが、それだと同じドメイン上の
+     全資格が1つのミラーを共有してしまい、クラウドが読めなかったときに
+     別資格のデータを取り込む恐れがある（CLAUDE.md 10-5節の分離方針に反する）。
+     ※CLF-C02が使う /aws/safe-store.js は従来キーのまま。衝突しない。 */
+  const LS_KEY    = 'awsStudyDeck:' + HOME_DOC;
   const MAX_GENS  = 5;
 
   /* 起動時の同期方針

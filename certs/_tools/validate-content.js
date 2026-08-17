@@ -37,10 +37,12 @@ const CERT_PROFILE = {
   },
   fe: {
     label: '基本情報技術者',
+    /* IPAの分類に合わせている。開発技術（devtech）はテクノロジ系、
+       サービスマネジメント・システム監査（sm）はマネジメント系。 */
     fields: {
-      'テクノロジ':   ['theory','compute','system','software','ui','db','network','security'],
-      'マネジメント': ['devtech','pm'],
-      'ストラテジ':   ['strategy','sm'],
+      'テクノロジ':   ['theory','compute','system','software','ui','db','network','security','devtech'],
+      'マネジメント': ['pm','sm'],
+      'ストラテジ':   ['strategy'],
     },
     official: {'テクノロジ':41/60, 'マネジメント':7/60, 'ストラテジ':12/60},
   },

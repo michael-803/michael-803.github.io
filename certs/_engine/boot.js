@@ -29,6 +29,7 @@ const PERSIST_DEFAULTS = {
   multiStats:    {answered:{}, wrong:[]},
   orderingStats: {answered:{}, wrong:[]},
   matchingStats: {answered:{}, wrong:[]},
+  pseudoStats:   {answered:{}, wrong:[]},   // FE科目B（擬似言語）
   multiQEdits:   {},
   hiddenMultiQ:  [],
   customMultiQ:  [],

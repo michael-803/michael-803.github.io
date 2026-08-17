@@ -52,6 +52,8 @@ let state = {
   orderingStats: {answered:{}, wrong:[]},
   matching: {selectedCatId:null, session:null},   // マッチング問題（CLAUDE.md 14-2節）
   matchingStats: {answered:{}, wrong:[]},
+  pseudo: {selectedCatId:null, session:null},     // 擬似言語（FE科目B。engine-pseudo.js）
+  pseudoStats: {answered:{}, wrong:[]},
   resultCtx: null,
 };
 
@@ -467,12 +469,12 @@ function renderFc(){
         <div class="study-card${flipped?' flipped':''}" id="fc-card" onclick="fcFlip()" tabindex="0" role="button" aria-label="カードをめくる">
           <div class="study-face study-front">
             <div class="study-label">${reverseMode?'意味':'用語'}</div>
-            <div class="study-term" style="${frontIsLong?'font-size:15px;line-height:1.7;':''}">${escHtml(front)}</div>
+            <div class="study-term" style="${frontIsLong?'font-size:clamp(16px,4.4vw,21px);font-weight:400;font-family:var(--body);line-height:1.6;':''}">${escHtml(front)}</div>
             <div class="study-tap-hint">タップ / Space でめくる</div>
           </div>
           <div class="study-face study-back">
             <div class="study-label">${reverseMode?'用語':'意味'}</div>
-            <div class="study-definition" style="${frontIsLong?'font-size:24px;font-weight:700;font-family:var(--disp);':''}">${escHtml(back)}</div>
+            <div class="study-definition" style="${frontIsLong?'font-size:clamp(24px,7vw,36px);font-weight:700;font-family:var(--disp);line-height:1.25;':''}">${escHtml(back)}</div>
           </div>
         </div>
       </div>
@@ -648,6 +650,30 @@ function save(){
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
+/* ─── 設問の図（SVG） ─────────────────────────────────────
+   問題オブジェクトの任意フィールド `fig` にインラインSVG文字列を入れると、
+   設問文の下に図として描画する。作問ルール（_tools/作問ルール.md 第1項）で
+   「図が必要な問題はテキスト説明で済ませずSVGで実際に図を描く」と
+   決めているため、全出題形式で共通して使えるようにここへ置く。
+
+   ★fig は data.js（自分たちが書く静的データ）だけが供給する信頼済みの
+     マークアップなので、意図的にエスケープしない。
+     ユーザー入力（独自カード・独自問題）には fig を持たせていない。 */
+function qFigure(q){
+  return (q && q.fig) ? `<div class="q-figure">${q.fig}</div>` : '';
+}
+
+/* 擬似言語のプログラム（科目B）を等幅で整形して表示する。
+   IPA公式の記述形式に従う（fe/擬似言語仕様_IPA公式.md）。
+   コード文字列はエスケープする。空欄マーカー [[a]] だけは
+   空欄バッジに置き換える。 */
+function pseudoCode(code){
+  if(!code) return '';
+  const html = escHtml(code).replace(/\[\[([a-z])\]\]/g,
+    (_,k)=>`<span class="pc-blank">${k}</span>`);
+  return `<pre class="pseudo-code">${html}</pre>`;
+}
+
 // ─── 件数照合（移行前後で件数が変わっていないことを確認するための集計） ──
 function countSnapshot(){
   return {
@@ -793,7 +819,8 @@ function goHome(){
 // 無効な機能のタブはここで間引く。
 const TAB_FEATURE = {
   fc:'flashcards', quiz:'quiz', multi:'multi', scenario:'scenario',
-  ordering:'ordering', matching:'matching', weak:'weak', cheatsheet:'cheatsheet'
+  ordering:'ordering', matching:'matching', pseudo:'pseudo',
+  weak:'weak', cheatsheet:'cheatsheet'
 };
 
 // 起動時に一度だけ呼ぶ。無効な機能のタブ・導線を隠し、資格名を流し込む。
@@ -830,6 +857,7 @@ function switchTab(t){
   if(t==='multi'    && !state.multi.session)    renderMultiHome();
   if(t==='ordering' && !state.ordering.session) renderOrderingHome();
   if(t==='matching' && !state.matching.session) renderMatchingHome();
+  if(t==='pseudo'   && !state.pseudo.session)   renderPseudoHome();
   if(t==='cheatsheet')                          renderCheatsheet();
 }
 
@@ -1114,6 +1142,7 @@ function renderScenarioSession(){
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('puzzle')} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qFigure(q)}
         <div class="quiz-choices" id="scenario-choices">
           ${displayOrder.map((origIdx,pos)=>`
             <button class="quiz-choice" id="sc-${origIdx}" onclick="selectScenarioAnswer(${origIdx})">
@@ -1747,6 +1776,7 @@ function renderQuizSession(){
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico(catInfo.icon)} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
         <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qFigure(q)}
         <div class="quiz-choices" id="quiz-choices">
           ${displayOrder.map((origIdx,pos)=>`
             <button class="quiz-choice" id="qc-${origIdx}" onclick="selectAnswer(${origIdx})">
@@ -1850,6 +1880,9 @@ const RESULT_CTX = {
   matching: { tab:'matching', run:()=>state.lastMatchingRun, home:()=>renderMatchingHome(),
               start:(c,s)=>startMatching(c,s), review:()=>startMatchingWrongReview(),
               pool:()=>matchingBank(),         launch:(qs,m)=>launchMatchingSession(qs,m) },
+  pseudo:   { tab:'pseudo',   run:()=>state.lastPseudoRun,   home:()=>renderPseudoHome(),
+              start:(c,s)=>startPseudo(c,s),   review:()=>startPseudoWrongReview(),
+              pool:()=>pseudoBank(),           launch:(qs,m)=>launchPseudoSession(qs,m) },
 };
 function currentResultCtx(){ return RESULT_CTX[state.resultCtx] || RESULT_CTX.quiz; }
 

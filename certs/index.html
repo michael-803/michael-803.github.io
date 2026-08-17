@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="_engine/theme.css?v=1">
-<script src="_engine/icons.js?v=1"></script>
+<link rel="stylesheet" href="_engine/theme.css?v=2">
+<script src="_engine/icons.js?v=2"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;}
@@ -51,6 +51,17 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
   letter-spacing:.14em;text-transform:uppercase;margin:22px 0 10px;}
 .group-label:first-child{margin-top:0;}
 .note{color:var(--dim);font-size:12px;margin-top:26px;text-align:center;line-height:1.9;}
+.roadmap-link{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;
+  background:linear-gradient(135deg,rgba(56,189,248,.10),rgba(255,153,0,.06));
+  border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:24px;transition:all .15s;}
+.roadmap-link:hover{border-color:var(--blue);transform:translateY(-2px);}
+.roadmap-link-icon{width:38px;height:38px;flex:none;border-radius:10px;
+  background:linear-gradient(135deg,var(--blue),#1D8FD1);display:flex;align-items:center;
+  justify-content:center;color:#fff;}
+.roadmap-link-icon .ico{width:56%;height:56%;}
+.roadmap-link-title{font-family:var(--disp);font-weight:700;font-size:15px;}
+.roadmap-link-sub{color:var(--dim);font-size:12px;margin-top:2px;}
+.roadmap-link-arrow{margin-left:auto;color:var(--dim);flex:none;}
 </style>
 </head>
 <body>
@@ -59,6 +70,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
     <div class="hub-logo"><span class="hub-logo-icon"><svg class="ico"><use href="#i-cloud"></use></svg></span><span class="hub-logo-word">AWS <span>Study Deck</span></span></div>
     <div class="hub-sub">資格ごとの学習アプリ</div>
   </div>
+  <a class="roadmap-link" href="roadmap/index.html">
+    <span class="roadmap-link-icon"><svg class="ico"><use href="#i-map"></use></svg></span>
+    <div>
+      <div class="roadmap-link-title">資格ロードマップ</div>
+      <div class="roadmap-link-sub">取得順序・勉強時間・進捗をまとめて管理</div>
+    </div>
+    <span class="roadmap-link-arrow"><svg class="ico"><use href="#i-arrow-right"></use></svg></span>
+  </a>
   <div id="cert-list"></div>
   <div class="note">
     各資格の学習データはそれぞれ別に保存されています。<br>
@@ -68,37 +87,59 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
 
 <script>
 /* 資格を追加したらここに1件足す。href が null のものは準備中として表示する。
-   group はこのページの見出しの分けかた（取得順に並べている）。 */
+   一覧の対象・並び順は資格ロードマップの計画資料（ローカル管理）を
+   唯一の正とする（2026-08-17、さくらさんの指示）。MDに無い資格は載せない。
+   group はフェーズ名（MDのphaseとそろえてある）。 */
 const CERTS = [
-  { group:'国家資格',
+  { group:'フェーズ0以前',
+    code:'CLF-C02', name:'クラウドプラクティショナー', icon:'cloud',
+    href:'aws/clf/index.html', status:'done',
+    desc:'単語帳151枚・過去問67問・シナリオ152問・複数選択40問・模試195問・ハンズオン道場' },
+
+  { group:'フェーズ0',
     code:'ITパスポート', name:'情報処理技術者試験（IP）', icon:'passport',
     href:'itpass/index.html', status:'active',
     desc:'100問／120分・四肢択一。総合600点かつストラテジ・マネジメント・テクノロジの各分野で300点以上が必要' },
 
-  { group:'AWS認定',
-    code:'CLF-C02', name:'クラウドプラクティショナー', icon:'cloud',
-    href:'aws/clf/index.html', status:'done',
-    desc:'単語帳151枚・過去問67問・シナリオ152問・複数選択40問・模試195問・ハンズオン道場' },
-  { group:'AWS認定',
-    code:'AIF-C01', name:'AIプラクティショナー', icon:'robot',
-    href:'aws/aif/index.html', status:'active',
-    desc:'65問／90分。択一式・複数選択式に加え、順序問題とマッチング問題が出題される' },
-  { group:'AWS認定',
+  { group:'フェーズ1',
+    code:'基本情報技術者', name:'IPA レベル2', icon:'book',
+    href:'fe/index.html', status:'active',
+    desc:'科目A（四肢択一60問／90分）＋科目B（擬似言語20問／100分）に対応。応用情報より先に取得する' },
+  { group:'フェーズ1',
     code:'SAA-C03', name:'ソリューションアーキテクト アソシエイト', icon:'blueprint',
     href:null, status:'soon',
-    desc:'シナリオ問題とサービス比較を厚くする予定' },
-  { group:'AWS認定',
+    desc:'受験日確定済み（2026-11頃）。シナリオ問題とサービス比較を厚くする予定' },
+  { group:'フェーズ1',
     code:'SOA-C03', name:'クラウドオプス エンジニア アソシエイト', icon:'wrench',
     href:null, status:'soon',
-    desc:'ハンズオン道場を主役に再設計する予定' },
-  { group:'AWS認定',
+    desc:'SAA合格後、1〜2ヶ月を目安に着手。ハンズオン道場を主役に再設計する予定' },
+  { group:'フェーズ1',
+    code:'応用情報技術者', name:'IPA レベル3', icon:'doc-check',
+    href:null, status:'soon',
+    desc:'基本情報の合格後に着手。合格で高度試験の午前I試験が2年間免除される' },
+
+  { group:'フェーズ1後半',
     code:'SAP-C02', name:'ソリューションアーキテクト プロフェッショナル', icon:'compass',
     href:null, status:'soon',
-    desc:'長文シナリオUIと問題別タイマーを新規実装する予定' },
-  { group:'AWS認定',
-    code:'SCS-C03 / DOP-C02', name:'セキュリティ ／ デブオプス', icon:'lock',
+    desc:'最重要資格。長文シナリオUIと問題別タイマーを新規実装する予定' },
+  { group:'フェーズ1後半',
+    code:'SCS-C03', name:'セキュリティ スペシャリティ', icon:'lock',
     href:null, status:'soon',
-    desc:'どちらを受験するか検討中' },
+    desc:'IAMポリシーのJSON読解など、AWS内スコープのセキュリティ設計力を問う' },
+
+  { group:'フェーズ2',
+    code:'情報処理安全確保支援士', name:'IPA 高度（レベル4）', icon:'shield',
+    href:null, status:'soon',
+    desc:'SCS-C03と補完関係。クラウド事業者非依存のセキュリティ設計・監査能力の国家資格' },
+  { group:'フェーズ2',
+    code:'システムアーキテクト', name:'IPA 高度（レベル4）', icon:'map',
+    href:null, status:'soon',
+    desc:'資格名が目指す職種名と直結。SCとは半年〜1年空けて着手すること' },
+
+  { group:'フェーズ2（条件付き）',
+    code:'DOP-C02', name:'デブオプスエンジニア プロフェッショナル', icon:'toolbox',
+    href:null, status:'soon',
+    desc:'保留中。フェーズ2の時点で取得するかどうかを判断する条件付きプラン' },
 ];
 
 const BADGE = { done:['合格済み','done'], active:['学習中','active'], soon:['準備中','soon'] };

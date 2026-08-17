@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>資格ロードマップ</title>
+<!-- ============================================================
+     資格ロードマップ管理アプリ。
+     出典: 資格ロードマップの計画資料（ローカル管理・リポジトリには含めない）。
+     単語帳・過去問系のStudy Deck（_engine/engine.js）とは完全に別物。
+     Firestoreを使わず、進捗（status）だけ localStorage に保存する
+     シンプルな作りでよいという仕様。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_engine/theme.css?v=2">
+<script src="../_engine/icons.js?v=2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:100dvh;line-height:1.6;}
+header{background:var(--bg2);border-bottom:1px solid var(--line);padding:0 20px;height:58px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--disp);font-weight:700;font-size:clamp(12.5px,3.6vw,17px);display:flex;
+  align-items:center;gap:8px;white-space:nowrap;overflow:hidden;min-width:0;flex:1 1 auto;}
+.logo-icon{width:clamp(24px,7vw,30px);height:clamp(24px,7vw,30px);flex:none;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),#1D8FD1);display:flex;align-items:center;
+  justify-content:center;color:#fff;box-shadow:0 2px 8px rgba(56,189,248,.3);}
+.logo-icon .ico{width:58%;height:58%;}
+.logo-word{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-icon{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--text);
+  cursor:pointer;padding:8px 11px;transition:all .15s;text-decoration:none;display:inline-flex;
+  align-items:center;font-size:13px;}
+.btn-icon:hover{border-color:var(--blue);color:var(--blue);}
+.wrap{max-width:880px;margin:0 auto;padding:22px 18px 60px;}
+
+.summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px;}
+.summary-chip{flex:1;min-width:170px;background:var(--bg2);border:1px solid var(--line);
+  border-radius:var(--r);padding:16px 18px;}
+.summary-chip .lbl{color:var(--dim);font-size:11.5px;display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.summary-chip .num{font-family:var(--disp);font-size:22px;font-weight:700;}
+.summary-chip .num.pos{color:var(--ok);}
+.summary-chip .num.neg{color:var(--ng);}
+
+.warn-banner{display:flex;align-items:flex-start;gap:10px;background:rgba(255,107,107,.1);
+  border:1px solid rgba(255,107,107,.4);border-radius:var(--rs);padding:12px 14px;
+  margin-bottom:14px;font-size:13px;color:#ffb3b3;}
+.warn-banner .ico{flex:none;margin-top:1px;color:var(--ng);}
+
+.excluded-box{display:flex;align-items:flex-start;gap:10px;background:var(--bg2);
+  border:1px solid var(--line);border-radius:var(--rs);padding:12px 14px;margin-bottom:24px;
+  font-size:12.5px;color:var(--dim);}
+.excluded-box .ico{flex:none;margin-top:1px;}
+.excluded-box b{color:var(--text);}
+
+.phase-label{color:var(--dim);font-family:var(--disp);font-size:11px;font-weight:700;
+  letter-spacing:.14em;text-transform:uppercase;margin:26px 0 10px;}
+.phase-label:first-of-type{margin-top:0;}
+
+.cert-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px 18px;margin-bottom:12px;}
+.cert-card.violated{border-color:rgba(255,107,107,.5);}
+.cert-top{display:flex;align-items:center;gap:11px;flex-wrap:wrap;}
+.cert-icon{width:34px;height:34px;flex:none;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;color:#fff;}
+.cert-icon .ico{width:56%;height:56%;}
+.cert-icon.tone-orange{background:linear-gradient(135deg,var(--orange),#E68A00);}
+.cert-icon.tone-blue{background:linear-gradient(135deg,var(--blue),#1D8FD1);}
+.cert-title{font-family:var(--disp);font-size:14.5px;font-weight:700;line-height:1.35;}
+.cert-sub{color:var(--dim);font-size:11.5px;margin-top:2px;}
+.status-select{margin-left:auto;background:var(--card);border:1px solid var(--line);
+  border-radius:20px;color:var(--text);font-family:var(--body);font-size:11.5px;font-weight:700;
+  padding:5px 10px;cursor:pointer;}
+.status-select.st-done{background:var(--ok);color:#04201C;border-color:var(--ok);}
+.status-select.st-active{background:var(--orange);color:#161006;border-color:var(--orange);}
+.status-select.st-hold{background:var(--card2);color:var(--dim);}
+
+.cert-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;}
+.meta-item{font-size:12px;color:var(--dim);display:flex;align-items:center;gap:5px;}
+.meta-item .ico{color:var(--dim);}
+.cert-note{font-size:12.5px;margin-top:8px;line-height:1.7;}
+.violated-tag{display:flex;align-items:center;gap:6px;color:var(--ng);font-size:12px;
+  font-weight:700;margin-top:8px;}
+
+.section-title{font-family:var(--disp);font-size:15px;font-weight:700;margin:30px 0 12px;
+  display:flex;align-items:center;gap:8px;}
+.changelog-item{border-left:2px solid var(--line);padding:2px 0 12px 14px;margin-left:5px;}
+.changelog-item .date{font-family:var(--disp);font-weight:700;color:var(--orange);font-size:12px;}
+.changelog-item .change{font-size:13px;margin-top:3px;}
+.changelog-item .reason{color:var(--dim);font-size:11.5px;margin-top:3px;}
+details{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px 18px;}
+summary{cursor:pointer;font-family:var(--disp);font-weight:700;font-size:14px;}
+details[open] summary{margin-bottom:8px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-map"></use></svg></div><span class="logo-word">資格ロードマップ</span></div>
+  <a class="btn-icon" href="../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
+</header>
+
+<div class="wrap">
+  <div id="warnings"></div>
+  <div class="summary-row" id="summary"></div>
+  <div id="excluded"></div>
+  <div id="phases"></div>
+
+  <div class="section-title"><svg class="ico"><use href="#i-clock"></use></svg>変更履歴</div>
+  <details>
+    <summary>これまでの方針変更を見る</summary>
+    <div id="changelog"></div>
+  </details>
+</div>
+
+<script src="data.js?v=1"></script>
+<script>
+const STORE_KEY = 'roadmapStatusOverrides';
+function loadOverrides(){
+  try{ return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }catch(e){ return {}; }
+}
+function saveOverrides(o){ localStorage.setItem(STORE_KEY, JSON.stringify(o)); }
+let overrides = loadOverrides();
+function statusOf(id){
+  if(overrides[id]) return overrides[id];
+  const c = ROADMAP_CERTS.find(x=>x.id===id);
+  return c ? c.status : '未着手';
+}
+function setStatus(id, status){
+  overrides[id] = status;
+  saveOverrides(overrides);
+  render();
+}
+
+const STATUS_OPTIONS = ['未着手','学習中','合格済み','保留'];
+const STATUS_CLASS = {未着手:'', 学習中:'st-active', 合格済み:'st-done', 保留:'st-hold'};
+
+function render(){
+  const violations = checkOrderViolations(ROADMAP_CERTS, statusOf);
+
+  // ─── 警告バナー ───
+  const warnKeys = Object.keys(violations);
+  document.getElementById('warnings').innerHTML = warnKeys.map(id=>{
+    const c = ROADMAP_CERTS.find(x=>x.id===id);
+    return `<div class="warn-banner"><svg class="ico"><use href="#i-warning"></use></svg>
+      <div><b>${escHtml(c.name_ja)}</b>：${escHtml(violations[id])}</div></div>`;
+  }).join('');
+
+  // ─── サマリー ───
+  // ★このページは一般公開されるため、金額に関する集計は表示しない（data.js 冒頭の注意）。
+  const hours = totalStudyHours(ROADMAP_CERTS);
+  const done   = ROADMAP_CERTS.filter(c=>statusOf(c.id)==='合格済み' || statusOf(c.id)==='取得済み').length;
+  const active = ROADMAP_CERTS.filter(c=>statusOf(c.id)==='学習中').length;
+  const remainH = ROADMAP_CERTS
+    .filter(c=>statusOf(c.id)!=='合格済み' && statusOf(c.id)!=='取得済み')
+    .reduce((s,c)=>({min:s.min+(c.study_hours_min||0), max:s.max+(c.study_hours_max||0)}), {min:0,max:0});
+  document.getElementById('summary').innerHTML = `
+    <div class="summary-chip">
+      <div class="lbl"><svg class="ico"><use href="#i-trophy"></use></svg>取得状況</div>
+      <div class="num"><span class="pos">${done}</span> / ${ROADMAP_CERTS.length}<span style="font-size:13px;font-weight:500;"> 資格</span></div>
+    </div>
+    <div class="summary-chip">
+      <div class="lbl"><svg class="ico"><use href="#i-target"></use></svg>学習中</div>
+      <div class="num">${active}<span style="font-size:13px;font-weight:500;"> 資格</span></div>
+    </div>
+    <div class="summary-chip">
+      <div class="lbl"><svg class="ico"><use href="#i-clock"></use></svg>残りの勉強時間の目安</div>
+      <div class="num">${remainH.min}〜${remainH.max}<span style="font-size:13px;font-weight:500;">時間</span></div>
+      <div style="color:var(--dim);font-size:10.5px;margin-top:3px;">全体 ${hours.min}〜${hours.max}時間</div>
+    </div>`;
+
+  // ─── 除外資格 ───
+  document.getElementById('excluded').innerHTML = ROADMAP_EXCLUDED.map(e=>`
+    <div class="excluded-box"><svg class="ico"><use href="#i-empty-box"></use></svg>
+      <div><b>対象外：${escHtml(e.name)}</b><br>${escHtml(e.reason)}</div>
+    </div>`).join('');
+
+  // ─── フェーズ別カード ───
+  const sorted = [...ROADMAP_CERTS].sort((a,b)=>a.order-b.order);
+  document.getElementById('phases').innerHTML = ROADMAP_PHASES.map(phase=>{
+    const items = sorted.filter(c=>c.phase===phase);
+    if(!items.length) return '';
+    const cards = items.map(c=>{
+      const violated = !!violations[c.id];
+      const st = statusOf(c.id);
+      const title = c.category==='AWS' ? `${c.name_ja}（${c.code}）` : c.name_ja;
+      const hours = (c.study_hours_min!=null)
+        ? `<span class="meta-item"><svg class="ico"><use href="#i-clock"></use></svg>${c.study_hours_min}〜${c.study_hours_max}時間</span>` : '';
+      const examDate = c.exam_date
+        ? `<span class="meta-item"><svg class="ico"><use href="#i-cap"></use></svg>受験時期: ${escHtml(c.exam_date)}</span>` : '';
+      const order = `<span class="meta-item"><svg class="ico"><use href="#i-list-ol"></use></svg>取得順 ${c.order}</span>`;
+      return `
+      <div class="cert-card${violated?' violated':''}">
+        <div class="cert-top">
+          <span class="cert-icon tone-${c.tone}"><svg class="ico"><use href="#i-${c.icon}"></use></svg></span>
+          <div style="flex:1;min-width:180px;">
+            <div class="cert-title">${escHtml(title)}</div>
+            <div class="cert-sub">${escHtml(c.level)}${c.code && c.category==='IPA' ? '　'+escHtml(c.code) : ''}</div>
+          </div>
+          <select class="status-select ${STATUS_CLASS[st]}" onchange="setStatus('${c.id}', this.value)">
+            ${STATUS_OPTIONS.map(o=>`<option value="${o}" ${o===st?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div class="cert-meta">
+          ${order}
+          ${hours}
+          ${examDate}
+        </div>
+        ${c.note ? `<div class="cert-note">${escHtml(c.note)}</div>` : ''}
+        ${violated ? `<div class="violated-tag"><svg class="ico"><use href="#i-warning"></use></svg>${escHtml(violations[c.id])}</div>` : ''}
+      </div>`;
+    }).join('');
+    return `<div class="phase-label">${escHtml(phase)}</div>${cards}`;
+  }).join('');
+
+  // ─── 変更履歴 ───
+  document.querySelector('summary').textContent = `これまでの方針変更（${ROADMAP_CHANGELOG.length}件）を見る`;
+  document.getElementById('changelog').innerHTML = ROADMAP_CHANGELOG.map(h=>`
+    <div class="changelog-item">
+      <div class="date">${escHtml(h.date)}</div>
+      <div class="change">${escHtml(h.change)}</div>
+      <div class="reason">理由：${escHtml(h.reason)}</div>
+    </div>`).join('');
+}
+
+function escHtml(s){
+  return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+render();
+</script>
+</body>
+</html>

@@ -56,11 +56,6 @@
 '<symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M7 20h10"/><path d="M4 9h6M14 9h6"/><path d="M4 9l-1.5 4a2.5 2.5 0 0 0 5 0z"/><path d="M20 9l-1.5 4a2.5 2.5 0 0 0 5 0z"/></symbol>' +
 '<symbol id="i-chart-up" viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M4 19l5-6 4 3 6-8"/><path d="M15 8h4v4"/></symbol>' +
 '<symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4L4 6v14l5-2 6 2 5-2V4l-5 2-6-2z"/><path d="M9 4v14M15 6v14"/></symbol>' +
-'<symbol id="i-brain" viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8A3 3 0 0 0 8 18a3 3 0 0 0 3-3V6a2 2 0 0 0-2-2z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 1 5.8A3 3 0 0 1 16 18a3 3 0 0 1-3-3V6a2 2 0 0 1 2-2z"/></symbol>' +
-'<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.6 4.8L18 9.5l-4.4 1.7L12 16l-1.6-4.8L6 9.5l4.4-1.7z"/><path d="M19 3l.6 1.8 1.8.6-1.8.6L19 8l-.6-2L16.6 5.4l1.8-.6z"/></symbol>' +
-'<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9A1.5 1.5 0 0 1 18.5 16H9l-4 4v-4H5.5A1.5 1.5 0 0 1 4 14.5z"/></symbol>' +
-'<symbol id="i-cube" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5L12 12l8-4.5"/><path d="M12 12v9"/></symbol>' +
-'<symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 3h4"/><path d="M10 3v6l-5.5 9.5A1.5 1.5 0 0 0 5.8 21h12.4a1.5 1.5 0 0 0 1.3-2.5L14 9V3"/><path d="M8 15h8"/></symbol>' +
 '<symbol id="i-toolbox" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="1.5"/><path d="M8 9V6.5A1.5 1.5 0 0 1 9.5 5h5A1.5 1.5 0 0 1 16 6.5V9"/><path d="M3 13h18"/><path d="M10.5 13v2h3v-2"/></symbol>' +
 '<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 8-11h-6z"/></symbol>' +
 '<symbol id="i-bar-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M4 20h16"/></symbol>' +
@@ -73,6 +68,7 @@
 '<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3.2 8-7 9-3.8-1-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>' +
 '<symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/></symbol>' +
 '<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>' +
+'<symbol id="i-code" viewBox="0 0 24 24"><path d="M8.5 7.5L4 12l4.5 4.5"/><path d="M15.5 7.5L20 12l-4.5 4.5"/><path d="M13.5 4.5l-3 15"/></symbol>' +
 '</svg>';
 
   const STYLE = '.ico{width:1em;height:1em;display:inline-block;vertical-align:-0.15em;stroke:currentColor;' +

@@ -3,29 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AIF-C01 Study Deck</title>
+<title>基本情報技術者 Study Deck</title>
 <!-- ============================================================
-     AIF-C01 学習アプリ。
-     このファイルは資格ごとの薄いガワで、中身は ../../_engine/ にある共通
+     基本情報技術者（FE）学習アプリ。
+     このファイルは資格ごとの薄いガワで、中身は ../_engine/ にある共通
      エンジンが担う。他資格を追加するときは、このファイルと cert.js・
      data.js をコピーして中身を差し替えるだけでよい（CLAUDE.md 10-2節）。
+
+     ★対応しているのは科目A（四肢択一・60問／90分）のみ。
+       科目B（擬似言語のアルゴリズム読解・20問／100分）は既存エンジンに
+       無い出題形式のため未対応。cert.js の先頭コメントを参照。
      ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="../../_engine/theme.css?v=1">
-<link rel="stylesheet" href="../../_engine/app.css?v=5">
-<script src="../../_engine/icons.js?v=1"></script>
+<link rel="stylesheet" href="../_engine/theme.css?v=2">
+<link rel="stylesheet" href="../_engine/app.css?v=8">
+<script src="../_engine/icons.js?v=2"></script>
 </head>
 <body>
 <div class="app">
 <header>
-  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-robot"></use></svg></div><span class="logo-word"><span data-cert-name>AIF-C01</span> <span>Study Deck</span></span></div>
+  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-book"></use></svg></div><span class="logo-word"><span data-cert-name>基本情報技術者</span> <span>Study Deck</span></span></div>
   <div class="header-right">
     <div class="sync-indicator" id="sync-indicator" style="display:none;">
       <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
     </div>
-    <a class="btn-icon" href="../../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
+    <a class="btn-icon" href="../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
     <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ"><svg class="ico"><use href="#i-notebook"></use></svg></button>
   </div>
 </header>
@@ -38,7 +42,8 @@
   <!-- 無効な機能のタブは engine.js の applyFeatureToggles() が自動で隠す -->
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab"><svg class="ico"><use href="#i-card-stack"></use></svg> 単語帳</button>
-    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 過去問</button>
+    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 科目A</button>
+    <button class="tab-btn" onclick="switchTab('pseudo')" id="tab-pseudo" role="tab"><svg class="ico"><use href="#i-code"></use></svg> 科目B</button>
     <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab"><svg class="ico"><use href="#i-ballot"></use></svg> 複数選択</button>
     <button class="tab-btn" onclick="switchTab('ordering')" id="tab-ordering" role="tab"><svg class="ico"><use href="#i-list-ol"></use></svg> 順序</button>
     <button class="tab-btn" onclick="switchTab('matching')" id="tab-matching" role="tab"><svg class="ico"><use href="#i-link"></use></svg> マッチング</button>
@@ -53,6 +58,9 @@
   </div>
   <div class="tab-content" id="tabcontent-quiz">
     <div class="quiz-layout" id="quiz-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-pseudo">
+    <div class="quiz-layout" id="pseudo-layout"></div>
   </div>
   <div class="tab-content" id="tabcontent-multi">
     <div class="quiz-layout" id="multi-layout"></div>
@@ -112,16 +120,17 @@
 </div>
 
 <!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
-<script src="../../_engine/store.js?v=1"></script>
-<script src="cert.js?v=2"></script>
+<script src="../_engine/store.js?v=1"></script>
+<script src="cert.js?v=1"></script>
 <script>
-  window.SAFESTORE_HOME_DOC = window.CERT.doc;   // app/notebook-aif
+  window.SAFESTORE_HOME_DOC = window.CERT.doc;   // app/notebook-fe
   window.SAFESTORE_STANDALONE = true;            // 本番運用（他ドキュメントからの取り込みをしない）
 </script>
-<script src="../../_engine/safe-store.js?v=2"></script>
+<script src="../_engine/safe-store.js?v=2"></script>
 <script src="data.js?v=1"></script>
-<script src="../../_engine/engine.js?v=4"></script>
-<script src="../../_engine/engine-formats.js?v=1"></script>
-<script src="../../_engine/boot.js?v=1"></script>
+<script src="../_engine/engine.js?v=5"></script>
+<script src="../_engine/engine-formats.js?v=1"></script>
+<script src="../_engine/engine-pseudo.js?v=1"></script>
+<script src="../_engine/boot.js?v=2"></script>
 </body>
 </html>

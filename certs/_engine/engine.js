@@ -62,7 +62,13 @@ const FC_CATS = Object.keys(SAMPLE);
 // カテゴリ安定ID ⇔ 表示名（現在の名称）の対応。
 // customCards・activeCatの永続化はIDで行い、日本語名が変わっても崩れないようにする。
 const CAT_NAME_TO_ID = {}; const CAT_ID_TO_NAME = {};
-FC_CATS_DEF.forEach(c=>{ CAT_NAME_TO_ID[c.name]=c.id; CAT_ID_TO_NAME[c.id]=c.name; });
+function rebuildCatMaps(){
+  Object.keys(CAT_NAME_TO_ID).forEach(k=>{ delete CAT_NAME_TO_ID[k]; });
+  Object.keys(CAT_ID_TO_NAME).forEach(k=>{ delete CAT_ID_TO_NAME[k]; });
+  FC_CATS.length = 0; Object.keys(SAMPLE).forEach(k=>FC_CATS.push(k));
+  FC_CATS_DEF.forEach(c=>{ CAT_NAME_TO_ID[c.name]=c.id; CAT_ID_TO_NAME[c.id]=c.name; });
+}
+rebuildCatMaps();
 // Firestoreは "__xxx__" 形式のフィールド名を予約済みとして拒否するため、
 // 単一アンダースコアの _all_ / _weak_ を使う（fcProgressのキーとして保存されるため）。
 const CAT_ALL  = '_all_';
@@ -250,37 +256,66 @@ function enterKey(key){
   renderFc();
 }
 
-// ─── シャッフルのトグル化（確定仕様） ──────────────────────
-// OFF→ON: 未回答カードをシャッフルして先頭へ／ON→OFF: 未回答カードだけを本来の順で
+// ─── シャッフルのトグル化（2026-08-24 仕様変更・CLAUDE.md 29節） ──────
+// 押しても進捗（今いる位置）を失わない。
+//   すでに通過したカード … 順番も位置もそのまま据え置く
+//   これから出るカード   … OFF→ON でシャッフル／ON→OFF で本来の順に戻す
+//   そのうち回答済みのもの … 後ろへ回す（未回答を先に出す）
+// pos は動かさないので、カウンタは 61/151 のように続きから進む。
+//
+// 旧仕様は「未回答を全部シャッフルして pos=0 へ」だったが、
+// ←→ でめくっていただけのカードは未回答扱いのため、
+// シャッフルを押すと全体が混ざって1枚目に戻ってしまっていた。
 function toggleShuffle(){
   if(deck.length === 0) return;
   const prog = getProgress(currentKey);
   const answeredSet = new Set(prog.answeredIds || []);
+  const naturalOrder = deck.map((_, i) => i);
 
-  if(!prog.shuffled){
-    let unanswered = order.filter(i => !answeredSet.has(deck[i].id));
-    let answered   = order.filter(i =>  answeredSet.has(deck[i].id));
-    for(let i = unanswered.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [unanswered[i], unanswered[j]] = [unanswered[j], unanswered[i]];
-    }
-    order = unanswered.concat(answered);
-    prog.shuffled = true;
-    toast(ico('shuffle')+' シャッフルしました');
-  } else {
-    const naturalOrder = deck.map((_, i) => i);
-    order = naturalOrder.filter(i => !answeredSet.has(deck[i].id));
-    prog.shuffled = false;
-    if(order.length === 0){
-      order = naturalOrder;
-      toast(ico('repeat')+' 一周しました！最初から出題します');
-    } else {
-      toast('順番どおり（未回答のみ）に切り替えました');
-    }
+  const head  = order.slice(0, pos);   // 通過済み（進捗）。触らない
+  const ahead = order.slice(pos);      // これから出るぶん
+
+  // 残りが実質ない＝一周した。次の周として全体を組み直す
+  if(ahead.length <= 1){
+    order = prog.shuffled ? naturalOrder.slice() : shuffled(naturalOrder.slice());
+    prog.shuffled = !prog.shuffled;
+    prog.answeredIds = [];
+    pos = 0; flipped = false;
+    persistProgress();
+    renderFc();
+    toast(ico('repeat')+' 一周しました！最初から出題します');
+    return;
   }
-  pos = 0; flipped = false;
+
+  // これから出るぶんを「未回答 → 回答済み」に分ける
+  let rest, done;
+  if(!prog.shuffled){
+    rest = shuffled(ahead.filter(i => !answeredSet.has(deck[i].id)));
+    done = ahead.filter(i => answeredSet.has(deck[i].id));
+    prog.shuffled = true;
+    toast(ico('shuffle')+' 残り'+rest.length+'枚をシャッフルしました');
+  } else {
+    const aheadSet = new Set(ahead);
+    const natural  = naturalOrder.filter(i => aheadSet.has(i));   // 本来の並びに戻す
+    rest = natural.filter(i => !answeredSet.has(deck[i].id));
+    done = natural.filter(i =>  answeredSet.has(deck[i].id));
+    prog.shuffled = false;
+    toast('残り'+rest.length+'枚を順番どおりに戻しました');
+  }
+
+  order = head.concat(rest, done);
+  flipped = false;                     // pos はそのまま＝進捗を維持する
   persistProgress();
   renderFc();
+}
+
+// Fisher-Yates。配列をその場で混ぜて返す
+function shuffled(arr){
+  for(let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 // ─── ナビゲーション ───────────────────────────────────────

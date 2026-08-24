@@ -418,3 +418,34 @@ textarea{resize:vertical;min-height:88px;}
   .fc-multi-bar.open{display:flex;}
   .tag-btn{font-size:12px;padding:5px 11px;}
 }
+
+/* ─── カスタム資格：カテゴリ編集（_engine/cat-editor.js） ─────────
+   ユーザーが作った資格でだけ使う。既存資格の画面には現れない。 */
+.cat-editor{margin-bottom:4px;}
+.cat-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:44vh;overflow-y:auto;}
+.cat-row{display:flex;align-items:center;gap:6px;}
+.cat-row .cat-name{flex:1;min-width:0;font-size:14px;padding:9px 12px;}
+.cat-count{color:var(--dim);font-size:11.5px;flex:none;min-width:38px;text-align:right;}
+.cat-btn{background:var(--card2);border:1px solid var(--line);border-radius:8px;color:var(--dim);
+  cursor:pointer;font-size:13px;line-height:1;padding:8px 9px;flex:none;transition:all .15s;}
+.cat-btn:hover:not(:disabled){border-color:var(--orange);color:var(--orange);}
+.cat-btn:disabled{opacity:.35;cursor:not-allowed;}
+.cat-btn.del:hover{border-color:var(--ng);color:var(--ng);}
+.cat-hint{color:var(--dim);font-size:11.5px;line-height:1.7;margin-top:10px;display:flex;gap:6px;align-items:flex-start;}
+.cat-hint .ico{flex:none;margin-top:3px;}
+
+/* ─── カスタム資格：作成フロー（custom/new.html） ───────────── */
+.wiz{max-width:560px;margin:0 auto;padding:26px 18px 60px;}
+.wiz-step{display:none;}
+.wiz-step.active{display:block;animation:fadeIn .25s ease;}
+.wiz-title{font-family:var(--disp);font-size:20px;font-weight:700;margin-bottom:5px;}
+.wiz-sub{color:var(--dim);font-size:13px;margin-bottom:22px;line-height:1.8;}
+.wiz-steps{display:flex;gap:8px;margin-bottom:22px;}
+.wiz-dot{flex:1;height:3px;border-radius:2px;background:var(--line);}
+.wiz-dot.on{background:var(--orange);}
+.wiz-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;}
+.id-line{display:flex;align-items:center;gap:8px;}
+.id-line .id-prefix{color:var(--dim);font-family:var(--disp);font-size:14px;flex:none;}
+.id-msg{font-size:12px;margin-top:7px;min-height:17px;line-height:1.6;}
+.id-msg.ng{color:var(--ng);}
+.id-msg.ok{color:var(--ok);}

@@ -229,8 +229,16 @@ window.SafeStore = (function(){
     return { data: clone(data), cloud:true, origin, notes };
   }
 
-  /* ---------- 保存（改変版の箱にだけ、フィールド単位でmerge書き込み） ---------- */
-  async function save(data){
+  /* ---------- 保存（改変版の箱にだけ、フィールド単位でmerge書き込み） ----------
+
+     opts.replaceFields: そのフィールドを「丸ごと置き換える」指定（既定は無し）。
+
+     既定の {merge:true} は入れ子のマップを深くマージするため、
+     customCards からキーを1つ消しても、クラウド側には古いキーが残り続ける。
+     カテゴリごと消せるカスタム資格ではこれが件数のズレになるので、
+     置き換えたいフィールド名を渡せるようにしてある。
+     渡さなければ従来と完全に同じ動作（既存資格の呼び出しは無変更）。 */
+  async function save(data, opts){
     const reason = guardCheck(data);
     if(reason){
       blocked.push({ ts:new Date().toISOString(), reason, attempted:clone(data) });
@@ -246,7 +254,11 @@ window.SafeStore = (function(){
 
     try{
       applyingRemote = true;
-      await fns.setDoc(ref, Object.assign({}, data, { updatedAt:new Date().toISOString() }), { merge:true });
+      const body = Object.assign({}, data, { updatedAt:new Date().toISOString() });
+      const rep  = (opts && Array.isArray(opts.replaceFields) && opts.replaceFields.length)
+        ? opts.replaceFields.concat('updatedAt') : null;
+      // mergeFields はそのフィールドを丸ごと置き換える（入れ子マップを深くマージしない）
+      await fns.setDoc(ref, body, rep ? { mergeFields:rep } : { merge:true });
       return { ok:true, cloud:true };
     }catch(e){
       console.warn('SafeStore: クラウドへの保存に失敗（端末の控えには保存済み）', e);

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Study Deck</title>
+<!-- ============================================================
+     カスタム資格（ユーザー作成資格）の学習ページ。
+
+     既存資格の index.html は cert.js / data.js を <script> で静的に読むが、
+     このページは cert.js も data.js も持たない。
+     カテゴリ定義もカードもFirestoreにあるため、
+
+       ① Firestoreから資格のメタ（名前・説明・カテゴリ）を読む
+       ② engine.js が起動時に見るグローバル（CERT / SAMPLE / FC_CATS_DEF …）
+          を組み立てる
+       ③ そのあとで engine.js と boot.js を注入する
+
+     という順序で「静的モードのふりをして」共通エンジンを動かす。
+     この順序が崩れると engine.js のカテゴリ確定（FC_CATS / CAT_NAME_TO_ID）が
+     空のまま走るので、スクリプトの読み込み順は変えないこと。
+
+     ★カードは state.customCards に載る。組み込みカード（SAMPLE）は空なので、
+       既存資格の cardEdits / hiddenCards（静的データへの上書きレイヤー）は
+       一切使わない。追加・編集・削除がそのままFirestoreへのCRUDになる。
+
+     ?id=<資格ID> が必須。?ns=dev で検証用の名前空間。CLAUDE.md 第28節。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_engine/theme.css?v=2">
+<link rel="stylesheet" href="../_engine/app.css?v=9">
+<script src="../_engine/icons.js?v=2"></script>
+<style>
+  /* 「単語帳トップへ」ボタン（engine.js の goHome()）は、出題セッション中に
+     単語帳へ戻るための脱出口。この資格は単語帳タブしか無く押しても何も起きないので隠す。
+     要素自体は afterLoad() が参照するため消せない（!important でインライン指定に勝たせる）。 */
+  #btn-home{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">
+    <div class="logo-icon"><svg class="ico"><use href="#i-card-stack"></use></svg></div>
+    <span class="logo-word"><span data-cert-name>Study Deck</span></span>
+  </div>
+  <div class="header-right">
+    <div class="sync-indicator" id="sync-indicator" style="display:none;">
+      <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
+    </div>
+    <button class="btn-icon" id="btn-settings" onclick="openCertSettings()" style="display:none;" aria-label="資格の設定"><svg class="ico"><use href="#i-gear"></use></svg></button>
+    <a class="btn-icon" id="hub-link" href="../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
+    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ"><svg class="ico"><use href="#i-notebook"></use></svg></button>
+  </div>
+</header>
+
+<div class="screen active" id="loading-screen">
+  <div><div class="loading-spinner"></div><div class="loading-text" id="loading-text">接続中...</div></div>
+</div>
+
+<!-- 資格が見つからない・IDが不正なときの画面 -->
+<div class="screen" id="error-screen">
+  <div class="quiz-layout">
+    <div class="empty-state">
+      <div class="empty-icon"><svg class="ico"><use href="#i-warning"></use></svg></div>
+      <div class="empty-title" id="err-title">資格が見つかりません</div>
+      <div class="empty-sub" id="err-sub"></div>
+      <a class="btn btn-secondary" id="err-back" href="../index.html">資格一覧へ戻る</a>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="notebook-screen">
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab"><svg class="ico"><use href="#i-card-stack"></use></svg> 単語帳</button>
+  </div>
+  <div class="tab-content active" id="tabcontent-fc">
+    <div class="quiz-layout" id="fc-container"></div>
+  </div>
+  <!-- engine.js の afterLoad() が renderQuizHome() を必ず呼ぶため、
+       過去問タブを持たないこのページでも受け皿だけ用意しておく（非表示）。 -->
+  <div class="tab-content" id="tabcontent-quiz" style="display:none;">
+    <div class="quiz-layout" id="quiz-layout"></div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<!-- 非表示カードのモーダル（組み込みカードが無いので実際には空になるが、
+     engine.js の openHiddenCards() が参照するので置いておく） -->
+<div class="modal-overlay" id="hidden-cards-modal">
+  <div class="modal">
+    <div class="modal-title"><svg class="ico"><use href="#i-archive"></use></svg> 非表示にしたカード</div>
+    <div id="hidden-cards-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeHiddenCards()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 資格の設定（この資格だけのUI。既存資格には無い） -->
+<div class="modal-overlay" id="cert-settings-modal">
+  <div class="modal">
+    <div class="modal-title"><svg class="ico"><use href="#i-gear"></use></svg> 資格の設定</div>
+    <div class="form-group">
+      <label for="s-name">資格名</label>
+      <input type="text" id="s-name" maxlength="40">
+    </div>
+    <div class="form-group">
+      <label for="s-desc">説明（任意）</label>
+      <input type="text" id="s-desc" maxlength="60">
+    </div>
+    <button class="btn-new-deck" onclick="openCatEditor()"><svg class="ico"><use href="#i-folder"></use></svg> カテゴリを編集</button>
+    <div class="cat-hint" style="margin-top:14px;">
+      <svg class="ico"><use href="#i-warning"></use></svg>
+      <span id="s-doc-note"></span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="unlistThisCert()" style="margin-right:auto;color:var(--ng);border-color:var(--line);">一覧から削除</button>
+      <button class="btn btn-secondary" onclick="closeCertSettings()">キャンセル</button>
+      <button class="btn btn-primary" style="width:auto;" onclick="saveCertSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script src="../_engine/store.js?v=1"></script>
+<script src="../_engine/custom-store.js?v=1"></script>
+<script src="../_engine/cat-editor.js?v=1"></script>
+<script>
+/* ============================================================
+   動的ブート：Firestoreを先に読み、エンジンが期待するグローバルを
+   組み立ててから engine.js / boot.js を注入する。
+   ============================================================ */
+const CC = window.CustomCerts;
+let CERT_ID = null;
+let certMeta = null;
+
+function loadScript(src){
+  return new Promise(function(resolve, reject){
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = function(){ reject(new Error(src + ' を読み込めませんでした')); };
+    document.body.appendChild(s);
+  });
+}
+
+function showError(title, sub){
+  document.getElementById('err-title').textContent = title;
+  document.getElementById('err-sub').textContent = sub || '';
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('error-screen').classList.add('active');
+}
+
+(async function bootCustomCert(){
+  CC.adoptNamespaceFromUrl();
+  const nsq = CC.namespace() ? '?ns=dev' : '';
+  document.getElementById('hub-link').href = '../index.html' + nsq;
+  document.getElementById('err-back').href = '../index.html' + nsq;
+
+  CERT_ID = new URLSearchParams(location.search).get('id');
+  if(!CERT_ID || !CC.checkId(CERT_ID, []).ok){
+    showError('資格IDが指定されていません', '資格一覧から開き直してください。');
+    return;
+  }
+
+  let rec = null;
+  try{
+    rec = await CC.loadMeta(CERT_ID);
+  }catch(e){
+    showError('接続できませんでした', e.message);
+    return;
+  }
+  if(!rec){
+    showError('この資格は見つかりませんでした', 'app/' + CC.certDocName(CERT_ID) + ' が存在しません。');
+    return;
+  }
+
+  certMeta = rec.meta;
+  if(!certMeta.cats.length) certMeta.cats = [{id: CC.UNCAT_ID, name: CC.UNCAT_NAME}];
+
+  /* ── エンジンが起動時に見るグローバルを用意する ──
+     順序が重要：engine.js は読み込まれた瞬間に SAMPLE / FC_CATS_DEF を評価する。 */
+  window.CERT = {
+    id:   CERT_ID,
+    name: certMeta.name,
+    doc:  CC.certDocName(CERT_ID),
+    custom: true,
+    features: {
+      flashcards:true,                       // このページで使うのは単語帳だけ
+      quiz:false, multi:false, scenario:false, ordering:false, matching:false,
+      pseudo:false, weak:false, cheatsheet:false, mock:false, dojo:false,
+    },
+    quizOnlyCats: [], labNames: {}, prescriptions: {},
+  };
+  window.SAMPLE       = {};                  // 組み込みカードは存在しない（全てユーザーのカード）
+  window.FC_CATS_DEF  = certMeta.cats.slice();
+  window.QCAT = []; window.QQ = []; window.SCENARIO_Q = [];
+  window.MULTI_Q = []; window.CHEATSHEETS = []; window.PSEUDO_Q = [];
+
+  window.SAFESTORE_HOME_DOC  = CC.certDocName(CERT_ID);
+  window.SAFESTORE_STANDALONE = true;        // 他ドキュメントからの取り込みをしない
+
+  document.title = certMeta.name + ' Study Deck';
+  document.getElementById('loading-text').textContent = certMeta.name + ' を読み込み中...';
+
+  try{
+    await loadScript('../_engine/safe-store.js?v=3');
+    await loadScript('../_engine/engine.js?v=7');
+    await loadScript('../_engine/boot.js?v=2');
+  }catch(e){
+    showError('読み込みに失敗しました', e.message);
+    return;
+  }
+
+  document.getElementById('btn-settings').style.display = '';
+
+  /* 保存のたびに索引のカード枚数を追従させる。
+     engine.js / boot.js には手を入れず、保存口だけ包む。 */
+  const origSave = window._save;
+  let syncing = false;
+  window._save = async function(){
+    await origSave.apply(this, arguments);
+    if(syncing) return;
+    syncing = true;
+    try{
+      await CC.touchIndex(CERT_ID, certMeta, state.customCards);
+    }catch(e){
+      console.warn('索引の更新に失敗（学習データは保存済み）', e);
+    }finally{
+      syncing = false;
+    }
+  };
+})();
+
+/* ============================================================
+   資格の設定（この資格だけのUI）
+   ============================================================ */
+
+function openCertSettings(){
+  document.getElementById('s-name').value = certMeta.name || '';
+  document.getElementById('s-desc').value = certMeta.desc || '';
+  document.getElementById('s-doc-note').textContent =
+    '保存先: app/' + CC.certDocName(CERT_ID) + '（カード ' + CC.countCards(state.customCards) + ' 枚）';
+  document.getElementById('cert-settings-modal').classList.add('open');
+}
+function closeCertSettings(){
+  document.getElementById('cert-settings-modal').classList.remove('open');
+}
+
+async function saveCertSettings(){
+  const name = document.getElementById('s-name').value.trim();
+  if(!name){ toast('資格名を入力してください', 'error'); return; }
+  certMeta.name = name;
+  certMeta.desc = document.getElementById('s-desc').value.trim();
+  try{
+    await CC.saveMeta(CERT_ID, certMeta, state.customCards);
+    document.querySelectorAll('[data-cert-name]').forEach(function(el){ el.textContent = certMeta.name; });
+    document.title = certMeta.name + ' Study Deck';
+    toast('保存しました ✓');
+    closeCertSettings();
+  }catch(e){
+    toast('保存に失敗しました：' + e.message, 'error');
+  }
+}
+
+/* カテゴリ編集。カードの退避（削除カテゴリ → 未分類）まで含めて
+   cat-editor.js ＋ custom-store.js の deleteCat() が面倒を見る。 */
+function openCatEditor(){
+  CatEditor.open({
+    cats: certMeta.cats,
+    customCards: state.customCards,
+    onSave: async function(r){
+      if(!r.changed){ return; }
+      const before = CC.countCards(state.customCards);
+      const after  = CC.countCards(r.customCards);
+      if(after !== before){
+        /* 起きないはずの経路。起きたら保存せずに知らせる（カード保護が最優先） */
+        toast('カード枚数が変化したため中止しました（' + before + '→' + after + '）', 'error');
+        return;
+      }
+
+      state.customCards = r.customCards;
+      certMeta.cats = r.cats;
+
+      /* エンジン側のカテゴリ定義を差し替える。
+         配列は同じ参照のまま中身を入れ替える（engine.js が保持している参照を保つため）。 */
+      FC_CATS_DEF.length = 0;
+      r.cats.forEach(function(c){ FC_CATS_DEF.push(c); });
+      rebuildCatMaps();
+      pruneUnknownProgress();     // 消えたカテゴリの進捗を捨てる
+
+      try{
+        /* customCards と fcProgress は「丸ごと置き換え」で書く。
+           既定のmergeだと、消したカテゴリのキーがクラウド側に残ってしまう。 */
+        const res = await SafeStore.save(
+          {customCards: state.customCards, fcProgress: state.fcProgress},
+          {replaceFields: ['customCards', 'fcProgress']}
+        );
+        if(!res.ok){ toast('保存を中止：' + res.reason, 'error'); return; }
+        await CC.saveMeta(CERT_ID, certMeta, state.customCards);
+        toast('カテゴリを保存しました ✓');
+      }catch(e){
+        toast('保存に失敗しました：' + e.message, 'error');
+        return;
+      }
+      enterKey(sanitizeKey(state.fcLastKey || CAT_ALL));
+    },
+  });
+}
+
+async function unlistThisCert(){
+  const n = CC.countCards(state.customCards);
+  if(!confirm('「' + certMeta.name + '」を資格一覧から外しますか？\n\n' +
+              'カード' + n + '枚と学習記録はFirestore（app/' + CC.certDocName(CERT_ID) + '）に残ります。' +
+              '同じID「' + CERT_ID + '」で作り直せば内容が戻ります。')) return;
+  try{
+    await CC.unlistCert(CERT_ID);
+    location.href = '../index.html' + (CC.namespace() ? '?ns=dev' : '');
+  }catch(e){
+    toast('削除に失敗しました：' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>

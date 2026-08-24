@@ -79,6 +79,9 @@ body{font-family:var(--body);background:var(--bg);color:var(--text);min-height:1
     <span class="roadmap-link-arrow"><svg class="ico"><use href="#i-arrow-right"></use></svg></span>
   </a>
   <div id="cert-list"></div>
+  <!-- ユーザーが作った資格（Firestoreの索引 app/notebook-index から動的に描画）。
+       上の一覧（コミット済みの静的な資格）とは成り立ちが違うので節を分けてある。 -->
+  <div id="custom-list"></div>
   <div class="note">
     各資格の学習データはそれぞれ別に保存されています。<br>
     片方の学習記録がもう片方に影響することはありません。
@@ -162,6 +165,66 @@ document.getElementById('cert-list').innerHTML = groups.map(g=>{
   }).join('');
   return `<div class="group-label">${g}</div>${cards}`;
 }).join('');
+</script>
+
+<!-- ─── ユーザー作成資格（カスタム資格） ─────────────────────
+     静的な CERTS 配列とは別に、Firestoreの索引から読んで描画する。
+     索引が読めない・空でも「＋ 新しい資格を作る」だけは必ず出す
+     （クラウドが落ちても上の一覧は静的なのでそのまま使える）。 -->
+<script src="_engine/store.js?v=1"></script>
+<script src="_engine/custom-store.js?v=1"></script>
+<script>
+(async function renderCustomCerts(){
+  const CC = window.CustomCerts;
+  CC.adoptNamespaceFromUrl();
+  const nsq  = CC.namespace() ? '?ns=dev' : '';
+  const nsq2 = CC.namespace() ? '&ns=dev' : '';
+  const host = document.getElementById('custom-list');
+
+  const newBtn = `<a class="cert-card" href="custom/new.html${nsq}" style="border-style:dashed;text-align:center;">
+      <span class="cert-icon st-soon" style="display:inline-flex;vertical-align:middle;margin-right:9px;"><svg class="ico"><use href="#i-plus"></use></svg></span>
+      <span class="cert-code" style="font-size:15px;">新しい資格を作る</span>
+    </a>`;
+
+  function label(){
+    return `<div class="group-label">自分で作った資格${CC.namespace() ? '（検証用）' : ''}</div>`;
+  }
+
+  let certs = [];
+  try{
+    certs = await CC.listCerts();
+  }catch(e){
+    console.warn('カスタム資格の索引を読めませんでした', e);
+    host.innerHTML = label() +
+      `<div class="cert-card locked"><div class="cert-top">
+         <span class="cert-icon st-soon"><svg class="ico"><use href="#i-warning"></use></svg></span>
+         <span class="cert-name">接続できませんでした。自分で作った資格は表示できません</span>
+       </div></div>` + newBtn;
+    return;
+  }
+
+  const cards = certs.map(c => {
+    const desc = [
+      c.desc || '',
+      `カード${c.cards || 0}枚・カテゴリ${c.cats || 0}件`,
+    ].filter(Boolean).join(' ／ ');
+    return `<a class="cert-card" href="custom/index.html?id=${encodeURIComponent(c.id)}${nsq2}">
+      <div class="cert-top">
+        <span class="cert-icon st-active"><svg class="ico"><use href="#i-card-stack"></use></svg></span>
+        <span class="cert-code">${escapeHtml(c.name || c.id)}</span>
+        <span class="badge active">単語帳</span>
+      </div>
+      <div class="cert-desc">${escapeHtml(desc)}</div>
+    </a>`;
+  }).join('');
+
+  host.innerHTML = label() + cards + newBtn;
+
+  function escapeHtml(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
 </script>
 </body>
 </html>

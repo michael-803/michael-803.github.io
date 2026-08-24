@@ -1,0 +1,22 @@
+# 改行コードの正規化
+#
+# このリポジトリはすべてLFで記録されている（git ls-files --eol で確認済み）。
+# 一方 Windows の core.autocrlf=true は「チェックアウト時にCRLFへ変換する」
+# 設定のため、エディタが「LFだがCRLFに変換される」と警告を出していた。
+#
+# text=auto … テキストファイルを自動判別し、リポジトリにはLFで記録する
+# eol=lf     … 作業ツリーにもLFで書き出す（どの端末でも揃う）
+#
+# 記録側は元からLFなので、これを入れても差分は発生しない。
+* text=auto eol=lf
+
+# 明らかなバイナリは変換しない（将来ここに画像等を置く場合の保険）
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary

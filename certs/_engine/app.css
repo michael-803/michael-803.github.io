@@ -488,3 +488,9 @@ textarea{resize:vertical;min-height:88px;}
 /* 用語（表）の入力欄。改行できるよう textarea にしたが、
    意味・説明ほどの高さは要らないので低めにする。 */
 .ta-term{min-height:52px;line-height:1.5;}
+
+/* 弱点診断：カテゴリごとの内訳（どの形式の記録が集計に入っているか） */
+.cat-src{display:flex;flex-wrap:wrap;gap:5px 10px;margin-top:7px;}
+.cat-src span{color:var(--dim);font-size:11px;display:inline-flex;align-items:baseline;gap:3px;}
+.cat-src b{font-size:11.5px;font-weight:700;}
+.cat-src i{font-style:normal;opacity:.65;font-size:10.5px;}

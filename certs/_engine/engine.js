@@ -958,25 +958,61 @@ const WEAK_PRESCRIPTIONS = CERT.prescriptions || {};
 //     data.js の QCAT 側もこの規約に合わせること（例 cat_bedrock ⇔ bedrock）。
 //  ② 過去問にしか存在しないカテゴリ
 //     資格ごとに異なるため cert.js の quizOnlyCats に列挙する。
+/* 1カテゴリぶんの成績を、収録している全ての出題形式から集める。
+   （2026-08-25 修正）以前は過去問（QQ）と単語帳しか見ておらず、
+   シナリオ問題・複数選択・擬似言語（FE科目B）の記録が診断に反映されなかった。
+   FEでは科目Bのカテゴリ algo が過去問側に存在しないため、
+   科目Bをどれだけ解いても「まだ記録がありません」のままになっていた。
+
+   各形式のエンジンは資格によって読み込まれないことがあるので、
+   関数の有無を typeof で確かめてから呼ぶ。 */
+function catSources(quizId, fcCatId){
+  const out = [];
+  const add = (label, acc)=>{ if(acc && acc.total) out.push({label, pct:acc.pct, total:acc.total}); };
+
+  /* ★その資格が有効にしている形式だけを見る。
+     機能トグルが false の形式は data.js に問題バンクが無く、
+     集計関数を呼ぶと未定義のグローバルを参照して落ちる
+     （FEには MULTI_Q が無いため、features.multi を見ずに呼んで実際に落ちた）。 */
+  const has = (feat, fn) => hasFeature(feat) && typeof fn === 'function';
+
+  if(fcCatId && hasFeature('flashcards')) add('単語帳', fcCatAccuracy(fcCatId));
+  if(hasFeature('quiz')) add('過去問', catAccuracy(quizId));
+  if(has('scenario', typeof scenarioCatAccuracy !== 'undefined' && scenarioCatAccuracy))
+    add('シナリオ', scenarioCatAccuracy(quizId));
+  if(has('multi', typeof multiCatAccuracy !== 'undefined' && multiCatAccuracy))
+    add('複数選択', multiCatAccuracy(quizId));
+  if(has('pseudo', typeof pseudoCatAccuracy !== 'undefined' && pseudoCatAccuracy))
+    add('擬似言語', pseudoCatAccuracy(quizId));
+  if(has('ordering', typeof orderingCatAccuracy !== 'undefined' && orderingCatAccuracy))
+    add('順序', orderingCatAccuracy(quizId));
+  if(has('matching', typeof matchingCatAccuracy !== 'undefined' && matchingCatAccuracy))
+    add('マッチング', matchingCatAccuracy(quizId));
+  return out;
+}
+
+// 出題数で重み付けした平均。記録が無ければ pct は null
+function mergeSources(sources){
+  const total = sources.reduce((n,s)=>n+s.total, 0);
+  if(!total) return {pct:null, total:0};
+  const sum = sources.reduce((n,s)=>n + s.pct*s.total, 0);
+  return {pct: Math.round(sum/total), total};
+}
+
 function weakDiagnosis(){
   const rows = [];
   FC_CATS_DEF.forEach(({id, name})=>{
-    const quizId = id.replace('cat_','');
-    const quizAcc = catAccuracy(quizId);
-    const fcAcc = fcCatAccuracy(id);
-    let pct = null, total = 0;
-    if(quizAcc && fcAcc){
-      total = quizAcc.total + fcAcc.total;
-      pct = Math.round((quizAcc.pct*quizAcc.total + fcAcc.pct*fcAcc.total) / total);
-    } else if(quizAcc){ pct = quizAcc.pct; total = quizAcc.total; }
-    else if(fcAcc){ pct = fcAcc.pct; total = fcAcc.total; }
-    rows.push({ id, name, pct, total });
+    // 過去問カテゴリIDは「'cat_' を除いたもの」という命名規約
+    const sources = catSources(id.replace('cat_',''), id);
+    const m = mergeSources(sources);
+    rows.push({ id, name, pct:m.pct, total:m.total, sources });
   });
   (CERT.quizOnlyCats || []).forEach(qid=>{
     const info = QCAT.find(c=>c.id===qid);
     if(!info) return;                    // 定義されていないカテゴリは黙って飛ばす
-    const acc = catAccuracy(qid);
-    rows.push({ id:qid, name:info.name, pct:acc?acc.pct:null, total:acc?acc.total:0 });
+    const sources = catSources(qid, null);
+    const m = mergeSources(sources);
+    rows.push({ id:qid, name:info.name, pct:m.pct, total:m.total, sources });
   });
   return rows;
 }
@@ -989,6 +1025,15 @@ function renderWeak(){
   const unanswered = rows.filter(r=>r.total === 0);
   const weakest = answered.slice(0, 3);
 
+  // どの形式の記録が集計に入っているかを内訳で示す（2026-08-25 追加）。
+  // 「単語帳だけの数字なのか、科目Bも含むのか」が分かると診断を信用できる。
+  const sourceHtml = (r)=>{
+    if(!r.sources || !r.sources.length) return '';
+    return `<div class="cat-src">${r.sources.map(s=>
+      `<span><b style="color:${accColor(s.pct)}">${s.pct}%</b> ${escHtml(s.label)}<i>${s.total}回</i></span>`
+    ).join('')}</div>`;
+  };
+
   const rowHtml = (r)=>`
     <div class="category-card" style="cursor:default;">
       <div class="cat-head"><span class="cat-name">${escHtml(r.name)}</span>
@@ -996,6 +1041,7 @@ function renderWeak(){
       ${r.total>0 ? `
         <div class="cat-acc-bar"><div class="cat-acc-fill" style="width:${r.pct}%;background:${accColor(r.pct)}"></div></div>
         <div class="cat-acc-text">正答率 ${r.pct}%</div>
+        ${sourceHtml(r)}
       ` : `<div class="cat-acc-text">まだ記録がありません</div>`}
     </div>`;
 
@@ -1019,7 +1065,7 @@ function renderWeak(){
   el.innerHTML = `
     <div class="quiz-home">
       <div class="quiz-home-title">${ico('target')} 弱点診断</div>
-      <div class="quiz-home-sub">単語帳と過去問の正答率をカテゴリ別に集計し、重点強化ポイントを提案します（模試の受験履歴があればそちらも加味されます）。</div>
+      <div class="quiz-home-sub">収録している全ての形式（単語帳・過去問・シナリオ・複数選択・擬似言語ほか）の正答率をカテゴリ別に集計し、重点強化ポイントを提案します。カードの下の内訳で、どの形式の記録が入っているか確認できます。</div>
       <div class="overall-stats">
         <div class="os-chip"><span class="os-num">${os.answered}</span><span class="os-lbl">過去問 累計解答数</span></div>
         <div class="os-chip"><span class="os-num" style="color:${accColor(os.pct)}">${os.pct}%</span><span class="os-lbl">過去問 全体正答率</span></div>

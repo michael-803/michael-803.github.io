@@ -353,6 +353,104 @@ function shuffleTests(){
 }
 
 /* ============================================================
+   1c. 弱点診断が全ての出題形式を集計するか（2026-08-25）
+       以前は過去問（QQ）と単語帳しか見ておらず、シナリオ・複数選択・
+       擬似言語（FE科目B）の記録が反映されなかった。
+   ============================================================ */
+function weakTests(){
+  console.log('\n============================================================');
+  console.log('弱点診断：全形式の記録を集計するか');
+  console.log('============================================================');
+
+  const ctx = makeContext();
+  runFile(ctx, 'fe/cert.js');
+  ctx.CERT = ctx.window.CERT;
+  runFile(ctx, 'fe/data.js');
+  runFile(ctx, '_engine/engine.js');
+  runFile(ctx, '_engine/engine-pseudo.js');     // FEは科目Bエンジンを読み込む
+  vm.runInContext('window._save = function(){};', ctx);
+
+  section('科目B（擬似言語）だけを解いた状態');
+  vm.runInContext(`
+    /* アルゴリズムの問題を3問正解・1問不正解にする */
+    var algo = PSEUDO_Q.filter(function(q){ return q.c === 'algo'; }).slice(0, 4);
+    algo.forEach(function(q, i){ recordPseudoAnswer(q, i < 3); });
+  `, ctx);
+
+  const rows = vm.runInContext('weakDiagnosis()', ctx);
+  const algoRow = rows.find(function(r){ return r.id === 'algo'; });
+  ok('アルゴリズム（科目B専用カテゴリ）の行がある', !!algoRow);
+  eq('解答回数が集計される（以前は0のままだった）', algoRow.total, 4);
+  eq('正答率が出る', algoRow.pct, 75);
+  eq('内訳に擬似言語が入る', algoRow.sources.map(function(s){ return s.label; }), ['擬似言語']);
+
+  section('科目Bのセキュリティは単語帳のセキュリティと合算される');
+  vm.runInContext(`
+    var sec = PSEUDO_Q.filter(function(q){ return q.c === 'security'; }).slice(0, 2);
+    sec.forEach(function(q){ recordPseudoAnswer(q, false); });          // 2問とも不正解
+    var cards = buildCards().filter(function(c){ return c.catId === 'cat_security'; }).slice(0, 2);
+    cards.forEach(function(c){ state.fcStats[c.id] = {ok:3, ng:1}; });  // 単語帳は8回中6回正解
+  `, ctx);
+  const rows2 = vm.runInContext('weakDiagnosis()', ctx);
+  const secRow = rows2.find(function(r){ return r.id === 'cat_security'; });
+  eq('単語帳8回＋擬似言語2回＝10回', secRow.total, 10);
+  eq('内訳が2種類出る', secRow.sources.map(function(s){ return s.label; }), ['単語帳', '擬似言語']);
+  eq('重み付き平均になる（単語帳75%×8 ＋ 擬似言語0%×2 → 60%）', secRow.pct, 60);
+
+  section('シナリオ問題と過去問も合算される');
+  vm.runInContext(`
+    var q1 = QQ.filter(function(q){ return q.c === 'db'; }).slice(0, 2);
+    q1.forEach(function(q){ recordAnswer(q, true); });
+    var s1 = SCENARIO_Q.filter(function(q){ return q.c === 'db'; }).slice(0, 2);
+    s1.forEach(function(q){ recordScenarioAnswer(q, false); });
+  `, ctx);
+  const dbRow = vm.runInContext('weakDiagnosis()', ctx).find(function(r){ return r.id === 'cat_db'; });
+  eq('過去問2回＋シナリオ2回', dbRow.total, 4);
+  eq('内訳', dbRow.sources.map(function(s){ return s.label; }), ['過去問', 'シナリオ']);
+  eq('正答率（2勝2敗）', dbRow.pct, 50);
+
+  section('記録が無いカテゴリは従来どおり「未挑戦」');
+  const uiRow = vm.runInContext('weakDiagnosis()', ctx).find(function(r){ return r.id === 'cat_ui'; });
+  eq('回数0', uiRow.total, 0);
+  eq('正答率はnull', uiRow.pct, null);
+  eq('内訳は空', uiRow.sources.length, 0);
+
+  section('描画');
+  let err = null;
+  try{ vm.runInContext('renderWeak();', ctx); }catch(e){ err = e; }
+  ok('弱点診断の画面が描ける', !err, err && err.message);
+  const html = ctx._els['weak-container'] ? ctx._els['weak-container'].innerHTML : '';
+  ok('内訳が画面に出る', html.indexOf('cat-src') >= 0);
+  ok('擬似言語の内訳が出る', html.indexOf('擬似言語') >= 0);
+
+  /* ★資格ごとに持っている問題バンクが違う（FEに MULTI_Q は無い）。
+     機能トグルを見ずに集計関数を呼ぶと未定義のグローバルで落ちるため、
+     3資格すべてで弱点診断が例外なく描けることを確かめる。 */
+  section('3資格すべてで弱点診断が落ちないこと');
+  [['aws/clf', 'CLF-C02', ['_engine/engine-formats.js']],
+   ['itpass',  'ITパスポート', ['_engine/engine-formats.js']],
+   ['fe',      '基本情報',    ['_engine/engine-formats.js', '_engine/engine-pseudo.js']],
+  ].forEach(function(t){
+    const dir = t[0], label = t[1], extra = t[2];
+    const c = makeContext();
+    let e2 = null;
+    try{
+      runFile(c, dir + '/cert.js');
+      c.CERT = c.window.CERT;
+      runFile(c, dir + '/data.js');
+      runFile(c, '_engine/engine.js');
+      extra.forEach(function(f){ runFile(c, f); });
+      vm.runInContext('window._save = function(){}; weakDiagnosis(); renderWeak();', c);
+    }catch(err2){ e2 = err2; }
+    ok(label + '：弱点診断が例外なく動く', !e2, e2 && e2.message);
+    if(!e2){
+      const rows = vm.runInContext('weakDiagnosis()', c);
+      ok(label + '：カテゴリ行が ' + rows.length + ' 件そろう', rows.length > 0);
+    }
+  });
+}
+
+/* ============================================================
    2. 静的モード（既存資格）の回帰確認
    ============================================================ */
 function staticTests(){
@@ -388,6 +486,7 @@ function staticTests(){
 
 dynamicTests();
 shuffleTests();
+weakTests();
 staticTests();
 
 console.log('\n' + '─'.repeat(60));

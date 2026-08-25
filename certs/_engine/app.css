@@ -232,15 +232,15 @@ textarea{resize:vertical;min-height:88px;}
 /* ラベル（用語／意味）は常に上端に固定し、本文はその下の残り空間で
    中央寄せする（グリッドの1fr行）。以前はflexの単純中央寄せだったため、
    本文が短いとラベルごと縦中央に寄ってしまっていた（2026-08-17修正）。 */
-.study-face{backface-visibility:hidden;display:grid;grid-template-rows:auto 1fr auto;
+.study-face{backface-visibility:hidden;display:grid;grid-template-rows:auto minmax(0,1fr) auto;
   align-items:center;justify-items:center;height:100%;position:absolute;text-align:center;
   width:calc(100% - 60px);row-gap:6px;}
 .study-back{background:linear-gradient(150deg,#343a4a,#262b37);border-radius:20px;left:0;padding:26px 30px;top:0;transform:rotateY(180deg);width:100%;}
 .study-label{align-self:start;font-family:var(--disp);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;}
 .study-front .study-label{color:var(--orange);}
 .study-back .study-label{color:var(--blue);}
-.study-term{font-family:var(--disp);font-size:clamp(24px,7vw,36px);font-weight:700;line-height:1.25;white-space:pre-wrap;max-height:100%;overflow-y:auto;}
-.study-definition{font-size:clamp(16px,4.4vw,21px);line-height:1.6;white-space:pre-wrap;max-height:100%;overflow-y:auto;}
+.study-term{font-family:var(--disp);font-size:clamp(24px,7vw,36px);font-weight:700;line-height:1.25;white-space:pre-wrap;min-height:0;max-height:100%;overflow-y:auto;width:100%;}
+.study-definition{font-size:clamp(16px,4.4vw,21px);line-height:1.6;white-space:pre-wrap;min-height:0;max-height:100%;overflow-y:auto;width:100%;}
 .study-tap-hint{align-self:end;color:var(--dim);font-size:11.5px;}
 .study-controls{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px;}
 .btn-study{align-items:center;border:none;border-radius:12px;cursor:pointer;display:flex;font-family:var(--body);font-weight:700;font-size:14px;gap:7px;padding:12px 22px;transition:all .2s;}
@@ -449,3 +449,42 @@ textarea{resize:vertical;min-height:88px;}
 .id-msg{font-size:12px;margin-top:7px;min-height:17px;line-height:1.6;}
 .id-msg.ng{color:var(--ng);}
 .id-msg.ok{color:var(--ok);}
+
+/* ─── スクロールバー（2026-08-25）───────────────────────────
+   単語カードの本文が長いときにスクロールできるようにしたのに伴い、
+   既定の太いスクロールバーがカードの見た目を壊さないよう細く整える。
+   Firefox は scrollbar-width、Chrome/Edge/Safari は ::-webkit-scrollbar。 */
+.study-term,.study-definition,.quiz-layout,.cat-list,.pseudo-code,.modal{
+  scrollbar-width:thin;
+  scrollbar-color:var(--line) transparent;
+}
+.study-term::-webkit-scrollbar,
+.study-definition::-webkit-scrollbar,
+.quiz-layout::-webkit-scrollbar,
+.cat-list::-webkit-scrollbar,
+.pseudo-code::-webkit-scrollbar,
+.modal::-webkit-scrollbar{width:7px;height:7px;}
+.study-term::-webkit-scrollbar-track,
+.study-definition::-webkit-scrollbar-track,
+.quiz-layout::-webkit-scrollbar-track,
+.cat-list::-webkit-scrollbar-track,
+.pseudo-code::-webkit-scrollbar-track,
+.modal::-webkit-scrollbar-track{background:transparent;}
+.study-term::-webkit-scrollbar-thumb,
+.study-definition::-webkit-scrollbar-thumb,
+.quiz-layout::-webkit-scrollbar-thumb,
+.cat-list::-webkit-scrollbar-thumb,
+.pseudo-code::-webkit-scrollbar-thumb,
+.modal::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px;}
+.study-term::-webkit-scrollbar-thumb:hover,
+.study-definition::-webkit-scrollbar-thumb:hover,
+.quiz-layout::-webkit-scrollbar-thumb:hover,
+.cat-list::-webkit-scrollbar-thumb:hover,
+.pseudo-code::-webkit-scrollbar-thumb:hover,
+.modal::-webkit-scrollbar-thumb:hover{background:var(--dim);}
+/* カード内は左右に余白を作って、文字とバーが接しないようにする */
+.study-term,.study-definition{padding-right:4px;}
+
+/* 用語（表）の入力欄。改行できるよう textarea にしたが、
+   意味・説明ほどの高さは要らないので低めにする。 */
+.ta-term{min-height:52px;line-height:1.5;}

@@ -210,6 +210,47 @@ function dynamicTests(){
      vm.runInContext('Object.keys(CAT_ID_TO_NAME)', ctx), ['cat_w1', 'cat_w2', CC.UNCAT_ID]);
   eq('未分類カテゴリのデッキ', vm.runInContext('computeDeck("' + CC.UNCAT_ID + '").length', ctx), 3);
 
+  section('カードの表（用語）も改行できる（2026-08-25）');
+  vm.runInContext(`
+    document.getElementById('new-term').value = '第一正規形\\n（繰返し項目を排除した形）';
+    document.getElementById('new-def').value  = '表の各行が同じ形になるよう、繰返しを別の行に分ける。';
+    document.getElementById('new-cat').value  = 'cat_w1';
+    submitCard();
+  `, ctx);
+  const added = vm.runInContext('state.customCards.cat_w1[state.customCards.cat_w1.length-1]', ctx);
+  ok('用語に入力した改行がそのまま保存される', added.term.indexOf('\n') > 0, JSON.stringify(added.term));
+  ok('入力欄が textarea になっている（1行のinputでは改行を入力できない）',
+     fs.readFileSync(path.join(ROOT, '_engine/engine.js'), 'utf8')
+       .includes('<textarea id="new-term"'));
+  ok('表示側は改行を保持する指定（white-space:pre-wrap）',
+     fs.readFileSync(path.join(ROOT, '_engine/app.css'), 'utf8')
+       .includes('.study-term{') && /\.study-term\{[^}]*white-space:pre-wrap/.test(
+       fs.readFileSync(path.join(ROOT, '_engine/app.css'), 'utf8')));
+
+  section('長い本文のスクロールと、めくり操作の切り分け');
+  const css = fs.readFileSync(path.join(ROOT, '_engine/app.css'), 'utf8');
+  ok('grid が min-content 以下に縮む指定（minmax(0,1fr)）になっている',
+     /\.study-face\{[^}]*grid-template-rows:auto minmax\(0,1fr\) auto/.test(css));
+  ok('本文がはみ出したらスクロールする指定', /\.study-definition\{[^}]*overflow-y:auto/.test(css));
+  ok('細いスクロールバーの指定がある', css.includes('scrollbar-width:thin') && css.includes('::-webkit-scrollbar-thumb'));
+
+  /* スクロールバーをつまむクリックでカードがめくれてしまわないこと */
+  vm.runInContext(`
+    window.__ev = function(cls, scrollH, clientH, offsetX){
+      return { target:{ classList:{ contains:function(c){ return c === cls; } },
+               scrollHeight:scrollH, clientHeight:clientH, clientWidth:200 }, offsetX:offsetX };
+    };
+    flipped = false;
+    fcFlip(__ev('study-definition', 420, 200, 206));
+  `, ctx);
+  eq('スクロールバーの上をクリックしてもめくれない', vm.runInContext('flipped', ctx), false);
+  vm.runInContext("fcFlip(__ev('study-definition', 420, 200, 90));", ctx);
+  eq('本文をクリックすればめくれる', vm.runInContext('flipped', ctx), true);
+  vm.runInContext("flipped = false; fcFlip(__ev('study-definition', 180, 200, 206));", ctx);
+  eq('スクロールが不要なときは右端をクリックしてもめくれる', vm.runInContext('flipped', ctx), true);
+  vm.runInContext('flipped = false; fcFlip();', ctx);
+  eq('キーボード（Space）からの呼び出しは従来どおり', vm.runInContext('flipped', ctx), true);
+
   section('学習記録（fcStats）がカードIDで保たれること');
   vm.runInContext(`
     state.fcStats['c::1'] = {ok:3, ng:1};

@@ -321,7 +321,15 @@ function shuffled(arr){
 // ─── ナビゲーション ───────────────────────────────────────
 function fcNext(){ if(deck.length === 0) return; pos = (pos + 1) % deck.length; flipped = false; persistProgress(); renderFc(); }
 function fcPrev(){ if(deck.length === 0) return; pos = (pos - 1 + deck.length) % deck.length; flipped = false; persistProgress(); renderFc(); }
-function fcFlip(){
+// e を受け取るのは、長い文章をスクロールするためにスクロールバーを
+// クリックしたときにカードがめくれてしまうのを避けるため。
+// スクロールバーの領域（要素の表示幅より右）でのクリックだけ無視する。
+function fcFlip(e){
+  if(e && e.target && (e.target.classList.contains('study-term') ||
+                       e.target.classList.contains('study-definition'))){
+    const el = e.target;
+    if(el.scrollHeight > el.clientHeight && e.offsetX >= el.clientWidth) return;
+  }
   if(deck.length === 0) return;
   flipped = !flipped;
   const cardEl = document.getElementById('fc-card');
@@ -501,7 +509,7 @@ function renderFc(){
       </div>
 
       <div class="study-card-wrap">
-        <div class="study-card${flipped?' flipped':''}" id="fc-card" onclick="fcFlip()" tabindex="0" role="button" aria-label="カードをめくる">
+        <div class="study-card${flipped?' flipped':''}" id="fc-card" onclick="fcFlip(event)" tabindex="0" role="button" aria-label="カードをめくる">
           <div class="study-face study-front">
             <div class="study-label">${reverseMode?'意味':'用語'}</div>
             <div class="study-term" style="${frontIsLong?'font-size:clamp(16px,4.4vw,21px);font-weight:400;font-family:var(--body);line-height:1.6;':''}">${escHtml(front)}</div>
@@ -530,7 +538,7 @@ function renderFc(){
 
     <div class="add-card-form" id="add-card-form">
       <div class="form-row">
-        <div class="form-group"><label>用語</label><input type="text" id="new-term" placeholder="例: Amazon S3"></div>
+        <div class="form-group"><label>用語</label><textarea id="new-term" class="ta-term" placeholder="例: Amazon S3&#10;（改行できます）"></textarea></div>
         <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
       </div>
       <div class="form-group"><label>カテゴリ</label>

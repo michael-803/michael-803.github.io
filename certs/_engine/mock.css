@@ -10,7 +10,10 @@
 
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--navy:#123A6B;--navy2:#0E2E55;--line:#D3DCE8;--bg:#F4F7FB;--ink:#16202E;--dim:#5C6B80;
-      --ok:#1B8A5A;--ng:#C0392B;--warn:#B8860B;--r:10px;}
+      --ok:#1B8A5A;--ng:#C0392B;--warn:#B8860B;--r:10px;
+      /* data.js のSVG図が使う配色トークン。単語帳側（theme.css）と同じ名前で、
+         値だけ白基調に振ってある。これが無いと図の色分けが失われる。 */
+      --card:#F7FAFE;--card2:#EDF2F9;--blue:#1F6FB2;--orange:#B06E00;--text:#16202E;}
 body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);line-height:1.75;min-height:100dvh;}
 .bar{background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px;padding:11px 16px;
      position:sticky;top:0;z-index:50;flex-wrap:wrap;}
@@ -103,6 +106,5 @@ h2{font-size:16px;margin-bottom:10px;}
 .q-figure{background:#fff;border:1px solid var(--line);border-radius:8px;
           margin:12px 0;overflow-x:auto;padding:14px;text-align:center;}
 .q-figure svg{max-width:100%;height:auto;}
-.q-figure svg text{fill:var(--ink);font-size:12px;}
-.q-figure svg [stroke]{stroke:var(--navy);}
-.q-figure svg [fill="none"]{fill:none;}
+.q-figure{color:var(--ink);}   /* 図は currentColor を基準に描かれている */
+.q-figure svg{font-size:11.5px;}

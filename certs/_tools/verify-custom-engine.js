@@ -338,7 +338,7 @@ function staticTests(){
   eq('すべて組み込みカード', vm.runInContext('buildCards().every(c=>c.builtin===true)', ctx), true);
   eq('科目A 72問', vm.runInContext('QQ.length', ctx), 72);
   eq('シナリオ 35問', vm.runInContext('SCENARIO_Q.length', ctx), 35);
-  eq('科目B 24問', vm.runInContext('PSEUDO_Q.length', ctx), 24);
+  eq('科目B 42問', vm.runInContext('PSEUDO_Q.length', ctx), 42);
 
   let renderErr = null;
   try{ vm.runInContext('enterKey(CAT_ALL); renderFc(); renderQuizHome(); renderWeak();', ctx); }catch(e){ renderErr = e; }

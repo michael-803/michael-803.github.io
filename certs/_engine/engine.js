@@ -538,8 +538,8 @@ function renderFc(){
 
     <div class="add-card-form" id="add-card-form">
       <div class="form-row">
-        <div class="form-group"><label>用語</label><textarea id="new-term" class="ta-term" placeholder="例: Amazon S3&#10;（改行できます）"></textarea></div>
-        <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="例: スケーラブルなオブジェクトストレージ..."></textarea></div>
+        <div class="form-group"><label>用語</label><textarea id="new-term" class="ta-term" placeholder="用語（改行できます）"></textarea></div>
+        <div class="form-group"><label>意味・説明</label><textarea id="new-def" placeholder="意味・説明（改行できます）"></textarea></div>
       </div>
       <div class="form-group"><label>カテゴリ</label>
         <select id="new-cat">${FC_CATS_DEF.map(c=>`<option value="${escHtml(c.id)}"${formCatDefault===c.id?' selected':''}>${escHtml(c.name)}</option>`).join('')}</select>
@@ -1313,6 +1313,11 @@ function nextScenarioQuestion(){
 
 // ─── 複数選択問題（段階3-7追加分） ──────────────────────────
 // 択一式のQQ/SCENARIO_Qとは別の、チェックボックス複数選択専用エンジン。
+/* 複数選択問題のバンク。資格によっては data.js に MULTI_Q が無いので、
+   直接参照せずここを通す（engine-formats.js の orderingBank() と同じ流儀）。
+   2026-08-25：機能トグルを見ずに呼ぶと落ちる作りだったため導入した。 */
+function multiBank(){ return (typeof MULTI_Q !== 'undefined' && Array.isArray(MULTI_Q)) ? MULTI_Q : []; }
+
 // 組み込み問題(MULTI_Q)はcardEdits/hiddenCardsと同じ要領でmultiQEdits/hiddenMultiQを
 // 重ねて編集・非表示にできる。customMultiQでユーザー独自の複数選択問題も追加できる。
 // Fisher-Yates。[0..n-1]をシャッフルした配列を返す（選択肢の表示順シャッフル用）。
@@ -1326,7 +1331,7 @@ function shuffleIndices(n){
 }
 function buildMultiQuestions(){
   const out = [];
-  MULTI_Q.forEach(q=>{
+  multiBank().forEach(q=>{
     if((state.hiddenMultiQ||[]).includes(q.id)) return;
     const ov = (state.multiQEdits||{})[q.id];
     out.push(ov ? Object.assign({}, q, ov, {builtin:true}) : Object.assign({}, q, {builtin:true}));
@@ -1675,7 +1680,7 @@ function deleteMultiQuestion(id){
 }
 function renderHiddenMultiQList(){
   const hidden = state.hiddenMultiQ || [];
-  const items = hidden.map(id=>MULTI_Q.find(q=>q.id===id)).filter(Boolean);
+  const items = hidden.map(id=>multiBank().find(q=>q.id===id)).filter(Boolean);
   const box = document.getElementById('hidden-multi-list');
   if(!box) return;
   box.innerHTML = `<h3>${ico('archive')} 非表示にした複数選択問題</h3>` + (items.length ? items.map(q=>`

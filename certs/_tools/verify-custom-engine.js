@@ -501,6 +501,49 @@ function cheatsheetTests(){
 }
 
 /* ============================================================
+   1e. 全資格 × 全タブの描画（2026-08-25 追加）
+
+   共通エンジンが「その資格に無い問題バンク」を参照して落ちる事故を
+   短期間に2回起こしたため（弱点診断の MULTI_Q 参照・複数選択タブ）、
+   資格ごとに全ての描画関数を呼ぶ点検を常設にする。
+   ============================================================ */
+function allTabsTests(){
+  console.log('\n============================================================');
+  console.log('全資格 × 全タブの描画');
+  console.log('============================================================');
+
+  const RENDERS = ['renderFc', 'renderQuizHome', 'renderScenarioHome', 'renderMultiHome',
+                   'renderWeak', 'renderCheatsheet', 'renderOrderingHome', 'renderMatchingHome',
+                   'renderPseudoHome', 'openHiddenCards', 'openHiddenMultiQ'];
+
+  [['aws/clf', 'CLF-C02',      ['_engine/engine-formats.js']],
+   ['itpass',  'ITパスポート',  ['_engine/engine-formats.js']],
+   ['fe',      '基本情報',      ['_engine/engine-formats.js', '_engine/engine-pseudo.js']],
+  ].forEach(function(t){
+    const dir = t[0], label = t[1], extra = t[2];
+    section(label);
+    const c = makeContext();
+    runFile(c, dir + '/cert.js');
+    c.CERT = c.window.CERT;
+    runFile(c, dir + '/data.js');
+    runFile(c, '_engine/engine.js');
+    extra.forEach(function(f){ runFile(c, f); });
+    vm.runInContext('window._save = function(){};', c);
+
+    RENDERS.forEach(function(fn){
+      if(vm.runInContext('typeof ' + fn, c) !== 'function') return;
+      let err = null;
+      try{ vm.runInContext('enterKey(CAT_ALL); ' + fn + '();', c); }catch(e){ err = e; }
+      ok(fn + ' が例外なく描ける', !err, err && err.message);
+    });
+  });
+
+  section('カード追加フォームの文言が資格に依存しないこと');
+  const src = fs.readFileSync(path.join(ROOT, '_engine/engine.js'), 'utf8');
+  ok('プレースホルダにAWSのサービス名が入っていない', src.indexOf('例: Amazon S3') < 0);
+}
+
+/* ============================================================
    2. 静的モード（既存資格）の回帰確認
    ============================================================ */
 function staticTests(){
@@ -538,6 +581,7 @@ dynamicTests();
 shuffleTests();
 weakTests();
 cheatsheetTests();
+allTabsTests();
 staticTests();
 
 console.log('\n' + '─'.repeat(60));

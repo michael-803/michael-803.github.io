@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SAA-C03 模擬試験センター</title>
+<!-- ============================================================
+     SAA-C03 模擬試験（65問／130分）
+
+     公式（2026-08-25 一次情報で確認）
+       65問（採点対象50＋採点対象外15）／130分／合格は100〜1000中720点
+       補正スコアリングのため★ドメイン別の足切りは無い
+       ドメイン比率 セキュア30％／弾力性26％／高性能24％／コスト20％
+
+     問題は data.js の QQ・SCENARIO_Q・MULTI_Q から毎回ランダムに組み立てる。
+     設定はすべて cert.js の CERT.mock にある（CLAUDE.md 第30節）。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../_engine/mock.css?v=1">
+<script src="../../_engine/icons.js?v=2"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="home" href="index.html">⬅ Study Deck</a>
+  <span class="ttl">SAA-C03 模擬試験</span>
+  <span class="timer" id="timer" style="display:none;">残り --:--</span>
+</div>
+<div class="wrap" id="app"></div>
+
+<!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
+<script src="../../_engine/store.js?v=1"></script>
+<script src="cert.js?v=2"></script>
+<script>window.SAFESTORE_HOME_DOC = window.CERT.doc; window.SAFESTORE_STANDALONE = true;</script>
+<script src="../../_engine/safe-store.js?v=3"></script>
+<script src="../../_engine/safe-store-compat.js?v=1"></script>
+<script src="data.js?v=1"></script>
+<script src="../../_engine/mock.js?v=1"></script>
+<script>
+  /* 問題バンクはここで渡す。data.js の const は window に載らないため
+     （mock.js の setBanks のコメントを参照）。 */
+  MockBoot({QQ:QQ, SCENARIO_Q:SCENARIO_Q, MULTI_Q:MULTI_Q});
+</script>
+</body>
+</html>

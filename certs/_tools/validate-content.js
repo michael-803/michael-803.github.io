@@ -46,6 +46,18 @@ const CERT_PROFILE = {
     },
     official: {'テクノロジ':41/60, 'マネジメント':7/60, 'ストラテジ':12/60},
   },
+  'aws/saa': {
+    label: 'SAA-C03',
+    /* SAAは問題を公式の4ドメインで分類している（CLAUDE.md 第40節）。
+       単語帳はサービス別なので、分野バランスの分母は QQ のドメインになる。 */
+    fields: {
+      'セキュア':   ['sec'],
+      '弾力性':     ['res'],
+      '高性能':     ['perf'],
+      'コスト':     ['cost'],
+    },
+    official: {'セキュア':0.30, '弾力性':0.26, '高性能':0.24, 'コスト':0.20},
+  },
   /* CLF-C02（aws/clf）は合格済みのため意図的に載せていない。
      AWS資格を今後追加するときは fields:null（3分野の枠組みが無いため
      分野バランス検証はスキップ）で1件足す。 */
@@ -105,12 +117,21 @@ function validate(rel){
   const miss = catNames.filter(n=>!sampleKeys.includes(n)).concat(sampleKeys.filter(n=>!catNames.includes(n)));
   miss.length ? bad('FC_CATS_DEF と SAMPLE のキー不一致: '+miss) : ok(`カテゴリ ${catNames.length}件・SAMPLEと一致`);
 
+  /* QCAT（問題側のカテゴリ）のIDは、単語帳カテゴリ（cat_ を除いたID）か
+     quizOnlyCats のどちらかに載っている必要がある。
+     ★完全一致は求めない。SAA-C03のように「問題は公式の4ドメイン／
+       単語帳はサービス別」という持ち方をする資格があるため（CLAUDE.md 第40節）。
+       単語帳にしか無いカテゴリは、弱点診断でカードの記録だけが集計される。 */
   const fcIds = FC_CATS_DEF.map(c=>c.id.replace(/^cat_/,''));
-  const expected = [...fcIds, ...(CERT.quizOnlyCats||[])].sort();
-  const qIds = QCAT.map(c=>c.id).sort();
-  JSON.stringify(expected)===JSON.stringify(qIds)
-    ? ok('QCAT のIDが FC_CATS_DEF ＋ quizOnlyCats と一致')
-    : bad('QCAT のID不一致\n       期待: '+expected+'\n       実際: '+qIds);
+  const known = new Set([...fcIds, ...(CERT.quizOnlyCats||[])]);
+  const qIds = QCAT.map(c=>c.id);
+  const unknownCats = qIds.filter(id=>!known.has(id));
+  const missingCats = (CERT.quizOnlyCats||[]).filter(id=>!qIds.includes(id));
+  (unknownCats.length || missingCats.length)
+    ? bad('QCAT のID不整合'
+        + (unknownCats.length ? '\n       FC_CATS_DEF にも quizOnlyCats にも無いID: '+unknownCats : '')
+        + (missingCats.length ? '\n       quizOnlyCats にあるが QCAT に無いID: '+missingCats : ''))
+    : ok('QCAT のIDが FC_CATS_DEF ＋ quizOnlyCats の範囲に収まっている');
 
   const pKeys = Object.keys(CERT.prescriptions||{}).sort();
   const needKeys = [...FC_CATS_DEF.map(c=>c.id), ...(CERT.quizOnlyCats||[])].sort();

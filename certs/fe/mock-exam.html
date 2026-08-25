@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>基本情報技術者 模擬試験センター</title>
+<!-- ============================================================
+     基本情報技術者試験（FE）模擬試験
+
+     このファイルは薄いガワで、中身は共通エンジン ../_engine/mock.js が担う。
+     資格ごとの違い（問題数・時間・分野配分・合格基準・保存キー）は
+     cert.js の CERT.mock に書いてある。CLAUDE.md 第20節・第30節。
+
+     ★FE最大の特徴は「科目A・科目Bの2部構成」で、
+       合否が科目ごとに判定される（合算しない）こと。
+         科目A 60問／90分／600点以上
+         科目B 20問／100分／600点以上（アルゴリズム16／セキュリティ4）
+       片方が満点でも、もう片方が600点に届かなければ不合格。
+
+     ★問題は data.js の QQ（72問）＋SCENARIO_Q（35問）＝科目A、
+       PSEUDO_Q（24問）＝科目B から毎回ランダムに組み立てる。
+       固定の問題セットは持たない（ITパスポート版と同じ設計）。
+
+     デザインは本試験画面の再現のため白基調（CLAUDE.md 4-5節の方針）。
+     単語帳側のダークテーマは読み込まない。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_engine/mock.css?v=1">
+<script src="../_engine/icons.js?v=2"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="home" href="index.html">⬅ Study Deck</a>
+  <span class="ttl">基本情報技術者 模擬試験</span>
+  <span class="timer" id="timer" style="display:none;">残り --:--</span>
+</div>
+<div class="wrap" id="app"></div>
+
+<!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
+<script src="../_engine/store.js?v=1"></script>
+<script src="cert.js?v=2"></script>
+<script>window.SAFESTORE_HOME_DOC = window.CERT.doc; window.SAFESTORE_STANDALONE = true;</script>
+<script src="../_engine/safe-store.js?v=3"></script>
+<script src="../_engine/safe-store-compat.js?v=1"></script>
+<script src="data.js?v=1"></script>
+<script src="../_engine/mock.js?v=1"></script>
+<script>
+  /* 問題バンクはここで渡す。data.js の const は window に載らないため
+     （mock.js の setBanks のコメントを参照）。 */
+  MockBoot({QQ:QQ, SCENARIO_Q:SCENARIO_Q, PSEUDO_Q:PSEUDO_Q});
+</script>
+</body>
+</html>

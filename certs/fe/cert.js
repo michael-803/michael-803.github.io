@@ -37,8 +37,54 @@ window.CERT = {
     matching:   false,
     weak:       true,
     cheatsheet: true,
-    mock:       false,   // 模試は未着手（科目A・科目Bの2部構成にする必要がある）
+    mock:       true,    // fe/mock-exam.html（科目A・科目Bの2部構成。下の CERT.mock を参照）
     dojo:       false,
+  },
+
+  /* ── 模擬試験の設定（_engine/mock.js が読む。CLAUDE.md 第20節・第30節） ──
+
+     本番の規則（IPA・27-1節）
+       科目A 60問／90分／1000点満点・600点以上
+       科目B 20問／100分／1000点満点・600点以上
+              内訳＝アルゴリズムとプログラミング16問／情報セキュリティ4問
+       ★両科目それぞれで600点以上が必要。合算では判定しない。
+         片方が高くても、もう片方が届かなければ不合格。
+
+     科目Aの分野配分（テクノロジ41／マネジメント7／ストラテジ12）は
+     公式の出題数比率そのまま。母集団は過去問72問＋シナリオ35問＝107問。
+     科目Bの母集団は擬似言語24問（アルゴリズム18／セキュリティ6）。 */
+  mock: {
+    title: '基本情報技術者 模擬試験',
+    icon:  'book',
+    keys:  { hist:'feMockHistoryV1', wrong:'feMockWrongV1' },
+
+    /* 合否は科目ごとに600点。総合点・分野別足切りは無い試験なので指定しない */
+    pass: { section: 600 },
+
+    sections: [
+      {
+        id:'a', name:'科目A', minutes:90,
+        pools:['QQ', 'SCENARIO_Q'],
+        groups:[
+          { id:'tc', name:'テクノロジ系',
+            cats:['theory','compute','system','software','ui','db','network','security','devtech'], n:41 },
+          { id:'mn', name:'マネジメント系', cats:['pm','sm'], n:7 },
+          { id:'st', name:'ストラテジ系',   cats:['strategy'], n:12 },
+        ],
+      },
+      {
+        id:'b', name:'科目B', minutes:100,
+        pools:['PSEUDO_Q'],
+        pseudo:true,                 // 擬似言語のコードを設問の下に表示する
+        groups:[
+          { id:'algo', name:'アルゴリズムとプログラミング', cats:['algo'], n:16 },
+          { id:'sec',  name:'情報セキュリティ',             cats:['security'], n:4 },
+        ],
+      },
+    ],
+
+    scoreNote: '本番の採点はIRT（項目応答理論）方式で計算式が公開されていないため、' +
+               'ここでは<strong>正答率を1000点満点に換算した目安</strong>を表示しています。',
   },
 
   /* 単語帳カテゴリ（FC_CATS_DEF）には無く、問題側（QCAT）にしか存在しない

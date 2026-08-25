@@ -105,7 +105,7 @@ function feTests(){
 
   section('母集団（収録数が本番を上回っているか）');
   const poolA = M.poolOf(secA), poolB = M.poolOf(secB);
-  eq('科目Aの母集団（過去問72＋シナリオ35）', poolA.length, 107);
+  eq('科目Aの母集団（過去問72＋シナリオ47）', poolA.length, 119);   // 問題を足したらここも更新する
   eq('科目Bの母集団（擬似言語）', poolB.length, 42);   // 問題を足したらここも更新する
   secA.groups.forEach(function(g){
     const n = poolA.filter(function(q){ return g.cats.indexOf(q.c) >= 0; }).length;

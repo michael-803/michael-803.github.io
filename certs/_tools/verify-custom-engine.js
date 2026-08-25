@@ -375,7 +375,7 @@ function staticTests(){
   eq('カテゴリ表の件数', vm.runInContext('Object.keys(CAT_ID_TO_NAME).length', ctx), 12);
   eq('FC_CATS（表示名の配列）が SAMPLE と一致',
      vm.runInContext('FC_CATS.length === Object.keys(SAMPLE).length', ctx), true);
-  eq('組み込みカード160枚', vm.runInContext('buildCards().length', ctx), 160);
+  eq('組み込みカード200枚', vm.runInContext('buildCards().length', ctx), 200);
   eq('すべて組み込みカード', vm.runInContext('buildCards().every(c=>c.builtin===true)', ctx), true);
   eq('科目A 72問', vm.runInContext('QQ.length', ctx), 72);
   eq('シナリオ 57問', vm.runInContext('SCENARIO_Q.length', ctx), 57);

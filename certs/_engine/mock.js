@@ -224,6 +224,39 @@ function passText(){
   return parts.join('<br>') || '—';
 }
 
+/* 受験履歴の列。
+   科目が複数ある試験（FE）は科目ごと、単一の試験（ITパスポート）は分野ごとに出す。
+   分野が1つしか無ければ総合点だけ。 */
+function histCols(){
+  if(CFG.sections.length > 1){
+    return CFG.sections.map(s => ({kind:'sec', id:s.id, label:s.name}));
+  }
+  const groups = (CFG.sections[0] || {}).groups || [];
+  if(groups.length > 1) return groups.map(g => ({kind:'group', id:g.id, label:g.name}));
+  return [{kind:'total', label:'総合'}];
+}
+
+function histCells(h){
+  return histCols().map(function(c){
+    if(c.kind === 'total') return '<td><strong>' + h.total + '</strong></td>';
+
+    if(c.kind === 'sec'){
+      const r = (h.sections || []).find(x => x.sec === c.id);
+      if(!r) return '<td class="sub">—</td>';
+      const okc = r.passSection && r.passGroups;
+      return '<td style="color:' + (okc ? 'var(--ok)' : 'var(--ng)') + '">' + r.score + '</td>';
+    }
+
+    /* 分野列。新形式は sections[0].groups、旧ITパスポート版の記録は fields に入っている。
+       載せ替え前の履歴もそのまま読めるようにしておく。 */
+    const groups = ((h.sections || [])[0] || {}).groups || h.fields || [];
+    const g = groups.find(x => x.id === c.id);
+    if(!g) return '<td class="sub">—</td>';
+    const okc = PASS.group === null ? true : g.score >= PASS.group;
+    return '<td style="color:' + (okc ? 'var(--ok)' : 'var(--ng)') + '">' + g.score + '</td>';
+  }).join('');
+}
+
 function renderHome(){
   stopTimer();
   const t = el('timer');
@@ -235,26 +268,17 @@ function renderHome(){
   const poolInfo = CFG.sections.map(sec =>
     esc(sec.name) + ' ' + poolOf(sec).length + '問').join(' ／ ');
 
-  const histHtml = hist.length ? (
-    '<table class="hist"><tr><th>受験日</th>' +
-    (multi ? CFG.sections.map(s => '<th>' + esc(s.name) + '</th>').join('') : '<th>総合</th>') +
-    '<th>判定</th></tr>' +
-    hist.slice(0,10).map(h => {
-      const cells = multi
-        ? CFG.sections.map(s => {
-            const r = (h.sections || []).find(x => x.sec === s.id);
-            if(!r) return '<td class="sub">—</td>';
-            const okc = r.passSection && r.passGroups;
-            return '<td style="color:' + (okc ? 'var(--ok)' : 'var(--ng)') + '">' + r.score + '</td>';
-          }).join('')
-        : '<td><strong>' + h.total + '</strong></td>';
-      return '<tr><td>' +
+  const histHtml = hist.length
+    ? '<table class="hist"><tr><th>受験日</th>' + histCols().map(c => '<th>' + esc(c.label) + '</th>').join('') +
+      '<th>判定</th></tr>' +
+      hist.slice(0,10).map(h =>
+        '<tr><td>' +
         new Date(h.at).toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) +
-        '</td>' + cells +
+        '</td>' + histCells(h) +
         '<td style="color:' + (h.pass ? 'var(--ok)' : 'var(--ng)') + ';font-weight:700">' +
-        (h.partial ? '（一部）' : (h.pass ? '合格' : '不合格')) + '</td></tr>';
-    }).join('') + '</table>'
-  ) : '<p class="note">まだ受験履歴がありません。</p>';
+        (h.partial ? '（一部）' : (h.pass ? '合格' : '不合格')) + '</td></tr>'
+      ).join('') + '</table>'
+    : '<p class="note">まだ受験履歴がありません。</p>';
 
   const startBtns = multi
     ? '<button class="btn btn-main" onclick="Mock.start(\'full\')">▶ 通しで受験する（' +

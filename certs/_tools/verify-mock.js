@@ -73,7 +73,12 @@ function makeContext(certRel, dataRel){
   run(dataRel);
   run('_engine/mock.js');
   /* ページの <script>MockBoot({QQ, ...})</script> と同じことをする */
-  vm.runInContext('Mock.setBanks({QQ:QQ, SCENARIO_Q:SCENARIO_Q, PSEUDO_Q:PSEUDO_Q});', ctx);
+  /* 資格ごとに持っているバンクが違う（ITパスポートに PSEUDO_Q は無い）ので、
+     存在するものだけを渡す。ページ側も自分の持ち物だけを列挙する。 */
+  const banks = ['QQ','SCENARIO_Q','PSEUDO_Q','MULTI_Q'].map(function(n){
+    return n + ':(typeof ' + n + "!=='undefined'?" + n + ':undefined)';
+  }).join(',');
+  vm.runInContext('Mock.setBanks({' + banks + '});', ctx);
   return ctx;
 }
 
@@ -252,6 +257,105 @@ function itpassRuleTests(){
 }
 
 /* ============================================================
+   ITパスポート：共通エンジンへ載せ替えたあとも仕様が変わっていないか
+   （載せ替え前の itpass/mock-exam.html の実装と同じ結果になること）
+   ============================================================ */
+function itpassPortTests(){
+  console.log('\n============================================================');
+  console.log('ITパスポート模試：共通エンジンへの載せ替え後の同一性');
+  console.log('============================================================');
+
+  const ctx = makeContext('itpass/cert.js', 'itpass/data.js');
+  const M = ctx.Mock._internals;
+  const sec = M.sectionOf('main');
+
+  section('載せ替え前の定数と一致するか');
+  eq('出題数（旧 TOTAL_Q=100）', M.sectionTotal(sec), 100);
+  eq('試験時間（旧 LIMIT_MIN=120）', sec.minutes, 120);
+  eq('総合の基準（旧 PASS_TOTAL=600）', M.PASS.total, 600);
+  eq('分野別の基準（旧 PASS_FIELD=300）', M.PASS.group, 300);
+  eq('科目ごとの基準は使わない', M.PASS.section, null);
+  eq('分野の定義（旧 FIELDS と同じ順・同じ配分）',
+     sec.groups.map(function(g){ return [g.id, g.n]; }), [['st',35],['mn',20],['tc',45]]);
+  eq('分野に属するカテゴリ（旧 FIELDS.cats）',
+     sec.groups.map(function(g){ return g.cats.join('+'); }),
+     ['corp+strategy+syssta', 'dev+pm+sm', 'theory+comp+tech']);
+  eq('保存キー（受験履歴）', M.CFG.keys.hist, 'ipMockHistoryV1');
+  eq('保存キー（誤答プール）', M.CFG.keys.wrong, 'ipMockWrongV1');
+
+  section('母集団と組み立て（旧 buildExam と同じ条件）');
+  eq('母集団（過去問90＋シナリオ90）', M.poolOf(sec).length, 180);
+  let good = 0, dup = 0;
+  for(let t = 0; t < 10; t++){
+    const qs = M.buildSection(sec);
+    const m = {};
+    qs.forEach(function(x){ const g = M.groupOf(sec, x.ref.c); m[g] = (m[g]||0)+1; });
+    if(qs.length === 100 && m.st === 35 && m.mn === 20 && m.tc === 45) good++;
+    const ids = qs.map(function(x){ return x.ref.id; });
+    if(new Set(ids).size !== ids.length) dup++;
+  }
+  eq('10回とも100問・35/20/45', good, 10);
+  eq('重複なし', dup, 0);
+
+  section('合否判定（旧 grade と同じ規則）');
+  const qs = M.buildSection(sec);
+  const mk = function(fn){
+    const a = {};
+    qs.forEach(function(x, i){ a[i] = fn(x, i) ? x.ref.a : (x.ref.a + 1) % x.ref.o.length; });
+    return a;
+  };
+  const rAll = M.gradeSection(sec, qs, mk(function(){ return true; }));
+  eq('全問正解 → 1000点・合格', [rAll.score, M.gradeAll([rAll]).pass], [1000, true]);
+
+  const r60 = M.gradeSection(sec, qs, mk(function(x, i){ return i < 60; }));
+  eq('60問正解 → 総合600点', M.gradeAll([r60]).total, 600);
+
+  /* テクノロジ系だけ落として、総合が足りていても不合格になることを見る
+     （旧実装の検証表「テクノロジ系だけ落とす → 670点でも不合格」と同じ趣旨） */
+  const rSkew = M.gradeSection(sec, qs, mk(function(x, i){
+    return M.groupOf(sec, x.ref.c) !== 'tc' || i % 5 === 0;
+  }));
+  const skew = M.gradeAll([rSkew]);
+  const tc = rSkew.groups.find(function(g){ return g.id === 'tc'; });
+  ok('総合は600点以上（' + skew.total + '点）', skew.total >= 600);
+  ok('テクノロジ系が300点未満（' + tc.score + '点）', tc.score < 300);
+  eq('分野別足切りで不合格', skew.pass, false);
+  eq('総合の基準自体は満たしている', skew.passTotal, true);
+
+  const rZero = M.gradeSection(sec, qs, {});
+  eq('全問未解答 → 0点・不合格', [rZero.score, M.gradeAll([rZero]).pass], [0, false]);
+
+  section('分野別の内訳（結果画面と履歴に出るもの）');
+  eq('3分野', rAll.groups.map(function(g){ return g.id; }), ['st','mn','tc']);
+  eq('分野ごとの出題数', rAll.groups.map(function(g){ return g.total; }), [35, 20, 45]);
+}
+
+/* 旧形式の受験履歴（載せ替え前に保存されたもの）が表示できるか */
+function itpassLegacyHistTests(){
+  console.log('\n============================================================');
+  console.log('ITパスポート：載せ替え前に保存された履歴も読めるか');
+  console.log('============================================================');
+
+  const ctx = makeContext('itpass/cert.js', 'itpass/data.js');
+  /* 旧実装が書いていた形（fields を持ち、sections が無い） */
+  ctx._store.ipMockHistoryV1 = [{
+    at:'2026-08-20T10:00:00.000Z', total:720, correct:72, count:100, pass:false,
+    fields:[{id:'st',name:'ストラテジ系',correct:28,total:35,score:800},
+            {id:'mn',name:'マネジメント系',correct:15,total:20,score:750},
+            {id:'tc',name:'テクノロジ系',correct:29,total:45,score:644}],
+  }];
+  return ctx.MockBoot().then(function(){
+    const html = ctx._els.app.innerHTML;
+    section('旧形式の履歴');
+    ok('受験日が表示される', html.indexOf('08/20') >= 0 || html.indexOf('8/20') >= 0);
+    ok('分野別のスコアが表示される（旧fieldsから読む）',
+       html.indexOf('800') >= 0 && html.indexOf('750') >= 0 && html.indexOf('644') >= 0);
+    ok('判定が表示される', html.indexOf('不合格') >= 0);
+    ok('分野名が列見出しになる', html.indexOf('ストラテジ系') >= 0);
+  });
+}
+
+/* ============================================================
    保存（履歴・誤答プール）
    ============================================================ */
 function storageTests(){
@@ -371,6 +475,8 @@ async function renderTests(){
 (async function main(){
 feTests();
 itpassRuleTests();
+itpassPortTests();
+await itpassLegacyHistTests();
 storageTests();
 await renderTests();
 

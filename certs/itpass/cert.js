@@ -39,6 +39,40 @@ window.CERT = {
   quizOnlyCats: [],
   labNames: {},
 
+  /* ── 模擬試験の設定（_engine/mock.js が読む。CLAUDE.md 第30節・第32節） ──
+
+     本番の規則（IPA・17-1節）
+       100問／120分／四肢択一
+       合格＝総合600点以上（1000点満点）かつ 3分野それぞれ300点以上
+       分野別の出題数の目安：ストラテジ35／マネジメント20／テクノロジ45
+
+     ★分野別の足切りがあるのがこの試験の特徴。総合点が高くても
+       1分野でも300点を下回ると不合格になる。
+
+     2026-08-25に共通エンジンへ載せ替えた。保存キーは載せ替え前と同じ
+     （ipMockHistoryV1 / ipMockWrongV1）。変更すると受験履歴が消える。 */
+  mock: {
+    title: 'ITパスポート 模擬試験',
+    icon:  'passport',
+    keys:  { hist:'ipMockHistoryV1', wrong:'ipMockWrongV1' },
+
+    /* 総合600点、かつ分野ごとに300点。科目は1つなので section は使わない */
+    pass: { total: 600, group: 300 },
+
+    sections: [{
+      id:'main', name:'ITパスポート試験', minutes:120,
+      pools:['QQ', 'SCENARIO_Q'],
+      groups:[
+        { id:'st', name:'ストラテジ系',   cats:['corp','strategy','syssta'], n:35 },
+        { id:'mn', name:'マネジメント系', cats:['dev','pm','sm'],            n:20 },
+        { id:'tc', name:'テクノロジ系',   cats:['theory','comp','tech'],     n:45 },
+      ],
+    }],
+
+    scoreNote: '本番の採点はIRT（項目応答理論）方式で計算式が公開されていないため、' +
+               'ここでは<strong>正答率を1000点満点に換算した目安</strong>を表示しています。',
+  },
+
   /* 弱点診断の処方箋。キーは単語帳カテゴリID。
      カテゴリは試験要綱の中分類（3分野×3中分類）に合わせている。 */
   prescriptions: {

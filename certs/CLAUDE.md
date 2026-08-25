@@ -1430,20 +1430,27 @@ app/notebook-u-<slug>_snap   SafeStoreの世代控え（自動）
 cd certs
 node _tools/verify-custom.js          # 純関数55項目（Firestoreに触れない）
 node _tools/verify-custom.js --live   # 実データ76項目（dev名前空間のみ）
-node _tools/verify-custom-engine.js   # 実engine.jsを動的モードで動かす40項目
-node _tools/verify-custom-page.js     # custom/index.html の実コードを動かす32項目
+node _tools/verify-custom-engine.js   # 実engine.jsを動かす63項目（シャッフル23項目を含む）
+node _tools/verify-custom-page.js     # ページの実コードを動かす83項目
 ```
 
 - `verify-custom-engine.js` と `verify-custom-page.js` は**検証用に書き写したコピーではなく、
   実際の `_engine/engine.js` とページのインラインスクリプトそのものを Node 上で評価する。**
   DOMは最小限のスタブ。ページ側は `<script>` 注入まで再現している
+- `verify-custom-page.js` は `custom/index.html`（ブート）と `custom/new.html`（作成フロー）の
+  両方を扱う。new.html 側は**イベントを記録するDOMスタブで実際にクリック・入力を発火させ**、
+  ID自動生成・衝突チェック・ステップ遷移・作成の実行（Firestoreのdev名前空間）まで通す。
+  「ページを開いたあとに横から同じIDを取られる」競合も再現し、先客のデータが
+  上書きされないことを確認している
+- あわせて**HTMLの onclick から呼ばれる関数が実在するか**を静的に照合している
+  （DOMスタブでは実行されない経路のタイポ検出）
 - `verify-custom-engine.js` は**既存資格（FE）も同じハーネスで読み込み、
   `rebuildCatMaps()` の追加で静的モードが壊れていないことを併せて確認する**
 - 実データ検証は **`-dev` 名前空間のドキュメントしか読み書きせず、終了時に削除する。**
   本番（`app/notebook`・`notebook-itpass`・`notebook-fe`・`storage`）が
   検証の前後でバイト単位で不変であることも毎回照合している
 
-**2026-08-24の結果：全203項目パス。** 主な件数照合は以下。
+**2026-08-25時点：全222項目パス。** 主な件数照合は以下。
 
 | 確認 | 結果 |
 |---|---|
@@ -1463,8 +1470,10 @@ node _tools/verify-custom-page.js     # custom/index.html の実コードを動�
 - ✅ 資格の削除＝**索引から外す論理削除**。本体ドキュメントは残るので、
   同じIDで作り直せば中身が戻る（取り返しのつかない削除はしない）
 
-**残っている確認（実ブラウザでの操作）**：Node上の検証はDOMスタブのため、
-**クリック・モーダル・入力といった画面操作だけは実機で確認していない。**
+**残っている確認（実ブラウザでの操作）**：Node上の検証はDOMスタブでHTMLを解釈しないため、
+**モーダルの開閉と、カテゴリ編集の行そのものの操作（改名の入力・↑↓・削除ボタン）だけは
+実機で確認していない。** それ以外（作成フローのイベント処理・ID衝突・作成の実行・
+onclickから呼ばれる関数の実在）は機械で確認済み。
 `_engine/app.css`・`engine.js` の版数クエリは全ページで `?v=9`／`?v=6` に揃えてあるので、
 **古いタブは閉じて開き直すこと**（第7節の教訓）。
 

@@ -101,10 +101,23 @@ function makeStubElement(id){
     classList:{ _s:new Set(),
       add(c){ this._s.add(c); }, remove(c){ this._s.delete(c); },
       contains(c){ return this._s.has(c); }, toggle(c){ this._s.has(c) ? this._s.delete(c) : this._s.add(c); } },
-    focus(){}, blur(){}, addEventListener(){}, removeEventListener(){},
+    focus(){}, blur(){},
+    /* イベントは記録しておき、検証側から fire() で発火させる */
+    _on:{},
+    addEventListener(type, fn){ (this._on[type] = this._on[type] || []).push(fn); },
+    removeEventListener(){},
     appendChild(){}, closest(){ return null; },
     querySelector(){ return null; }, querySelectorAll(){ return []; },
   };
+}
+
+/* 要素のイベントを発火する（onclick属性・addEventListener の両方に対応） */
+function fire(el, type){
+  const handlers = (el._on && el._on[type]) || [];
+  handlers.forEach(function(fn){ fn.call(el, {type:type, target:el, preventDefault(){}}); });
+  const inline = el['on' + type];
+  if(typeof inline === 'function') inline.call(el, {type:type, target:el, preventDefault(){}});
+  return handlers.length + (typeof inline === 'function' ? 1 : 0);
 }
 
 function makeContext(pageDir, opts){
@@ -185,6 +198,181 @@ function inlineScripts(htmlPath){
 }
 
 const sleep = function(ms){ return new Promise(function(r){ setTimeout(r, ms); }); };
+
+/* ============================================================
+   custom/new.html：作成フローをイベントごと動かす
+   ============================================================ */
+async function newPageTests(){
+  console.log('\n============================================================');
+  console.log('custom/new.html の作成フロー（実コード・イベント込み）');
+  console.log('============================================================');
+
+  const pageDir  = path.join(ROOT, 'custom');
+  const pagePath = path.join(pageDir, 'new.html');
+  const ID_TAKEN = 'u-taken';
+
+  /* 衝突チェックを実データで試すため、先に1件作っておく */
+  await rest.del(CC.certDocName(ID_TAKEN));
+  await rest.del(CC.indexDocName());
+  await CC.createCert({id:ID_TAKEN, name:'先客', desc:'', cats:[{id:'cat_x', name:'章'}]});
+
+  const ctx = makeContext(pageDir, {search:'?ns=dev'});
+  /* ページが <script src> で読む依存のうち、DOMに触れるものを先に評価しておく
+     （CustomCerts は検証用アダプタを差した実体をそのまま使う） */
+  vm.runInContext(fs.readFileSync(path.join(ROOT, '_engine', 'cat-editor.js'), 'utf8'), ctx,
+                  {filename:'_engine/cat-editor.js'});
+  vm.runInContext(inlineScripts(pagePath)[0], ctx, {filename:'custom/new.html'});
+  await sleep(700);   // listCerts() の完了待ち
+
+  const $ = function(id){ return ctx.document.getElementById(id); };
+
+  section('ステップ1：資格名からIDが自動で決まる');
+  ok('リンクが検証用の名前空間を引き継ぐ', $('back-link').href === '../index.html?ns=dev',
+     $('back-link').href);
+  eq('最初は次へ進めない', $('to-step2').disabled, true);
+
+  $('f-name').value = 'Eiken';
+  fire($('f-name'), 'input');
+  eq('英字の資格名からIDが埋まる', $('f-id').value, 'eiken');
+  eq('次へ進めるようになる', $('to-step2').disabled, false);
+  ok('保存先が案内される', $('id-msg').textContent.indexOf('app/notebook-u-eiken-dev') >= 0,
+     $('id-msg').textContent);
+
+  $('f-name').value = '日商簿記';
+  fire($('f-name'), 'input');
+  eq('日本語だけの資格名は連番になる', $('f-id').value, 'cert-1');
+
+  section('ステップ1：IDの手入力と衝突チェック');
+  $('f-id').value = 'Boki_2級';
+  fire($('f-id'), 'input');
+  ok('大文字・日本語混じりは弾かれる', $('to-step2').disabled === true &&
+     $('id-msg').textContent.length > 0, $('id-msg').textContent);
+
+  $('f-id').value = 'clf';
+  fire($('f-id'), 'input');
+  ok('既存資格と同名は理由つきで弾かれる',
+     $('id-msg').textContent.indexOf('予約') >= 0, $('id-msg').textContent);
+
+  $('f-id').value = 'taken';
+  fire($('f-id'), 'input');
+  ok('作成済みの資格と重複しても弾かれる',
+     $('id-msg').textContent.indexOf('すでにあります') >= 0, $('id-msg').textContent);
+
+  section('ステップ2：カテゴリ編集へ進む');
+  $('f-id').value = 'boki';
+  fire($('f-id'), 'input');
+  eq('正常なIDに直すと進める', $('to-step2').disabled, false);
+  fire($('to-step2'), 'click');
+  ok('ステップ2が開く', $('step2').classList.contains('active'));
+  ok('ステップ1が閉じる', !$('step1').classList.contains('active'));
+  ok('進行バーが2つ目まで進む', $('dot2').classList.contains('on'));
+  ok('カテゴリ編集が描画される', $('cat-host').innerHTML.indexOf('カテゴリを追加') >= 0);
+  ok('初期カテゴリが1件入っている', $('cat-host').innerHTML.indexOf('カテゴリ1') >= 0);
+
+  fire($('to-step1'), 'click');
+  ok('「戻る」でステップ1へ戻れる', $('step1').classList.contains('active'));
+  fire($('to-step2'), 'click');
+
+  section('作成の実行（Firestoreのdev名前空間）');
+  fire($('do-create'), 'click');
+  await sleep(1200);
+
+  eq('学習ページへ遷移する', ctx.location.href, 'index.html?id=u-boki&ns=dev');
+  const made = await CC.loadMeta('u-boki');
+  ok('本体ドキュメントができている', made !== null);
+  eq('資格名が保存される', made.meta.name, '日商簿記');
+  eq('カテゴリが保存される', made.meta.cats.map(function(c){ return c.name; }), ['カテゴリ1']);
+  eq('カードは空で始まる', CC.countCards(made.customCards), 0);
+  const listed = await CC.listCerts();
+  ok('索引に載る', listed.some(function(c){ return c.id === 'u-boki'; }));
+  eq('先に作った資格も残っている', listed.length, 2);
+
+  section('ページを開いたあとに、横から同じIDを取られた場合（実データ）');
+  /* 入力時点の衝突チェックは素通りし、作成の瞬間に初めてぶつかる状況を作る。
+     ページを開いた時点では u-boki が存在しない状態から始める。 */
+  await rest.del(CC.certDocName('u-boki'));
+  await rest.del(CC.certDocName('u-boki') + '_snap');
+  await rest.del(CC.indexDocName());
+
+  const ctx2 = makeContext(pageDir, {search:'?ns=dev'});
+  vm.runInContext(fs.readFileSync(path.join(ROOT, '_engine', 'cat-editor.js'), 'utf8'), ctx2,
+                  {filename:'_engine/cat-editor.js'});
+  vm.runInContext(inlineScripts(pagePath)[0], ctx2, {filename:'custom/new.html'});
+  await sleep(700);
+  const $$ = function(id){ return ctx2.document.getElementById(id); };
+
+  $$('f-name').value = '簿記（重複）';
+  fire($$('f-name'), 'input');
+  $$('f-id').value = 'boki';
+  fire($$('f-id'), 'input');
+  eq('この時点では入力チェックを通る', $$('to-step2').disabled, false);
+  fire($$('to-step2'), 'click');
+  ok('ステップ2まで進める', $$('step2').classList.contains('active'));
+
+  /* ここで別のタブ（別端末）が同じIDで作ってしまう */
+  const sniped = await CC.createCert({id:'u-boki', name:'先に作られた簿記', desc:'',
+                                      cats:[{id:'cat_y', name:'章'}]});
+  ok('横取り側の作成は成功する', sniped.ok, sniped.reason);
+
+  fire($$('do-create'), 'click');
+  await sleep(1500);
+  eq('遷移しない', ctx2.location.href, '');
+  ok('ステップ1へ戻して入力し直させる', $$('step1').classList.contains('active'));
+  ok('理由が表示される', $$('toast').textContent.indexOf('すでに') >= 0, $$('toast').textContent);
+  eq('ボタンが押せる状態に戻る', $$('do-create').disabled, false);
+  const survivor = await CC.loadMeta('u-boki');
+  eq('先に作られた側のデータは上書きされない', survivor.meta.name, '先に作られた簿記');
+
+  /* 後片づけ */
+  await rest.del(CC.certDocName('u-boki'));
+  await rest.del(CC.certDocName('u-boki') + '_snap');
+  await rest.del(CC.certDocName(ID_TAKEN));
+  await rest.del(CC.indexDocName());
+}
+
+/* ============================================================
+   HTMLから呼ばれる関数が実在するか（DOM操作の取りこぼし防止）
+   ============================================================ */
+function handlerTests(){
+  console.log('\n============================================================');
+  console.log('onclick から呼ばれる関数が実在するか');
+  console.log('============================================================');
+
+  const sources = ['_engine/engine.js', '_engine/cat-editor.js', '_engine/custom-store.js']
+    .map(function(f){ return fs.readFileSync(path.join(ROOT, f), 'utf8'); }).join('\n');
+
+  [['custom/index.html', 'カスタム資格の学習ページ'],
+   ['custom/new.html',   'カスタム資格の作成フロー']].forEach(function(pair){
+    const rel = pair[0], label = pair[1];
+    const html = fs.readFileSync(path.join(ROOT, rel), 'utf8');
+    const inline = inlineScripts(path.join(ROOT, rel)).join('\n');
+    const all = sources + '\n' + inline;
+
+    const names = new Set();
+    const re = /on(?:click|change|input|submit)\s*=\s*"([A-Za-z_$][\w$]*)\s*\(/g;
+    let m;
+    while((m = re.exec(html)) !== null) names.add(m[1]);
+
+    section(label + '（' + rel + '）');
+    if(names.size === 0){ ok('onclick属性なし（すべてaddEventListener）', true); return; }
+    names.forEach(function(n){
+      const defined = new RegExp('(function\\s+' + n + '\\s*\\(|window\\.' + n + '\\s*=|'
+                                + n + '\\s*[:=]\\s*function)').test(all);
+      ok(n + '() が定義されている', defined, '見つかりません');
+    });
+  });
+
+  /* 逆方向：ページが参照するエンジンの関数・変数が存在するか */
+  section('学習ページがエンジンに期待している名前');
+  const engine = fs.readFileSync(path.join(ROOT, '_engine', 'engine.js'), 'utf8');
+  [['state', 'let state'], ['FC_CATS_DEF', 'FC_CATS_DEF'], ['rebuildCatMaps', 'function rebuildCatMaps'],
+   ['pruneUnknownProgress', 'function pruneUnknownProgress'], ['enterKey', 'function enterKey'],
+   ['sanitizeKey', 'function sanitizeKey'], ['CAT_ALL', 'const CAT_ALL'], ['toast', 'function toast'],
+   ['closeHiddenCards', 'function closeHiddenCards'], ['switchTab', 'function switchTab'],
+   ['goHome', 'function goHome']].forEach(function(p){
+    ok(p[0] + ' がengine.jsにある', engine.indexOf(p[1]) >= 0);
+  });
+}
 
 /* ============================================================ */
 async function main(){
@@ -312,6 +500,9 @@ async function main(){
   ok('それでも新規作成の導線は残る', brokenHtml.indexOf('新しい資格を作る') >= 0);
   CC.setAdapter(rest);
   CC.setNamespace('dev');
+
+  await newPageTests();
+  handlerTests();
 
   /* ---- 後片づけ ---- */
   await rest.del(CC.certDocName(ID));

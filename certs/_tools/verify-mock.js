@@ -105,7 +105,7 @@ function feTests(){
 
   section('母集団（収録数が本番を上回っているか）');
   const poolA = M.poolOf(secA), poolB = M.poolOf(secB);
-  eq('科目Aの母集団（過去問72＋シナリオ47）', poolA.length, 119);   // 問題を足したらここも更新する
+  eq('科目Aの母集団（過去問72＋シナリオ57）', poolA.length, 129);   // 問題を足したらここも更新する
   eq('科目Bの母集団（擬似言語）', poolB.length, 42);   // 問題を足したらここも更新する
   secA.groups.forEach(function(g){
     const n = poolA.filter(function(q){ return g.cats.indexOf(q.c) >= 0; }).length;
@@ -238,10 +238,14 @@ function itpassRuleTests(){
 
   section('分野別足切り（総合が足りていても落ちる）');
   /* テクノロジ系だけを狙って落とす解答を作る */
+  /* 並び順に依存しないよう、テクノロジ系の中で正解にする問数を直接数える */
   const a = {};
+  let seen = 0;
   qs.forEach(function(x, i){
     const gid = M.groupOf(secA, x.ref.c);
-    a[i] = (gid === 'tc' && i % 4 !== 0) ? (x.ref.a + 1) % x.ref.o.length : x.ref.a;
+    if(gid !== 'tc'){ a[i] = x.ref.a; return; }
+    seen++;
+    a[i] = (seen <= 4) ? x.ref.a : (x.ref.a + 1) % x.ref.o.length;
   });
   const rSkew = M.gradeSection(secA, qs, a);
   const skew = M.gradeAll([rSkew]);
@@ -312,8 +316,15 @@ function itpassPortTests(){
 
   /* テクノロジ系だけ落として、総合が足りていても不合格になることを見る
      （旧実装の検証表「テクノロジ系だけ落とす → 670点でも不合格」と同じ趣旨） */
+  /* テクノロジ系だけを狙って落とす。並び順に依存しないよう、
+     テクノロジ系の中で正解にする問数を直接数える。
+     45問中8問だけ正解＝178点（300点未満）。テクノロジ系以外の55問は全問正解なので
+     総合は (55＋8)/100 ＝ 630点となり、「総合は足りているのに足切りで不合格」を再現できる。 */
+  let tcSeen = 0;
   const rSkew = M.gradeSection(sec, qs, mk(function(x, i){
-    return M.groupOf(sec, x.ref.c) !== 'tc' || i % 5 === 0;
+    if(M.groupOf(sec, x.ref.c) !== 'tc') return true;
+    tcSeen++;
+    return tcSeen <= 8;
   }));
   const skew = M.gradeAll([rSkew]);
   const tc = rSkew.groups.find(function(g){ return g.id === 'tc'; });

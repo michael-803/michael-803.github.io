@@ -451,6 +451,56 @@ function weakTests(){
 }
 
 /* ============================================================
+   1d. チートシート：資格固有の図解が混ざらないこと（2026-08-25）
+       以前は AWS の VPC構成図が共通エンジンに直書きされており、
+       FE・ITパスポートのチートシートにも無条件で描かれていた。
+   ============================================================ */
+function cheatsheetTests(){
+  console.log('\n============================================================');
+  console.log('チートシート：資格固有の図解の切り分け');
+  console.log('============================================================');
+
+  const load = function(dir, extra){
+    const c = makeContext();
+    runFile(c, dir + '/cert.js');
+    c.CERT = c.window.CERT;
+    runFile(c, dir + '/data.js');
+    runFile(c, '_engine/engine.js');
+    (extra || []).forEach(function(f){ runFile(c, f); });
+    vm.runInContext('window._save = function(){}; renderCheatsheet();', c);
+    return c._els['cheatsheet-container'].innerHTML;
+  };
+
+  section('CLF-C02（AWS）');
+  const clf = load('aws/clf', ['_engine/engine-formats.js']);
+  ok('VPC構成図が出る', clf.indexOf('vpc-diagram') >= 0);
+  ok('図の見出しが出る', clf.indexOf('VPC構成図（基本パターン）') >= 0);
+
+  section('基本情報（FE）');
+  const fe = load('fe', ['_engine/engine-formats.js', '_engine/engine-pseudo.js']);
+  ok('AWSのVPC構成図が出ない', fe.indexOf('vpc-diagram') < 0);
+  ok('FEのチートシートが出る', fe.indexOf('擬似言語') >= 0);
+  ok('見出しがAWS用語でない（サービス比較ではない）', fe.indexOf('サービス比較チートシート') < 0);
+
+  section('ITパスポート');
+  const ip = load('itpass', ['_engine/engine-formats.js']);
+  ok('AWSのVPC構成図が出ない', ip.indexOf('vpc-diagram') < 0);
+  ok('ITパスポートのチートシートが出る', ip.indexOf('cs-card') >= 0);
+
+  section('収録数');
+  const feCs = (function(){
+    const c = makeContext();
+    runFile(c, 'fe/cert.js'); c.CERT = c.window.CERT;
+    runFile(c, 'fe/data.js');
+    return vm.runInContext('CHEATSHEETS', c);
+  })();
+  eq('FEのチートシート本数', feCs.length, 13);
+  eq('表の列数と各行の項目数が一致',
+     feCs.every(function(cs){ return cs.rows.every(function(r){ return r.length === cs.headers.length; }); }), true);
+  eq('idの重複なし', feCs.length - new Set(feCs.map(function(cs){ return cs.id; })).size, 0);
+}
+
+/* ============================================================
    2. 静的モード（既存資格）の回帰確認
    ============================================================ */
 function staticTests(){
@@ -487,6 +537,7 @@ function staticTests(){
 dynamicTests();
 shuffleTests();
 weakTests();
+cheatsheetTests();
 staticTests();
 
 console.log('\n' + '─'.repeat(60));

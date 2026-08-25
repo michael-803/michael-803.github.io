@@ -1702,27 +1702,8 @@ function restoreHiddenMultiQ(id){
 }
 
 // ─── チートシート（段階3-8） ───────────────────────────────
-const VPC_DIAGRAM_HTML = `
-  <div class="vpc-diagram">
-    <div class="vpc-box vpc-vpc">
-      <div class="vpc-label">${ico('globe')} VPC（例: 10.0.0.0/16）</div>
-      <div class="vpc-box vpc-pub">
-        <div class="vpc-label">パブリックサブネット（IGWへのルートあり）</div>
-        <span class="vpc-item">${ico('globe')} IGW</span>
-        <span class="vpc-item">${ico('arrow-right')} NAT Gateway</span>
-        <span class="vpc-item">${ico('server')} 踏み台/ALB</span>
-      </div>
-      <div class="vpc-box vpc-priv">
-        <div class="vpc-label">プライベートサブネット（IGWへのルートなし）</div>
-        <span class="vpc-item">${ico('server')} EC2（アプリ）</span>
-        <span class="vpc-item">${ico('database')} RDS</span>
-        <span class="vpc-item">${ico('gear')} SG（ステートフル）</span>
-      </div>
-    </div>
-    <div style="margin-top:8px;color:var(--dim);">
-      外部→IGW→ALB（パブリック）／ プライベートのEC2はNAT Gateway経由でのみ外向き通信 ／ サブネット境界にはNACL（ステートレス）も併用
-    </div>
-  </div>`;
+// ※資格固有の図解は cert.js の CERT.cheatsheetExtra から供給する。
+//   以前ここにあった VPC_DIAGRAM_HTML（AWS専用）は aws/clf/cert.js へ移した。
 
 function renderCheatsheet(){
   const el = document.getElementById('cheatsheet-container');
@@ -1738,14 +1719,23 @@ function renderCheatsheet(){
       </div>
     </div>`).join('');
 
+  /* 図解は資格ごとに違う（AWSのVPC構成図はCLF-C02専用）。
+     以前は VPC構成図を全資格で無条件に描いており、FEやITパスポートの
+     チートシートにAWSの図が出ていた（2026-08-25修正）。
+     資格固有の図は cert.js の CERT.cheatsheetExtra から供給する。 */
+  const extra = CERT.cheatsheetExtra;
+  const extraHtml = (extra && extra.html)
+    ? `<div class="cs-card">
+         <h3>${ico(extra.icon || 'blueprint')} ${escHtml(extra.title || '図解')}</h3>
+         ${extra.html}
+       </div>`
+    : '';
+
   el.innerHTML = `
     <div class="quiz-home">
-      <div class="quiz-home-title">${ico('clipboard')} サービス比較チートシート</div>
-      <div class="quiz-home-sub">試験で混同しやすいサービス群を並べて比較できます。内容は固定（静的コンテンツ）です。</div>
-      <div class="cs-card">
-        <h3>${ico('blueprint')} VPC構成図（基本パターン）</h3>
-        ${VPC_DIAGRAM_HTML}
-      </div>
+      <div class="quiz-home-title">${ico('clipboard')} チートシート</div>
+      <div class="quiz-home-sub">試験で混同しやすい項目を並べて比較できます。内容は固定（静的コンテンツ）です。</div>
+      ${extraHtml}
       ${sheetsHtml}
     </div>`;
 }

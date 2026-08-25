@@ -33,6 +33,37 @@ window.CERT = {
 
   /* 過去問（QCAT）にしか存在しないカテゴリ。単語帳カテゴリと1対1で
      対応するものはここに書かない（engine.js の weakDiagnosis 参照）。 */
+  /* チートシートの先頭に出す資格固有の図解（2026-08-25に共通エンジンから移設）。
+     共通エンジンが全資格で無条件に描いていたため、FEやITパスポートの
+     チートシートにもAWSのVPC構成図が出ていた。
+     ★cert.js は検証スクリプトが new Function で評価するので、
+       ico() のような関数呼び出しは書かないこと（SVGを直接書く）。 */
+  cheatsheetExtra: {
+    title: 'VPC構成図（基本パターン）',
+    icon:  'blueprint',
+    html: `
+  <div class="vpc-diagram">
+    <div class="vpc-box vpc-vpc">
+      <div class="vpc-label"><svg class="ico"><use href="#i-globe"></use></svg> VPC（例: 10.0.0.0/16）</div>
+      <div class="vpc-box vpc-pub">
+        <div class="vpc-label">パブリックサブネット（IGWへのルートあり）</div>
+        <span class="vpc-item"><svg class="ico"><use href="#i-globe"></use></svg> IGW</span>
+        <span class="vpc-item"><svg class="ico"><use href="#i-arrow-right"></use></svg> NAT Gateway</span>
+        <span class="vpc-item"><svg class="ico"><use href="#i-server"></use></svg> 踏み台/ALB</span>
+      </div>
+      <div class="vpc-box vpc-priv">
+        <div class="vpc-label">プライベートサブネット（IGWへのルートなし）</div>
+        <span class="vpc-item"><svg class="ico"><use href="#i-server"></use></svg> EC2（アプリ）</span>
+        <span class="vpc-item"><svg class="ico"><use href="#i-database"></use></svg> RDS</span>
+        <span class="vpc-item"><svg class="ico"><use href="#i-gear"></use></svg> SG（ステートフル）</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;color:var(--dim);">
+      外部→IGW→ALB（パブリック）／ プライベートのEC2はNAT Gateway経由でのみ外向き通信 ／ サブネット境界にはNACL（ステートレス）も併用
+    </div>
+  </div>`,
+  },
+
   quizOnlyCats: ['basics', 'arch', 'mig'],
 
   /* ハンズオン道場のラボ名。処方箋の lab から参照される。 */

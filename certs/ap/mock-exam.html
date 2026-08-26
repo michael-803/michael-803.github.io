@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>応用情報技術者 模擬試験センター</title>
+<!-- ============================================================
+     応用情報技術者試験（AP）午前 模擬試験（80問／150分）
+
+     このファイルは薄いガワで、中身は共通エンジン ../_engine/mock.js が担う。
+     資格ごとの違い（問題数・時間・分野配分・合格基準・保存キー）は
+     cert.js の CERT.mock に書いてある。CLAUDE.md 第30節・第42節。
+
+     公式（2026-08-26 確認）
+       午前 80問（四肢択一）／150分／100点満点・60点以上で合格
+       分野配分＝テクノロジ系50問／マネジメント系10問／ストラテジ系20問
+       ★分野別の足切りは無い。総合60点だけを見る
+       午後 記述式・11問中5問選択／150分／60点以上（★この模試には含めない）
+
+     ★午後を含めない理由：40字前後の記述式で、択一に置き換えると
+       試験の性質が変わってしまうため。午後対策は単語帳側の
+       「午後読解」タブ（シナリオ）に寄せている。
+
+     デザインは本試験画面の再現のため白基調（CLAUDE.md 4-5節の方針）。
+     単語帳側のダークテーマは読み込まない。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_engine/mock.css?v=1">
+<script src="../_engine/icons.js?v=2"></script>
+</head>
+<body>
+<div class="bar">
+  <a class="home" href="index.html">⬅ Study Deck</a>
+  <span class="ttl">応用情報技術者 午前 模擬試験</span>
+  <span class="timer" id="timer" style="display:none;">残り --:--</span>
+</div>
+<div class="wrap" id="app"></div>
+
+<!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
+<script src="../_engine/store.js?v=1"></script>
+<script src="cert.js?v=1"></script>
+<script>window.SAFESTORE_HOME_DOC = window.CERT.doc; window.SAFESTORE_STANDALONE = true;</script>
+<script src="../_engine/safe-store.js?v=3"></script>
+<script src="../_engine/safe-store-compat.js?v=1"></script>
+<script src="data.js?v=1"></script>
+<script src="../_engine/mock.js?v=1"></script>
+<script>
+  /* 問題バンクはここで渡す。data.js の const は window に載らないため
+     （mock.js の setBanks のコメントを参照）。 */
+  MockBoot({QQ:QQ, SCENARIO_Q:SCENARIO_Q});
+</script>
+</body>
+</html>

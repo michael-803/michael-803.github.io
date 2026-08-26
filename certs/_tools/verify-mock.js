@@ -209,6 +209,58 @@ function feTests(){
 }
 
 /* ============================================================
+   応用情報技術者（AP）：午前80問／150分／総合600点の1部構成
+   ★午後（記述式）は択一に置き換えられないため模試に含めない（CLAUDE.md 第42節）
+   ============================================================ */
+function apTests(){
+  console.log('\n============================================================');
+  console.log('応用情報技術者（AP）午前模試：設定と在庫');
+  console.log('============================================================');
+
+  const ctx = makeContext('ap/cert.js', 'ap/data.js');
+  const M = ctx.Mock._internals;
+  const sec = M.sectionOf('am');
+
+  section('設定が公式の値どおりか');
+  eq('午前の問題数', M.sectionTotal(sec), 80);
+  eq('午前の試験時間（分）', sec.minutes, 150);
+  eq('分野配分（テクノロジ／マネジメント／ストラテジ）', sec.groups.map(g => g.n), [50, 10, 20]);
+  eq('合格は総合60点＝600', M.PASS.total, 600);
+  eq('分野別足切りは無い', M.PASS.group, null);
+  eq('科目ごとの基準も無い（1部構成）', M.PASS.section, null);
+  eq('科目は1つだけ', M.CFG.sections.length, 1);
+  eq('保存キー（受験履歴）', M.CFG.keys.hist, 'apMockHistoryV1');
+  eq('保存キー（誤答プール）', M.CFG.keys.wrong, 'apMockWrongV1');
+
+  /* ★在庫はチャンクごとに増える。数字は data.js を足したら更新すること。 */
+  section('母集団の在庫（分野ごとに必要数を満たしているか）');
+  const pool = M.poolOf(sec);
+  console.log('       母集団 ' + pool.length + '問（必要 80問）');
+  sec.groups.forEach(function(g){
+    const n = pool.filter(function(q){ return M.groupOf(sec, q.c) === g.id; }).length;
+    ok(g.name + ' ' + n + '問（必要' + g.n + '問）' + (n >= g.n ? '' : ' — ★在庫不足'), true);
+  });
+
+  section('採点（1問1.25点の100点満点＝正答率×1000）');
+  const qs = M.buildSection(sec);
+  const mk = function(n){
+    const a = {};
+    qs.forEach(function(x, i){ a[i] = (i < n) ? x.ref.a : (x.ref.a + 1) % x.ref.o.length; });
+    return a;
+  };
+  const all = M.gradeAll([M.gradeSection(sec, qs, mk(qs.length))]);
+  eq('全問正解は1000点', all.total, 1000);
+  ok('全問正解は合格', all.pass === true);
+  const border = Math.ceil(qs.length * 0.6);
+  const rb = M.gradeAll([M.gradeSection(sec, qs, mk(border))]);
+  ok('正答率60%で合格（' + rb.total + '点）', rb.pass === true);
+  const under = M.gradeAll([M.gradeSection(sec, qs, mk(border - 1))]);
+  ok('1問足りないと不合格（' + under.total + '点）', under.pass === false);
+  const none = M.gradeAll([M.gradeSection(sec, qs, {})]);
+  eq('未解答は誤答扱い（0点）', none.total, 0);
+}
+
+/* ============================================================
    ITパスポート：同じエンジンで従来の規則（総合600かつ分野別300）を表現できるか
    ============================================================ */
 function itpassRuleTests(){
@@ -485,6 +537,7 @@ async function renderTests(){
 
 (async function main(){
 feTests();
+apTests();
 itpassRuleTests();
 itpassPortTests();
 await itpassLegacyHistTests();

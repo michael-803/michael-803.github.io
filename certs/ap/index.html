@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>応用情報技術者 Study Deck</title>
+<!-- ============================================================
+     応用情報技術者（AP）学習アプリ。
+     このファイルは資格ごとの薄いガワで、中身は ../_engine/ にある共通
+     エンジンが担う（CLAUDE.md 10-2節）。
+
+     ★対応しているのは午前（四肢択一・80問／150分）。
+       午後は40字前後の記述式で択一に置き換えられないため、模試には
+       含めず、長文読解の練習としてシナリオタブに寄せている（第42節）。
+     ============================================================ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../_engine/theme.css?v=2">
+<link rel="stylesheet" href="../_engine/app.css?v=11">
+<script src="../_engine/icons.js?v=2"></script>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-cap"></use></svg></div><span class="logo-word"><span data-cert-name>応用情報技術者</span> <span>Study Deck</span></span></div>
+  <div class="header-right">
+    <div class="sync-indicator" id="sync-indicator" style="display:none;">
+      <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
+    </div>
+    <a class="btn-icon" href="../index.html" aria-label="資格一覧へ"><svg class="ico"><use href="#i-home"></use></svg></a>
+    <button class="btn-icon" id="btn-home" onclick="goHome()" style="display:none;" aria-label="単語帳トップへ"><svg class="ico"><use href="#i-notebook"></use></svg></button>
+  </div>
+</header>
+
+<div class="screen active" id="loading-screen">
+  <div><div class="loading-spinner"></div><div class="loading-text">接続中...</div></div>
+</div>
+
+<div class="screen" id="notebook-screen">
+  <!-- 無効な機能のタブは engine.js の applyFeatureToggles() が自動で隠す -->
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab"><svg class="ico"><use href="#i-card-stack"></use></svg> 単語帳</button>
+    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 午前問題</button>
+    <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab"><svg class="ico"><use href="#i-ballot"></use></svg> 複数選択</button>
+    <button class="tab-btn" onclick="switchTab('ordering')" id="tab-ordering" role="tab"><svg class="ico"><use href="#i-list-ol"></use></svg> 順序</button>
+    <button class="tab-btn" onclick="switchTab('matching')" id="tab-matching" role="tab"><svg class="ico"><use href="#i-link"></use></svg> マッチング</button>
+    <button class="tab-btn" onclick="switchTab('scenario')" id="tab-scenario" role="tab"><svg class="ico"><use href="#i-puzzle"></use></svg> 午後読解</button>
+    <button class="tab-btn" onclick="switchTab('weak')" id="tab-weak" role="tab"><svg class="ico"><use href="#i-target"></use></svg> 弱点診断</button>
+    <button class="tab-btn" onclick="switchTab('cheatsheet')" id="tab-cheatsheet" role="tab"><svg class="ico"><use href="#i-clipboard"></use></svg> チートシート</button>
+    <a class="tab-btn tab-link" href="mock-exam.html" data-feature="mock"><svg class="ico"><use href="#i-cap"></use></svg> 模擬試験</a>
+    <a class="tab-btn tab-link" href="dojo.html" data-feature="dojo"><svg class="ico"><use href="#i-belt"></use></svg> ハンズオン道場</a>
+  </div>
+  <div class="tab-content active" id="tabcontent-fc">
+    <div class="quiz-layout" id="fc-container"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-quiz">
+    <div class="quiz-layout" id="quiz-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-multi">
+    <div class="quiz-layout" id="multi-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-ordering">
+    <div class="quiz-layout" id="ordering-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-matching">
+    <div class="quiz-layout" id="matching-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-scenario">
+    <div class="quiz-layout" id="scenario-layout"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-weak">
+    <div class="quiz-layout" id="weak-container"></div>
+  </div>
+  <div class="tab-content" id="tabcontent-cheatsheet">
+    <div class="quiz-layout" id="cheatsheet-container"></div>
+  </div>
+</div>
+
+<div class="screen" id="result-screen">
+  <div class="result-card">
+    <div class="result-emoji tone-ok" id="result-emoji"><svg class="ico"><use href="#i-confetti"></use></svg></div>
+    <div class="result-title" id="result-title">完了！</div>
+    <div class="result-sub" id="result-sub"></div>
+    <div class="result-ring">
+      <svg viewBox="0 0 110 110" width="110" height="110" aria-hidden="true">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--card)" stroke-width="9"/>
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--orange)" stroke-width="9" stroke-dasharray="289" id="result-circle" stroke-dashoffset="289" stroke-linecap="round" style="transition:stroke-dashoffset 1s ease;"/>
+      </svg>
+      <div class="result-pct" id="result-pct">0%</div>
+    </div>
+    <div class="result-breakdown">
+      <div class="rb-item"><div class="rb-num" id="rb-correct" style="color:var(--ok)">0</div><div class="rb-lbl">正解</div></div>
+      <div class="rb-item"><div class="rb-num" id="rb-wrong" style="color:var(--ng)">0</div><div class="rb-lbl">不正解</div></div>
+    </div>
+    <div class="result-actions">
+      <button class="btn btn-primary" onclick="restartResult()">もう一度</button>
+      <button class="btn btn-secondary" id="review-wrong-btn" onclick="reviewWrongFromResult()" style="display:none;">間違えた問題だけ復習</button>
+      <button class="btn btn-secondary" onclick="backFromResult()">戻る</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="modal-overlay" id="hidden-cards-modal">
+  <div class="modal">
+    <div class="modal-title"><svg class="ico"><use href="#i-archive"></use></svg> 非表示にしたカード</div>
+    <div id="hidden-cards-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeHiddenCards()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 読み込み順は固定。cert.js を先に読むことで保存先を1箇所で決められる。 -->
+<script src="../_engine/store.js?v=1"></script>
+<script src="cert.js?v=2"></script>
+<script>
+  window.SAFESTORE_HOME_DOC = window.CERT.doc;   // app/notebook-ap
+  window.SAFESTORE_STANDALONE = true;            // 本番運用（他ドキュメントからの取り込みをしない）
+</script>
+<script src="../_engine/safe-store.js?v=3"></script>
+<script src="data.js?v=1"></script>
+<script src="../_engine/engine.js?v=10"></script>
+<script src="../_engine/engine-formats.js?v=1"></script>
+<script src="../_engine/boot.js?v=2"></script>
+</body>
+</html>

@@ -426,10 +426,13 @@ function weakTests(){
   /* ★資格ごとに持っている問題バンクが違う（FEに MULTI_Q は無い）。
      機能トグルを見ずに集計関数を呼ぶと未定義のグローバルで落ちるため、
      3資格すべてで弱点診断が例外なく描けることを確かめる。 */
-  section('3資格すべてで弱点診断が落ちないこと');
+  section('全資格で弱点診断が落ちないこと');
   [['aws/clf', 'CLF-C02', ['_engine/engine-formats.js']],
    ['itpass',  'ITパスポート', ['_engine/engine-formats.js']],
    ['fe',      '基本情報',    ['_engine/engine-formats.js', '_engine/engine-pseudo.js']],
+   ['aws/saa', 'SAA-C03',     []],
+   ['aws/soa', 'SOA-C03',     []],
+   ['ap',      '応用情報',    []],
   ].forEach(function(t){
     const dir = t[0], label = t[1], extra = t[2];
     const c = makeContext();
@@ -519,6 +522,9 @@ function allTabsTests(){
   [['aws/clf', 'CLF-C02',      ['_engine/engine-formats.js']],
    ['itpass',  'ITパスポート',  ['_engine/engine-formats.js']],
    ['fe',      '基本情報',      ['_engine/engine-formats.js', '_engine/engine-pseudo.js']],
+   ['aws/saa', 'SAA-C03',       []],
+   ['aws/soa', 'SOA-C03',       []],
+   ['ap',      '応用情報',      []],
   ].forEach(function(t){
     const dir = t[0], label = t[1], extra = t[2];
     section(label);

@@ -46,6 +46,17 @@ const CERT_PROFILE = {
     },
     official: {'テクノロジ':41/60, 'マネジメント':7/60, 'ストラテジ':12/60},
   },
+  ap: {
+    label: '応用情報技術者',
+    /* 基本情報と同じ3分野だが出題数の重心が違う（50/10/20）。
+       カテゴリIDは certs/fe/data.js と共通にしてある。 */
+    fields: {
+      'テクノロジ':   ['theory','compute','system','software','ui','db','network','security','devtech'],
+      'マネジメント': ['pm','sm'],
+      'ストラテジ':   ['strategy'],
+    },
+    official: {'テクノロジ':50/80, 'マネジメント':10/80, 'ストラテジ':20/80},
+  },
   'aws/saa': {
     label: 'SAA-C03',
     /* SAAは問題を公式の4ドメインで分類している（CLAUDE.md 第40節）。

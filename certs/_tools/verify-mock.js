@@ -241,6 +241,22 @@ function apTests(){
     ok(g.name + ' ' + n + '問（必要' + g.n + '問）' + (n >= g.n ? '' : ' — ★在庫不足'), true);
   });
 
+  section('組み立て（10回とも配分どおり・重複なし・毎回違う組み合わせ）');
+  let apGood = 0, apDup = 0;
+  const apSeen = new Set();
+  for(let t = 0; t < 10; t++){
+    const set = M.buildSection(sec);
+    const m = {};
+    set.forEach(function(x){ const g = M.groupOf(sec, x.ref.c); m[g] = (m[g]||0)+1; });
+    if(set.length === 80 && m.tc === 50 && m.mn === 10 && m.st === 20) apGood++;
+    const ids = set.map(function(x){ return x.ref.id; });
+    if(new Set(ids).size !== ids.length) apDup++;
+    apSeen.add(ids.slice().sort().join(','));
+  }
+  eq('10回とも80問・配分50/10/20', apGood, 10);
+  eq('同じ問題が2回出ない', apDup, 0);
+  ok('毎回違う組み合わせになる（' + apSeen.size + '通り）', apSeen.size >= 8);
+
   section('採点（1問1.25点の100点満点＝正答率×1000）');
   const qs = M.buildSection(sec);
   const mk = function(n){

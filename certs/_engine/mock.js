@@ -151,6 +151,27 @@ const saveWrong = w => CloudStore.set(CFG.keys.wrong, w);
    正答率をそのまま1000点満点に換算した目安を出す。 */
 const scale = (correct, total) => total ? Math.round(correct / total * 1000) : 0;
 
+/* その問題が複数選択（本番形式：5つ以上から2つ以上）かどうか */
+const isMulti = q => Array.isArray(q && q.a);
+
+/* 解答が正解かどうか。複数選択は全部合っていないと得点にならない
+   （公式規則）。選んだ順には依存しない。 */
+function answerIsCorrect(given, q){
+  if(!isMulti(q)) return given === q.a;
+  if(!Array.isArray(given)) return false;
+  if(given.length !== q.a.length) return false;
+  const a = given.slice().sort((x, y) => x - y);
+  const b = q.a.slice().sort((x, y) => x - y);
+  return a.every((v, i) => v === b[i]);
+}
+
+/* 解答済みかどうか。複数選択で1つも選んでいない状態は未解答とみなす */
+function isAnswered(given){
+  if(given === undefined) return false;
+  if(Array.isArray(given)) return given.length > 0;
+  return true;
+}
+
 function gradeSection(sec, qs, ans){
   const per = {};
   (sec.groups || []).forEach(g => { per[g.id] = {correct:0, total:0}; });
@@ -159,7 +180,7 @@ function gradeSection(sec, qs, ans){
   qs.forEach((item, idx) => {
     const gid = groupOf(sec, item.ref.c);
     if(per[gid]) per[gid].total++;
-    if(ans[idx] === item.ref.a){
+    if(answerIsCorrect(ans[idx], item.ref)){
       correct++;
       if(per[gid]) per[gid].correct++;
     }else{
@@ -324,7 +345,7 @@ function renderExam(){
   const sec = sectionOf(S.plan[S.sec]);
   const item = S.qs[S.i];
   const q = item.ref;
-  const answered = Object.keys(S.ans).length;
+  const answered = Object.keys(S.ans).filter(function(k){ return isAnswered(S.ans[k]); }).length;
   const multi = CFG.sections.length > 1;
 
   el('app').innerHTML =
@@ -338,8 +359,12 @@ function renderExam(){
       '<div class="qtext' + (String(q.q||'').length >= 130 ? ' long' : '') + '">' + esc(q.q) + '</div>' +
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
+      (isMulti(q) ? '<p class="note">' + (q.n || q.a.length) + 'つ選択してください（全部合っていないと得点になりません）</p>' : '') +
       item.order.map(function(orig, pos){
-        return '<button class="opt' + (S.ans[S.i] === orig ? ' sel' : '') + '" onclick="Mock.pick(' + orig + ')">' +
+        const picked = isMulti(q)
+          ? (Array.isArray(S.ans[S.i]) && S.ans[S.i].indexOf(orig) >= 0)
+          : (S.ans[S.i] === orig);
+        return '<button class="opt' + (picked ? ' sel' : '') + '" onclick="Mock.pick(' + orig + ')">' +
           '<span class="mk">' + MK[pos] + '</span><span>' + esc(q.o[orig]) + '</span></button>';
       }).join('') +
       '<div class="nav">' +
@@ -354,7 +379,7 @@ function renderExam(){
     '</div>' +
     '<div class="card"><h2>解答状況</h2>' +
       '<div class="grid">' + S.qs.map(function(_, n){
-        return '<button class="gcell' + (S.ans[n] !== undefined ? ' done' : '') +
+        return '<button class="gcell' + (isAnswered(S.ans[n]) ? ' done' : '') +
           (S.flags[n] ? ' flag' : '') + (n === S.i ? ' cur' : '') +
           '" onclick="Mock.jump(' + n + ')">' + (n+1) + '</button>';
       }).join('') + '</div>' +
@@ -500,16 +525,20 @@ function renderReview(){
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
       cur.item.order.map(function(orig, pos){
+        const right = isMulti(q) ? q.a.indexOf(orig) >= 0 : orig === q.a;
+        const chose = isMulti(q)
+          ? (Array.isArray(mine) && mine.indexOf(orig) >= 0)
+          : orig === mine;
         let cls = '';
-        if(orig === q.a) cls = ' correct';
-        else if(orig === mine) cls = ' wrong';
+        if(right) cls = ' correct';
+        else if(chose) cls = ' wrong';
         return '<div class="opt' + cls + '" style="cursor:default">' +
           '<span class="mk">' + MK[pos] + '</span><span>' + esc(q.o[orig]) +
-          (orig === q.a ? ' <strong style="color:var(--ok)">← 正解</strong>' : '') +
-          (orig === mine && orig !== q.a ? ' <strong style="color:var(--ng)">← あなたの解答</strong>' : '') +
+          (right ? ' <strong style="color:var(--ok)">← 正解</strong>' : '') +
+          (chose && !right ? ' <strong style="color:var(--ng)">← あなたの解答</strong>' : '') +
           '</span></div>';
       }).join('') +
-      (mine === undefined ? '<p class="note" style="color:var(--ng)">この問題は未解答でした。</p>' : '') +
+      (!isAnswered(mine) ? '<p class="note" style="color:var(--ng)">この問題は未解答でした。</p>' : '') +
       '<div class="expl">' + esc(q.e) + '</div>' +
       '<div class="nav">' +
         '<button class="btn btn-sub" onclick="Mock.reviewGo(-1)"' + (S.reviewIdx === 0 ? ' disabled' : '') + '>← 前</button>' +
@@ -610,7 +639,18 @@ const Mock = {
   },
   nextSection(){ S.sec++; beginSection(); },
   finishHere(){ finalize(); },
-  pick(orig){ S.ans[S.i] = orig; render(); },
+  pick(orig){
+    const q = S.qs[S.i] && S.qs[S.i].ref;
+    if(isMulti(q)){
+      const cur = Array.isArray(S.ans[S.i]) ? S.ans[S.i].slice() : [];
+      const at = cur.indexOf(orig);
+      if(at >= 0) cur.splice(at, 1); else cur.push(orig);
+      if(cur.length) S.ans[S.i] = cur; else delete S.ans[S.i];
+    }else{
+      S.ans[S.i] = orig;
+    }
+    render();
+  },
   go(d){ S.i = Math.min(S.qs.length-1, Math.max(0, S.i + d)); render(); },
   jump(n){ S.i = n; render(); },
   toggleFlag(){ S.flags[S.i] = !S.flags[S.i]; render(); },
@@ -638,6 +678,7 @@ const Mock = {
     CFG:CFG, PASS:PASS, S:S, buildSection:buildSection, gradeSection:gradeSection,
     gradeAll:gradeAll, sectionOf:sectionOf, sectionTotal:sectionTotal,
     groupOf:groupOf, poolOf:poolOf, wrap:wrap,
+    answerIsCorrect:answerIsCorrect, isAnswered:isAnswered, isMulti:isMulti,
   },
 };
 window.Mock = Mock;

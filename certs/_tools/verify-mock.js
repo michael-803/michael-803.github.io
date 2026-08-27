@@ -354,6 +354,65 @@ function sapTests(){
      qq.length > 0 && qq.every(function(q){ return q.q.length < th; }));
 }
 /* ============================================================
+   模試の複数選択（本番形式：5つ以上から2つ以上）
+   ★SAA・SOA・SAPの模試は母集団に MULTI_Q を含む。
+     単一選択の作りのままだと、これらが全部誤答になる。
+   ============================================================ */
+function mockMultiTests(){
+  console.log('\n============================================================');
+  console.log('模試の複数選択：選べること・正しく採点されること');
+  console.log('============================================================');
+
+  const ctx = makeContext('aws/soa/cert.js', 'aws/soa/data.js');
+  const M = ctx.Mock._internals;
+  const sec = M.sectionOf('main');
+  const pool = M.poolOf(sec);
+
+  section('母集団に複数選択が含まれているか');
+  const multi = pool.filter(function(q){ return Array.isArray(q.a); });
+  ok('複数選択が母集団に ' + multi.length + '問ある', multi.length > 0);
+
+  section('採点：複数選択を正しく解答したら正解になる');
+  /* 複数選択だけを並べた擬似的な出題セットを作って採点する */
+  const items = multi.slice(0, 5).map(function(q){ return M.wrap(q, sec); });
+  const right = {};
+  items.forEach(function(item, i){ right[i] = item.ref.a.slice(); });
+  const r1 = M.gradeSection(sec, items, right);
+  eq('全問を正しく選べば全問正解', r1.correct, items.length);
+
+  section('採点：一部だけ選んだら不正解（部分点なし）');
+  const partial = {};
+  items.forEach(function(item, i){ partial[i] = [item.ref.a[0]]; });
+  const r2 = M.gradeSection(sec, items, partial);
+  eq('1つだけ選んだ解答は0問正解', r2.correct, 0);
+
+  section('採点：順番が違っても正解になる');
+  const reversed = {};
+  items.forEach(function(item, i){ reversed[i] = item.ref.a.slice().reverse(); });
+  const r3 = M.gradeSection(sec, items, reversed);
+  eq('選んだ順に依存しない', r3.correct, items.length);
+
+  section('採点：余分に選んだら不正解');
+  const extra = {};
+  items.forEach(function(item, i){
+    const all = item.ref.a.slice();
+    for(let k = 0; k < item.ref.o.length; k++){ if(all.indexOf(k) < 0){ all.push(k); break; } }
+    extra[i] = all;
+  });
+  const r4 = M.gradeSection(sec, items, extra);
+  eq('正解に1つ足した解答は0問正解', r4.correct, 0);
+
+  section('択一は従来どおり採点される');
+  const singles = pool.filter(function(q){ return !Array.isArray(q.a); }).slice(0, 5)
+    .map(function(q){ return M.wrap(q, sec); });
+  const sRight = {};
+  singles.forEach(function(item, i){ sRight[i] = item.ref.a; });
+  eq('択一を正しく選べば全問正解', M.gradeSection(sec, singles, sRight).correct, singles.length);
+  const sWrong = {};
+  singles.forEach(function(item, i){ sWrong[i] = (item.ref.a + 1) % item.ref.o.length; });
+  eq('択一を誤れば0問正解', M.gradeSection(sec, singles, sWrong).correct, 0);
+}
+/* ============================================================
    ITパスポート：同じエンジンで従来の規則（総合600かつ分野別300）を表現できるか
    ============================================================ */
 function itpassRuleTests(){
@@ -632,6 +691,7 @@ async function renderTests(){
 feTests();
 apTests();
 sapTests();
+mockMultiTests();
 itpassRuleTests();
 itpassPortTests();
 await itpassLegacyHistTests();

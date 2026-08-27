@@ -52,6 +52,7 @@ const PASS = Object.assign({total:null, group:null, section:null}, CFG.pass || {
 const S = {
   view:'home', plan:[], sec:0, qs:[], i:0, ans:{}, flags:{},
   endAt:0, timerInt:null, results:[], reviewIdx:0, reviewSec:0, mode:'full',
+  matchLeft:null,   /* マッチング問題で選択中の左側 */
 };
 
 /* ---------- 小道具 ---------- */
@@ -115,10 +116,14 @@ function buildSection(sec){
 
 /* 設問1件ぶんの表示用データ。order[表示位置] = 元データのindex */
 function wrap(q, sec){
+  /* 表示順のシャッフル。マッチング問題は選択肢の配列（o）を持たず、
+     右側（r）を並べ替える。判定は常に元のインデックス基準（4-8b節）。 */
+  const src = isMatch(q) ? q.r : q.o;
+  const idx = (src || []).map((_, i) => i);
   return {
     ref: q,
     sec: sec.id,
-    order: q.noShuffle ? q.o.map((_,i)=>i) : shuffle(q.o.map((_,i)=>i)),
+    order: q.noShuffle ? idx : shuffle(idx),
   };
 }
 
@@ -151,24 +156,45 @@ const saveWrong = w => CloudStore.set(CFG.keys.wrong, w);
    正答率をそのまま1000点満点に換算した目安を出す。 */
 const scale = (correct, total) => total ? Math.round(correct / total * 1000) : 0;
 
-/* その問題が複数選択（本番形式：5つ以上から2つ以上）かどうか */
-const isMulti = q => Array.isArray(q && q.a);
+/* マッチング問題（3〜7組を対応づける） */
+const isMatch = q => !!(q && Array.isArray(q.l) && Array.isArray(q.r));
+/* 順序問題（3〜5個を正しい順に並べる）。複数選択と形が同じなので明示の印で見分ける */
+const isOrder = q => !!(q && q.kind === 'order');
+/* 複数選択（本番形式：5つ以上から2つ以上）。順序問題は含めない */
+const isMulti = q => !!(q && Array.isArray(q.a) && !isOrder(q) && !isMatch(q));
 
 /* 解答が正解かどうか。複数選択は全部合っていないと得点にならない
    （公式規則）。選んだ順には依存しない。 */
 function answerIsCorrect(given, q){
-  if(!isMulti(q)) return given === q.a;
-  if(!Array.isArray(given)) return false;
-  if(given.length !== q.a.length) return false;
-  const a = given.slice().sort((x, y) => x - y);
-  const b = q.a.slice().sort((x, y) => x - y);
-  return a.every((v, i) => v === b[i]);
+  if(isMatch(q)){
+    /* 全ペアが合っていること。1組でも違えば得点にならない */
+    if(!given || typeof given !== 'object') return false;
+    const keys = Object.keys(q.a);
+    if(Object.keys(given).length !== keys.length) return false;
+    return keys.every(k => String(given[k]) === String(q.a[k]));
+  }
+  if(isOrder(q)){
+    /* 並び順まで含めて一致すること */
+    if(!Array.isArray(given)) return false;
+    if(given.length !== q.a.length) return false;
+    return q.a.every((v, i) => given[i] === v);
+  }
+  if(isMulti(q)){
+    /* 選んだ順には依存しない。全部合っていないと得点にならない */
+    if(!Array.isArray(given)) return false;
+    if(given.length !== q.a.length) return false;
+    const a = given.slice().sort((x, y) => x - y);
+    const b = q.a.slice().sort((x, y) => x - y);
+    return a.every((v, i) => v === b[i]);
+  }
+  return given === q.a;
 }
 
 /* 解答済みかどうか。複数選択で1つも選んでいない状態は未解答とみなす */
 function isAnswered(given){
   if(given === undefined) return false;
   if(Array.isArray(given)) return given.length > 0;
+  if(given && typeof given === 'object') return Object.keys(given).length > 0;
   return true;
 }
 
@@ -341,6 +367,49 @@ function figureBlock(fig){
   return fig ? '<div class="q-figure">' + fig + '</div>' : '';
 }
 
+/* 出題画面の選択部分。形式ごとに描き分ける。
+   判定・保存はすべて元データのインデックス基準（CLAUDE.md 4-8b節）。 */
+function choiceBlock(q, item, given){
+  if(isMatch(q)){
+    const sel = (given && typeof given === 'object') ? given : {};
+    const active = S.matchLeft;
+    return '<p class="note">左を選んでから、対応する右を選んでください（全部合っていないと得点になりません）</p>' +
+      '<div class="mt-wrap">' +
+        '<div class="mt-col">' + q.l.map(function(t, i){
+          const n = sel[i] !== undefined ? (q.r.indexOf(q.r[sel[i]]) + 1) : null;
+          return '<button class="opt' + (active === i ? ' sel' : '') + '" onclick="Mock.pickLeft(' + i + ')">' +
+            '<span class="mk">' + (i + 1) + '</span><span>' + esc(t) +
+            (sel[i] !== undefined ? ' <strong>→ ' + MK[sel[i]] + '</strong>' : '') + '</span></button>';
+        }).join('') + '</div>' +
+        '<div class="mt-col">' + item.order.map(function(orig, pos){
+          const usedBy = Object.keys(sel).filter(function(k){ return sel[k] === orig; })[0];
+          return '<button class="opt' + (usedBy !== undefined ? ' sel' : '') + '" onclick="Mock.pickRight(' + orig + ')">' +
+            '<span class="mk">' + MK[pos] + '</span><span>' + esc(q.r[orig]) +
+            (usedBy !== undefined ? ' <strong>← ' + (Number(usedBy) + 1) + '</strong>' : '') + '</span></button>';
+        }).join('') + '</div>' +
+      '</div>' +
+      '<div class="nav"><button class="btn btn-sub" onclick="Mock.clearAnswer()">やり直す</button></div>';
+  }
+  if(isOrder(q)){
+    const seq = Array.isArray(given) ? given : [];
+    return '<p class="note">正しい順にタップしてください（順番も含めて合っていないと得点になりません）</p>' +
+      item.order.map(function(orig, pos){
+        const at = seq.indexOf(orig);
+        return '<button class="opt' + (at >= 0 ? ' sel' : '') + '" onclick="Mock.pick(' + orig + ')">' +
+          '<span class="mk">' + (at >= 0 ? (at + 1) : MK[pos]) + '</span><span>' + esc(q.o[orig]) + '</span></button>';
+      }).join('') +
+      '<div class="nav"><button class="btn btn-sub" onclick="Mock.clearAnswer()">やり直す</button></div>';
+  }
+  return (isMulti(q) ? '<p class="note">' + (q.n || q.a.length) + 'つ選択してください（全部合っていないと得点になりません）</p>' : '') +
+    item.order.map(function(orig, pos){
+      const picked = isMulti(q)
+        ? (Array.isArray(given) && given.indexOf(orig) >= 0)
+        : (given === orig);
+      return '<button class="opt' + (picked ? ' sel' : '') + '" onclick="Mock.pick(' + orig + ')">' +
+        '<span class="mk">' + MK[pos] + '</span><span>' + esc(q.o[orig]) + '</span></button>';
+    }).join('');
+}
+
 function renderExam(){
   const sec = sectionOf(S.plan[S.sec]);
   const item = S.qs[S.i];
@@ -359,14 +428,7 @@ function renderExam(){
       '<div class="qtext' + (String(q.q||'').length >= 130 ? ' long' : '') + '">' + esc(q.q) + '</div>' +
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
-      (isMulti(q) ? '<p class="note">' + (q.n || q.a.length) + 'つ選択してください（全部合っていないと得点になりません）</p>' : '') +
-      item.order.map(function(orig, pos){
-        const picked = isMulti(q)
-          ? (Array.isArray(S.ans[S.i]) && S.ans[S.i].indexOf(orig) >= 0)
-          : (S.ans[S.i] === orig);
-        return '<button class="opt' + (picked ? ' sel' : '') + '" onclick="Mock.pick(' + orig + ')">' +
-          '<span class="mk">' + MK[pos] + '</span><span>' + esc(q.o[orig]) + '</span></button>';
-      }).join('') +
+      choiceBlock(q, item, S.ans[S.i]) +
       '<div class="nav">' +
         '<button class="btn btn-sub" onclick="Mock.go(-1)"' + (S.i === 0 ? ' disabled' : '') + '>← 前の問題</button>' +
         '<button class="flagbtn' + (S.flags[S.i] ? ' on' : '') + '" onclick="Mock.toggleFlag()">' +
@@ -504,6 +566,27 @@ function reviewList(){
   return {list:all, allCorrect:true};
 }
 
+/* 解答確認：順序問題とマッチング問題は、正しい並び／組合せと自分の解答を並べる */
+function reviewFormats(q, mine){
+  if(isOrder(q)){
+    const seq = Array.isArray(mine) ? mine : [];
+    return '<div class="opt correct" style="cursor:default"><span class="mk">正</span><span>' +
+        esc(q.a.map(function(i){ return q.o[i]; }).join(' → ')) + '</span></div>' +
+      '<div class="opt' + (seq.length ? ' wrong' : '') + '" style="cursor:default"><span class="mk">答</span><span>' +
+        (seq.length ? esc(seq.map(function(i){ return q.o[i]; }).join(' → ')) : '（未解答）') + '</span></div>';
+  }
+  const sel = (mine && typeof mine === 'object') ? mine : {};
+  return q.l.map(function(t, i){
+    const right = q.a[i];
+    const chose = sel[i];
+    const okPair = String(chose) === String(right);
+    return '<div class="opt' + (okPair ? ' correct' : ' wrong') + '" style="cursor:default">' +
+      '<span class="mk">' + (i + 1) + '</span><span>' + esc(t) + ' ／ 正解：' + esc(q.r[right]) +
+      (chose === undefined ? '（未解答）' : (okPair ? '' : ' ／ あなたの解答：' + esc(q.r[chose]))) +
+      '</span></div>';
+  }).join('');
+}
+
 function renderReview(){
   const rv = reviewList();
   const cur = rv.list[Math.min(S.reviewIdx, rv.list.length - 1)];
@@ -524,7 +607,7 @@ function renderReview(){
       '<div class="qtext' + (String(q.q||'').length >= 130 ? ' long' : '') + '">' + esc(q.q) + '</div>' +
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
-      cur.item.order.map(function(orig, pos){
+      (isMatch(q) || isOrder(q) ? reviewFormats(q, mine) : cur.item.order.map(function(orig, pos){
         const right = isMulti(q) ? q.a.indexOf(orig) >= 0 : orig === q.a;
         const chose = isMulti(q)
           ? (Array.isArray(mine) && mine.indexOf(orig) >= 0)
@@ -537,7 +620,7 @@ function renderReview(){
           (right ? ' <strong style="color:var(--ok)">← 正解</strong>' : '') +
           (chose && !right ? ' <strong style="color:var(--ng)">← あなたの解答</strong>' : '') +
           '</span></div>';
-      }).join('') +
+      }).join('')) +
       (!isAnswered(mine) ? '<p class="note" style="color:var(--ng)">この問題は未解答でした。</p>' : '') +
       '<div class="expl">' + esc(q.e) + '</div>' +
       '<div class="nav">' +
@@ -641,6 +724,14 @@ const Mock = {
   finishHere(){ finalize(); },
   pick(orig){
     const q = S.qs[S.i] && S.qs[S.i].ref;
+    if(isOrder(q)){
+      const cur = Array.isArray(S.ans[S.i]) ? S.ans[S.i].slice() : [];
+      const at = cur.indexOf(orig);
+      if(at >= 0) cur.splice(at, 1); else cur.push(orig);
+      if(cur.length) S.ans[S.i] = cur; else delete S.ans[S.i];
+      render();
+      return;
+    }
     if(isMulti(q)){
       const cur = Array.isArray(S.ans[S.i]) ? S.ans[S.i].slice() : [];
       const at = cur.indexOf(orig);
@@ -651,8 +742,21 @@ const Mock = {
     }
     render();
   },
-  go(d){ S.i = Math.min(S.qs.length-1, Math.max(0, S.i + d)); render(); },
-  jump(n){ S.i = n; render(); },
+  /* マッチング：左を選んでから右を選ぶ。一対一を保つ */
+  pickLeft(i){ S.matchLeft = (S.matchLeft === i ? null : i); render(); },
+  pickRight(r){
+    const i = S.matchLeft;
+    if(i === null || i === undefined) return;
+    const cur = Object.assign({}, S.ans[S.i] || {});
+    Object.keys(cur).forEach(function(k){ if(cur[k] === r) delete cur[k]; });
+    cur[i] = r;
+    S.ans[S.i] = cur;
+    S.matchLeft = null;
+    render();
+  },
+  clearAnswer(){ delete S.ans[S.i]; S.matchLeft = null; render(); },
+  go(d){ S.matchLeft = null; S.i = Math.min(S.qs.length-1, Math.max(0, S.i + d)); render(); },
+  jump(n){ S.matchLeft = null; S.i = n; render(); },
   toggleFlag(){ S.flags[S.i] = !S.flags[S.i]; render(); },
   confirmFinish(){
     const un = S.qs.length - Object.keys(S.ans).length;
@@ -678,7 +782,8 @@ const Mock = {
     CFG:CFG, PASS:PASS, S:S, buildSection:buildSection, gradeSection:gradeSection,
     gradeAll:gradeAll, sectionOf:sectionOf, sectionTotal:sectionTotal,
     groupOf:groupOf, poolOf:poolOf, wrap:wrap,
-    answerIsCorrect:answerIsCorrect, isAnswered:isAnswered, isMulti:isMulti,
+    answerIsCorrect:answerIsCorrect, isAnswered:isAnswered,
+    isMulti:isMulti, isOrder:isOrder, isMatch:isMatch,
   },
 };
 window.Mock = Mock;

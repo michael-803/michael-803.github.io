@@ -3,16 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SAA-C03 模擬試験センター</title>
+<title>SCS-C03 模擬試験センター</title>
 <!-- ============================================================
-     SAA-C03 模擬試験（65問／130分）
+     SCS-C03 模擬試験（65問／170分）
 
-     公式（2026-08-25 一次情報で確認）
-       65問（採点対象50＋採点対象外15）／130分／合格は100〜1000中720点
+     公式（2026-08-28 一次情報で確認）
+       出典 docs.aws.amazon.com/aws-certification/latest/security-specialty-03/
+       65問（採点対象50＋採点対象外15）／170分／合格は100〜1000中750点
        補正スコアリングのため★ドメイン別の足切りは無い
-       ドメイン比率 セキュア30％／弾力性26％／高性能24％／コスト20％
+       出題形式は択一・複数選択・順序・マッチングの4種類
+       ドメイン比率 検出16％／インシデント対応14％／インフラ保護18％／
+                    IAM 20％／データ保護18％／基盤とガバナンス14％
 
-     問題は data.js の QQ・SCENARIO_Q・MULTI_Q から毎回ランダムに組み立てる。
      設定はすべて cert.js の CERT.mock にある（CLAUDE.md 第30節）。
      ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +26,7 @@
 <body>
 <div class="bar">
   <a class="home" href="index.html">⬅ Study Deck</a>
-  <span class="ttl">SAA-C03 模擬試験</span>
+  <span class="ttl">SCS-C03 模擬試験</span>
   <span class="timer" id="timer" style="display:none;">残り --:--</span>
 </div>
 <div class="wrap" id="app"></div>
@@ -40,7 +42,7 @@
 <script>
   /* 問題バンクはここで渡す。data.js の const は window に載らないため
      （mock.js の setBanks のコメントを参照）。 */
-  MockBoot({QQ:QQ, SCENARIO_Q:SCENARIO_Q, MULTI_Q:MULTI_Q});
+  MockBoot({QQ:QQ, SCENARIO_Q:SCENARIO_Q, MULTI_Q:MULTI_Q, ORDER_Q:ORDER_Q, MATCH_Q:MATCH_Q});
 </script>
 </body>
 </html>

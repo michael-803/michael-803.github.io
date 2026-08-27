@@ -110,3 +110,8 @@ h2{font-size:16px;margin-bottom:10px;}
 .q-figure svg{max-width:100%;height:auto;}
 .q-figure{color:var(--ink);}   /* 図は currentColor を基準に描かれている */
 .q-figure svg{font-size:11.5px;}
+
+/* マッチング問題の左右2列（模試）。狭い画面では縦に積む */
+.mt-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
+.mt-col{display:flex;flex-direction:column;gap:6px;}
+@media(max-width:680px){ .mt-wrap{grid-template-columns:1fr;} }

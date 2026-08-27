@@ -75,7 +75,7 @@ function makeContext(certRel, dataRel){
   /* ページの <script>MockBoot({QQ, ...})</script> と同じことをする */
   /* 資格ごとに持っているバンクが違う（ITパスポートに PSEUDO_Q は無い）ので、
      存在するものだけを渡す。ページ側も自分の持ち物だけを列挙する。 */
-  const banks = ['QQ','SCENARIO_Q','PSEUDO_Q','MULTI_Q'].map(function(n){
+  const banks = ['QQ','SCENARIO_Q','PSEUDO_Q','MULTI_Q','ORDER_Q','MATCH_Q'].map(function(n){
     return n + ':(typeof ' + n + "!=='undefined'?" + n + ':undefined)';
   }).join(',');
   vm.runInContext('Mock.setBanks({' + banks + '});', ctx);
@@ -413,6 +413,76 @@ function mockMultiTests(){
   eq('択一を誤れば0問正解', M.gradeSection(sec, singles, sWrong).correct, 0);
 }
 /* ============================================================
+   SCS-C03：65問／170分／総合750点。★4形式（択一・複数選択・順序・マッチング）
+   ============================================================ */
+function scsTests(){
+  console.log('\n============================================================');
+  console.log('SCS-C03 模試：設定・在庫・4形式の採点');
+  console.log('============================================================');
+
+  const ctx = makeContext('aws/scs/cert.js', 'aws/scs/data.js');
+  const M = ctx.Mock._internals;
+  const sec = M.sectionOf('main');
+
+  section('設定が公式の値どおりか');
+  eq('出題数', M.sectionTotal(sec), 65);
+  eq('試験時間（分）', sec.minutes, 170);
+  eq('ドメイン配分（16/14/18/20/18/14%を按分）', sec.groups.map(g => g.n), [10, 9, 12, 13, 12, 9]);
+  eq('合格は総合750点', M.PASS.total, 750);
+  eq('ドメイン別の足切りは無い', M.PASS.group, null);
+  eq('母集団に4形式すべてを含む', sec.pools, ['QQ','SCENARIO_Q','MULTI_Q','ORDER_Q','MATCH_Q']);
+
+  section('母集団の在庫（ドメインごとに必要数を満たしているか）');
+  const pool = M.poolOf(sec);
+  console.log('       母集団 ' + pool.length + '問（必要 65問）');
+  sec.groups.forEach(function(g){
+    const n = pool.filter(function(q){ return M.groupOf(sec, q.c) === g.id; }).length;
+    ok(g.name + ' ' + n + '問（必要' + g.n + '問）' + (n >= g.n ? '' : ' — ★在庫不足'), true);
+  });
+
+  section('形式の見分け（順序と複数選択は形が同じなので印で区別する）');
+  const orders = pool.filter(function(q){ return M.isOrder(q); });
+  const matches = pool.filter(function(q){ return M.isMatch(q); });
+  const multis = pool.filter(function(q){ return M.isMulti(q); });
+  eq('順序問題を認識できる', orders.length, 6);
+  eq('マッチング問題を認識できる', matches.length, 6);
+  ok('順序問題が複数選択に混ざっていない', multis.every(function(q){ return q.kind !== 'order'; }));
+
+  section('採点：順序問題は並び順まで一致して初めて正解');
+  const oi = orders.map(function(q){ return M.wrap(q, sec); });
+  const oRight = {}; oi.forEach(function(it, i){ oRight[i] = it.ref.a.slice(); });
+  eq('正しい順なら全問正解', M.gradeSection(sec, oi, oRight).correct, oi.length);
+  const oSwap = {};
+  oi.forEach(function(it, i){
+    const a = it.ref.a.slice(); const t0 = a[0]; a[0] = a[1]; a[1] = t0; oSwap[i] = a;
+  });
+  eq('2つ入れ替えたら0問正解', M.gradeSection(sec, oi, oSwap).correct, 0);
+  const oShort = {}; oi.forEach(function(it, i){ oShort[i] = it.ref.a.slice(0, 2); });
+  eq('途中までしか並べていなければ0問正解', M.gradeSection(sec, oi, oShort).correct, 0);
+
+  section('採点：マッチングは全ペア正解で初めて得点');
+  const mi = matches.map(function(q){ return M.wrap(q, sec); });
+  const mRight = {}; mi.forEach(function(it, i){ mRight[i] = Object.assign({}, it.ref.a); });
+  eq('全ペア正しければ全問正解', M.gradeSection(sec, mi, mRight).correct, mi.length);
+  const mBreak = {};
+  mi.forEach(function(it, i){
+    const a = Object.assign({}, it.ref.a);
+    const keys = Object.keys(a); const t0 = a[keys[0]]; a[keys[0]] = a[keys[1]]; a[keys[1]] = t0;
+    mBreak[i] = a;
+  });
+  eq('1組崩したら0問正解', M.gradeSection(sec, mi, mBreak).correct, 0);
+  const mPartial = {};
+  mi.forEach(function(it, i){
+    const a = Object.assign({}, it.ref.a); delete a[Object.keys(a)[0]]; mPartial[i] = a;
+  });
+  eq('1組欠けていたら0問正解', M.gradeSection(sec, mi, mPartial).correct, 0);
+
+  section('未解答の判定（空の配列・空のオブジェクトは未解答）');
+  ok('空の配列は未解答', M.isAnswered([]) === false);
+  ok('空のオブジェクトは未解答', M.isAnswered({}) === false);
+  ok('0という解答は解答済み', M.isAnswered(0) === true);
+}
+/* ============================================================
    ITパスポート：同じエンジンで従来の規則（総合600かつ分野別300）を表現できるか
    ============================================================ */
 function itpassRuleTests(){
@@ -692,6 +762,7 @@ feTests();
 apTests();
 sapTests();
 mockMultiTests();
+scsTests();
 itpassRuleTests();
 itpassPortTests();
 await itpassLegacyHistTests();

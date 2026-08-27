@@ -93,6 +93,19 @@ const CERT_PROFILE = {
     },
     official: {'組織の複雑さ':0.26, '新規設計':0.29, '継続的改善':0.25, '移行と近代化':0.20},
   },
+  'aws/scs': {
+    label: 'SCS-C03',
+    /* 問題は公式の6ドメインで分類している（CLAUDE.md 第45節）。 */
+    fields: {
+      '検出':         ['det'],
+      'インシデント': ['ir'],
+      'インフラ':     ['infra'],
+      'IAM':          ['iam'],
+      'データ保護':   ['data'],
+      'ガバナンス':   ['gov'],
+    },
+    official: {'検出':0.16, 'インシデント':0.14, 'インフラ':0.18, 'IAM':0.20, 'データ保護':0.18, 'ガバナンス':0.14},
+  },
   /* CLF-C02（aws/clf）は合格済みのため意図的に載せていない。
      AWS資格を今後追加するときは fields:null（3分野の枠組みが無いため
      分野バランス検証はスキップ）で1件足す。 */
@@ -111,6 +124,8 @@ function loadCert(rel){
     SCENARIO_Q: typeof SCENARIO_Q!=='undefined'?SCENARIO_Q:[],
     PSEUDO_Q: typeof PSEUDO_Q!=='undefined'?PSEUDO_Q:[],
     MULTI_Q: typeof MULTI_Q!=='undefined'?MULTI_Q:[],
+    ORDER_Q: typeof ORDER_Q!=='undefined'?ORDER_Q:[],
+    MATCH_Q: typeof MATCH_Q!=='undefined'?MATCH_Q:[],
     CHEATSHEETS: typeof CHEATSHEETS!=='undefined'?CHEATSHEETS:[]};`)(win);
   new Function('window', fs.readFileSync(path.join(dir,'cert.js'),'utf8'))(win);
   return {d: win.__d, CERT: win.CERT};
@@ -120,7 +135,7 @@ function loadCert(rel){
 function validate(rel){
   const profile = CERT_PROFILE[rel] || {label: rel, fields: null, official: null};
   const {d, CERT} = loadCert(rel);
-  const {FC_CATS_DEF, SAMPLE, QCAT, QQ, SCENARIO_Q, PSEUDO_Q, MULTI_Q, CHEATSHEETS} = d;
+  const {FC_CATS_DEF, SAMPLE, QCAT, QQ, SCENARIO_Q, PSEUDO_Q, MULTI_Q, ORDER_Q, MATCH_Q, CHEATSHEETS} = d;
 
   let ng = 0;
   const ok  = m => console.log('  OK   ' + m);
@@ -131,7 +146,8 @@ function validate(rel){
   console.log(`${profile.label}（${rel}）`);
   console.log('='.repeat(60));
 
-  const banks = [['QQ',QQ],['SCENARIO_Q',SCENARIO_Q],['PSEUDO_Q',PSEUDO_Q],['MULTI_Q',MULTI_Q]]
+  const banks = [['QQ',QQ],['SCENARIO_Q',SCENARIO_Q],['PSEUDO_Q',PSEUDO_Q],['MULTI_Q',MULTI_Q],
+                 ['ORDER_Q',ORDER_Q],['MATCH_Q',MATCH_Q]]
     .filter(([,a])=>a.length);
   const all = banks.flatMap(([,a])=>a);
 
@@ -179,10 +195,31 @@ function validate(rel){
     const ids = arr.map(q=>q.id);
     const dup = ids.filter((v,i)=>ids.indexOf(v)!==i);
     const badCat = arr.filter(q=>!qcatIds.has(q.c)).map(q=>q.id);
-    const isMulti = label==='MULTI_Q';
-    const badAns = arr.filter(q=>isMulti
-      ? !(Array.isArray(q.a) && q.a.every(i=>i>=0 && i<q.o.length))
-      : !(Number.isInteger(q.a) && q.a>=0 && q.a<q.o.length)).map(q=>q.id);
+    const inRange = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
+    const uniq = a => new Set(a).size === a.length;
+    const answerOk = q => {
+      if(label==='MATCH_Q'){
+        if(!Array.isArray(q.l) || !Array.isArray(q.r)) return false;
+        if(!q.a || typeof q.a !== 'object' || Array.isArray(q.a)) return false;
+        const keys = Object.keys(q.a);
+        if(keys.length !== q.l.length) return false;
+        if(!keys.every(k => inRange(Number(k), q.l.length))) return false;
+        const vals = keys.map(k => q.a[k]);
+        return vals.every(v => inRange(v, q.r.length)) && uniq(vals);
+      }
+      if(label==='ORDER_Q'){
+        if(q.kind !== 'order') return false;   // 模試が複数選択と区別できなくなる
+        if(!Array.isArray(q.a) || !Array.isArray(q.o)) return false;
+        if(q.a.length !== q.o.length) return false;
+        return q.a.every(i => inRange(i, q.o.length)) && uniq(q.a);
+      }
+      if(label==='MULTI_Q'){
+        if(!Array.isArray(q.a) || q.a.length < 2) return false;
+        return q.a.every(i => inRange(i, q.o.length)) && uniq(q.a);
+      }
+      return inRange(q.a, q.o.length);
+    };
+    const badAns = arr.filter(q=>!answerOk(q)).map(q=>q.id);
     const noExp = arr.filter(q=>!q.e || q.e.length<20).map(q=>q.id);
     const probs=[];
     if(dup.length) probs.push('ID重複='+dup);
@@ -273,6 +310,7 @@ function validate(rel){
      狙うのは「正解だけが長い説明文で、誤答は短い単語」という作問ミスなので、
      正解が絶対値としても長い（15文字以上）場合に限って指摘する。 */
   const giveaway = all.filter(q=>{
+    if(!Array.isArray(q.o)) return false;   // マッチング問題は選択肢の配列を持たない
     if(Array.isArray(q.a)) return false;
     const lens = q.o.map(o=>o.length);
     const correct = lens[q.a];
@@ -288,6 +326,7 @@ function validate(rel){
   head('ルール7：解説の質（各誤答がなぜ誤りかを書く）');
   const weakExp = [];
   all.forEach(q=>{
+    if(!Array.isArray(q.o)) return;         // マッチング問題は選択肢の配列を持たない
     if(Array.isArray(q.a)) return;
     const distractors = q.o.filter((_,i)=>i!==q.a);
     const touched = distractors.filter(x=>{

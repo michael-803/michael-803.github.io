@@ -308,6 +308,22 @@ function sapTests(){
     ok(g.name + ' ' + n + '問（必要' + g.n + '問）' + (n >= g.n ? '' : ' — ★在庫不足'), true);
   });
 
+  section('組み立て（10回とも配分どおり・重複なし）');
+  let sapGood = 0, sapDup = 0;
+  const sapSeen = new Set();
+  for(let t = 0; t < 10; t++){
+    const set = M.buildSection(sec);
+    const m = {};
+    set.forEach(function(x){ const g = M.groupOf(sec, x.ref.c); m[g] = (m[g]||0)+1; });
+    if(set.length === 75 && m.org === 20 && m.new === 22 && m.imp === 19 && m.mig === 14) sapGood++;
+    const ids = set.map(function(x){ return x.ref.id; });
+    if(new Set(ids).size !== ids.length) sapDup++;
+    sapSeen.add(ids.slice().sort().join(','));
+  }
+  eq('10回とも75問・配分20/22/19/14', sapGood, 10);
+  eq('同じ問題が2回出ない', sapDup, 0);
+  ok('毎回違う組み合わせになる（' + sapSeen.size + '通り）', sapSeen.size >= 8);
+
   section('採点（100＋正答率×900。750点はおよそ72%の正答）');
   const qs = M.buildSection(sec);
   const mk = function(n){
@@ -322,9 +338,20 @@ function sapTests(){
   eq('未解答は誤答扱い（0点）', none.total, 0);
 
   section('長文設問の切替（CLAUDE.md 第43節）');
-  eq('しきい値が cert.js に明示されている', ctx.window.CERT.longStem, 130);
-  const long = pool.filter(function(q){ return String(q.q).length >= 130; }).length;
-  ok('130字以上の設問は ' + long + '問（第1チャンクは四択のみなので0でよい）', true);
+  eq('しきい値が cert.js に明示されている', ctx.window.CERT.longStem, 90);
+  /* ★data.js の const はコンテキストのプロパティにならない（第30-3節）。
+     ctx.SCENARIO_Q を見ると常に空になるので、模試が組み立てた母集団を
+     IDの接頭辞で振り分けて数える。 */
+  const th  = ctx.window.CERT.longStem;
+  const scn = pool.filter(function(q){ return /^S[0-9]/.test(q.id); });
+  const qq  = pool.filter(function(q){ return /^Q[0-9]/.test(q.id); });
+  const len = function(a){ return a.map(function(q){ return q.q.length; }); };
+  ok('シナリオ ' + scn.length + '問は全問が長文体裁になる（最短 '
+     + Math.min.apply(null, len(scn)) + '字・しきい値' + th + '字）',
+     scn.length > 0 && scn.every(function(q){ return q.q.length >= th; }));
+  ok('四択 ' + qq.length + '問は長文体裁にならない（最長 '
+     + Math.max.apply(null, len(qq)) + '字）',
+     qq.length > 0 && qq.every(function(q){ return q.q.length < th; }));
 }
 /* ============================================================
    ITパスポート：同じエンジンで従来の規則（総合600かつ分野別300）を表現できるか

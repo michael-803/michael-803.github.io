@@ -185,7 +185,7 @@ function renderPseudoSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('code')} ${catInfo.name} ／ 科目B</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         ${q.note ? `<div class="pseudo-note">${escHtml(q.note)}</div>` : ''}
         ${qFigure(q)}
         <div class="pseudo-label">〔プログラム〕</div>

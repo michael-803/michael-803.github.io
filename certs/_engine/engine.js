@@ -706,6 +706,21 @@ function qFigure(q){
   return (q && q.fig) ? `<div class="q-figure">${q.fig}</div>` : '';
 }
 
+/* 設問文の描画。長文（既定130字以上）は .long を付けて体裁を変える。
+   CERT.longStem で資格ごとにしきい値を上書きできる（0で常に長文体裁）。
+   ★SAP-C02のように1問が数百字になる資格のための仕組み（CLAUDE.md 第43節）。 */
+const LONG_STEM_MIN = 130;
+function isLongStem(text){
+  const min = (typeof CERT !== 'undefined' && typeof CERT.longStem === 'number')
+    ? CERT.longStem : LONG_STEM_MIN;
+  return String(text || '').length >= min;
+}
+function qStem(q){
+  const t = (q && q.q) || '';
+  return '<div class="quiz-question' + (isLongStem(t) ? ' long' : '') + '">'
+       + escHtml(t) + '</div>';
+}
+
 /* 擬似言語のプログラム（科目B）を等幅で整形して表示する。
    IPA公式の記述形式に従う（fe/擬似言語仕様_IPA公式.md）。
    コード文字列はエスケープする。空欄マーカー [[a]] だけは
@@ -1230,7 +1245,7 @@ function renderScenarioSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('puzzle')} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         ${qFigure(q)}
         <div class="quiz-choices" id="scenario-choices">
           ${displayOrder.map((origIdx,pos)=>`
@@ -1523,7 +1538,7 @@ function renderMultiSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('ballot')} ${catInfo.name} ／ 複数選択${countHint}${q.verify?' ／ <span style="color:var(--orange)">'+ico('warning')+' 要確認</span>':''}</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         <div class="quiz-choices" id="multi-choices">
           ${displayOrder.map((origIdx,pos)=>`
             <button class="quiz-choice" id="mc-${origIdx}" onclick="toggleMultiChoice(${origIdx})">
@@ -1859,7 +1874,7 @@ function renderQuizSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico(catInfo.icon)} ${catInfo.name}${isMulti?' ／ 複数選択':''}</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         ${qFigure(q)}
         <div class="quiz-choices" id="quiz-choices">
           ${displayOrder.map((origIdx,pos)=>`

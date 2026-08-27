@@ -277,6 +277,56 @@ function apTests(){
 }
 
 /* ============================================================
+   SAP-C02：75問／180分／総合750点の1部構成（補正スコアリング）
+   ★ドメイン別の足切りは無い。長文設問の切替しきい値も併せて確認する
+   ============================================================ */
+function sapTests(){
+  console.log('\n============================================================');
+  console.log('SAP-C02 模試：設定と在庫');
+  console.log('============================================================');
+
+  const ctx = makeContext('aws/sap/cert.js', 'aws/sap/data.js');
+  const M = ctx.Mock._internals;
+  const sec = M.sectionOf('main');
+
+  section('設定が公式の値どおりか');
+  eq('出題数', M.sectionTotal(sec), 75);
+  eq('試験時間（分）', sec.minutes, 180);
+  eq('ドメイン配分（26/29/25/20%を按分）', sec.groups.map(g => g.n), [20, 22, 19, 14]);
+  eq('合格は総合750点', M.PASS.total, 750);
+  eq('ドメイン別の足切りは無い', M.PASS.group, null);
+  eq('科目ごとの基準も無い（1部構成）', M.PASS.section, null);
+  eq('保存キー（受験履歴）', M.CFG.keys.hist, 'sapMockHistoryV1');
+  eq('保存キー（誤答プール）', M.CFG.keys.wrong, 'sapMockWrongV1');
+
+  /* ★在庫はチャンクごとに増える。数字は data.js を足したら更新すること。 */
+  section('母集団の在庫（ドメインごとに必要数を満たしているか）');
+  const pool = M.poolOf(sec);
+  console.log('       母集団 ' + pool.length + '問（必要 75問）');
+  sec.groups.forEach(function(g){
+    const n = pool.filter(function(q){ return M.groupOf(sec, q.c) === g.id; }).length;
+    ok(g.name + ' ' + n + '問（必要' + g.n + '問）' + (n >= g.n ? '' : ' — ★在庫不足'), true);
+  });
+
+  section('採点（100＋正答率×900。750点はおよそ72%の正答）');
+  const qs = M.buildSection(sec);
+  const mk = function(n){
+    const a = {};
+    qs.forEach(function(x, i){ a[i] = (i < n) ? x.ref.a : (x.ref.a + 1) % x.ref.o.length; });
+    return a;
+  };
+  const all = M.gradeAll([M.gradeSection(sec, qs, mk(qs.length))]);
+  eq('全問正解は1000点', all.total, 1000);
+  ok('全問正解は合格', all.pass === true);
+  const none = M.gradeAll([M.gradeSection(sec, qs, {})]);
+  eq('未解答は誤答扱い（0点）', none.total, 0);
+
+  section('長文設問の切替（CLAUDE.md 第43節）');
+  eq('しきい値が cert.js に明示されている', ctx.window.CERT.longStem, 130);
+  const long = pool.filter(function(q){ return String(q.q).length >= 130; }).length;
+  ok('130字以上の設問は ' + long + '問（第1チャンクは四択のみなので0でよい）', true);
+}
+/* ============================================================
    ITパスポート：同じエンジンで従来の規則（総合600かつ分野別300）を表現できるか
    ============================================================ */
 function itpassRuleTests(){
@@ -554,6 +604,7 @@ async function renderTests(){
 (async function main(){
 feTests();
 apTests();
+sapTests();
 itpassRuleTests();
 itpassPortTests();
 await itpassLegacyHistTests();

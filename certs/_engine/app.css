@@ -176,6 +176,10 @@ textarea{resize:vertical;min-height:88px;}
 .quiz-card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:14px;animation:fadeIn .2s ease;}
 .quiz-cat-tag{font-family:var(--disp);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--orange);margin-bottom:9px;}
 .quiz-question{font-size:16px;font-weight:700;line-height:1.6;margin-bottom:18px;}
+/* 長文の設問（SAP-C02など）。太字16pxのままだと読み通せないので、
+   通常の太さ・行間広め・改行を活かす体裁に切り替える。CLAUDE.md 第43節。 */
+.quiz-question.long{font-size:15px;font-weight:500;line-height:1.95;
+  white-space:pre-wrap;border-left:3px solid var(--line);padding-left:14px;}
 .quiz-choices{display:flex;flex-direction:column;gap:8px;}
 .quiz-choice{background:var(--card);border:2px solid var(--line);border-radius:var(--rs);cursor:pointer;display:flex;align-items:flex-start;gap:11px;padding:12px 14px;transition:all .18s;text-align:left;width:100%;font-size:13.5px;color:var(--text);line-height:1.55;}
 .quiz-choice:hover:not(:disabled){border-color:var(--orange);background:rgba(255,153,0,.06);}

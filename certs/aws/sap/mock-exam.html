@@ -3,15 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SOA-C03 模擬試験センター</title>
+<title>SAP-C02 模擬試験センター</title>
 <!-- ============================================================
-     SOA-C03 模擬試験（65問／130分）
+     SAP-C02 模擬試験（75問／180分）
 
-     公式（2026-08-26 一次情報で確認）
-       65問（採点対象50＋採点対象外15）／130分／合格は100〜1000中720点
+     公式（2026-08-27 一次情報で確認）
+       出典 docs.aws.amazon.com/aws-certification/latest/solutions-architect-professional-02/
+       75問（採点対象65＋採点対象外10）／180分／合格は100〜1000中750点
        補正スコアリングのため★ドメイン別の足切りは無い
-       出題形式は択一式と複数選択式のみ（★試験ラボは無い）
-       ドメイン比率 監視22％／信頼性22％／デプロイ22％／セキュリティ16％／ネットワーク18％
+       出題形式は択一式と複数選択式（5つ以上から2つ以上）
+       ドメイン比率 組織の複雑さ26％／新規設計29％／継続的改善25％／移行と近代化20％
+
+     ★180分という長さそのものが対策になる試験（CLAUDE.md 第11節）。
+       途中で切り上げず、最後まで通しで解く使い方を想定している。
 
      設定はすべて cert.js の CERT.mock にある（CLAUDE.md 第30節）。
      ============================================================ -->
@@ -24,7 +28,7 @@
 <body>
 <div class="bar">
   <a class="home" href="index.html">⬅ Study Deck</a>
-  <span class="ttl">SOA-C03 模擬試験</span>
+  <span class="ttl">SAP-C02 模擬試験</span>
   <span class="timer" id="timer" style="display:none;">残り --:--</span>
 </div>
 <div class="wrap" id="app"></div>

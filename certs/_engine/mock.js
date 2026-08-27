@@ -335,7 +335,7 @@ function renderExam(){
         '<span class="qfield">' + esc(groupName(sec, groupOf(sec, q.c)) || '') + '</span>' +
         '<span class="sub" style="margin-left:auto">解答済み ' + answered + ' / ' + S.qs.length + '</span>' +
       '</div>' +
-      '<div class="qtext">' + esc(q.q) + '</div>' +
+      '<div class="qtext' + (String(q.q||'').length >= 130 ? ' long' : '') + '">' + esc(q.q) + '</div>' +
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
       item.order.map(function(orig, pos){
@@ -496,7 +496,7 @@ function renderReview(){
           (rv.allCorrect ? '全問正解のため全 ' + rv.list.length + ' 問を表示'
                          : '間違えた問題 ' + (S.reviewIdx+1) + ' / ' + rv.list.length) + '</span>' +
       '</div>' +
-      '<div class="qtext">' + esc(q.q) + '</div>' +
+      '<div class="qtext' + (String(q.q||'').length >= 130 ? ' long' : '') + '">' + esc(q.q) + '</div>' +
       figureBlock(q.fig) +
       (sec.pseudo ? pseudoBlock(q.code) : '') +
       cur.item.order.map(function(orig, pos){

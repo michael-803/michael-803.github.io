@@ -433,6 +433,7 @@ function weakTests(){
    ['aws/saa', 'SAA-C03',     []],
    ['aws/soa', 'SOA-C03',     []],
    ['ap',      '応用情報',    []],
+   ['aws/sap', 'SAP-C02',     []],
   ].forEach(function(t){
     const dir = t[0], label = t[1], extra = t[2];
     const c = makeContext();
@@ -525,6 +526,7 @@ function allTabsTests(){
    ['aws/saa', 'SAA-C03',       []],
    ['aws/soa', 'SOA-C03',       []],
    ['ap',      '応用情報',      []],
+   ['aws/sap', 'SAP-C02',       []],
   ].forEach(function(t){
     const dir = t[0], label = t[1], extra = t[2];
     section(label);

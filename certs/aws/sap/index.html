@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SOA-C03 Study Deck</title>
+<title>SAP-C02 Study Deck</title>
 <!-- ============================================================
-     AWS Certified CloudOps Engineer – Associate（SOA-C03）学習アプリ。
+     AWS Certified Solutions Architect – Professional（SAP-C02）学習アプリ。
      このファイルは資格ごとの薄いガワで、中身は ../../_engine/ の共通エンジンが担う。
 
-     ★試験名が変わっている：SysOps Administrator → CloudOps Engineer（コードはSOA-C03）。
-     ★試験ラボ（exam labs）は無い。旧SOA-C02時代の前提で道場を作らないこと（第41節）。
-     ★出題の重心は「設計」ではなく「運用」。壊れた・遅い・高いときにどう調べて直すか。
+     ★1問が数百字になる試験。設問文は130字を超えると自動で長文体裁に切り替わる
+       （_engine/engine.js の qStem／CLAUDE.md 第43節）。
+     ★単語帳は用語帳ではなく「設計パターン帳」。要件→採るべき構成 の形で持つ。
      ============================================================ -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +22,7 @@
 <body>
 <div class="app">
 <header>
-  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-wrench"></use></svg></div><span class="logo-word"><span data-cert-name>SOA-C03</span> <span>Study Deck</span></span></div>
+  <div class="logo"><div class="logo-icon"><svg class="ico"><use href="#i-blueprint"></use></svg></div><span class="logo-word"><span data-cert-name>SAP-C02</span> <span>Study Deck</span></span></div>
   <div class="header-right">
     <div class="sync-indicator" id="sync-indicator" style="display:none;">
       <div class="sync-dot" id="sync-dot"></div><span id="sync-text">同期済み</span>
@@ -39,7 +39,7 @@
 <div class="screen" id="notebook-screen">
   <div class="tab-bar" role="tablist">
     <button class="tab-btn active" onclick="switchTab('fc')" id="tab-fc" role="tab"><svg class="ico"><use href="#i-card-stack"></use></svg> 単語帳</button>
-    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 過去問</button>
+    <button class="tab-btn" onclick="switchTab('quiz')" id="tab-quiz" role="tab"><svg class="ico"><use href="#i-doc-check"></use></svg> 四択</button>
     <button class="tab-btn" onclick="switchTab('multi')" id="tab-multi" role="tab"><svg class="ico"><use href="#i-ballot"></use></svg> 複数選択</button>
     <button class="tab-btn" onclick="switchTab('ordering')" id="tab-ordering" role="tab"><svg class="ico"><use href="#i-list-ol"></use></svg> 順序</button>
     <button class="tab-btn" onclick="switchTab('matching')" id="tab-matching" role="tab"><svg class="ico"><use href="#i-link"></use></svg> マッチング</button>

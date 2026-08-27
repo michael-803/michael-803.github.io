@@ -41,6 +41,8 @@ h2{font-size:16px;margin-bottom:10px;}
 .qno{background:var(--navy);color:#fff;border-radius:6px;padding:3px 11px;font-weight:700;font-size:13px;}
 .qfield{background:#EDF2F9;color:var(--navy);border-radius:6px;padding:3px 11px;font-size:12px;font-weight:700;}
 .qtext{font-size:15.5px;margin-bottom:16px;white-space:pre-wrap;}
+/* 長文の設問（SAP-C02など）は行間を広げて読み通せるようにする */
+.qtext.long{line-height:1.95;}
 .opt{display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;background:#fff;
      border:1px solid var(--line);border-radius:var(--r);cursor:pointer;font-family:inherit;
      font-size:14.5px;line-height:1.7;padding:13px 15px;margin-bottom:9px;transition:all .12s;}

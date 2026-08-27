@@ -180,7 +180,7 @@ function renderOrderingSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('list-ol')} ${catInfo.name} ／ 順序問題（正しい順に選んでください）</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         <div class="mt-hint">選んだ順に番号が振られます。押し間違えたら「やり直す」で全部解除できます。</div>
         <div class="ord-list" id="ord-list">
           ${displayOrder.map(origIdx=>`
@@ -413,7 +413,7 @@ function renderMatchingSession(){
       </div>
       <div class="quiz-card">
         <div class="quiz-cat-tag">${ico('link')} ${catInfo.name} ／ マッチング問題（すべて対応付けてください）</div>
-        <div class="quiz-question">${escHtml(q.q)}</div>
+        ${qStem(q)}
         <div class="mt-hint">左をタップ → 対応する右をタップ。同じ番号どうしが1組です。組んだ左をもう一度タップすると解除できます。</div>
         <div class="mt-grid">
           <div>
